@@ -1,5 +1,21 @@
 [
   {
+    "slug": "architecture-lv1-fundamentals",
+    "date": "2026-05-11",
+    "title": "アーキテクチャ Lv1 — 基礎原則完全解説（SOLID / Clean Code / GoF）",
+    "summary": "SOLID/Clean Code/GoFを Before/After コード+図解で完全解説（Lv1詳細版）",
+    "description": "アーキテクチャ学習Lv1の詳細版。SOLID 5原則を Before/After コード+図解で解説、Clean Code 命名10例、GoF 代表7パターンを TypeScript 実装+UML図で完全網羅。1からコード設計を学べる。",
+    "tags": [
+      "architecture",
+      "solid",
+      "clean-code",
+      "design-patterns",
+      "typescript",
+      "oop"
+    ],
+    "updated": null
+  },
+  {
     "slug": "kv-cache",
     "date": "2026-05-10",
     "title": "KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術",

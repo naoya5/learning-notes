@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>アーキテクチャ Lv1 — 基礎原則完全解説（SOLID / Clean Code / GoF） — learning-notes</title>
+    <meta name="description" content="アーキテクチャ学習Lv1の詳細版。SOLID 5原則を Before/After コード+図解で解説、Clean Code 命名10例、GoF 代表7パターンを TypeScript 実装+UML図で完全網羅。1からコード設計を学べる。" />
+
+    <meta name="article:slug" content="architecture-lv1-fundamentals" />
+    <meta name="article:date" content="2026-05-11" />
+    <meta name="article:tags" content="architecture,solid,clean-code,design-patterns,typescript,oop" />
+    <meta name="article:summary" content="SOLID/Clean Code/GoFを Before/After コード+図解で完全解説（Lv1詳細版）" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="アーキテクチャ Lv1 — 基礎原則完全解説" />
+    <meta property="og:description" content="SOLID 5原則・Clean Code・GoFパターンを Before/After で1から学べる詳細解説。" />
+    <meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-05-11-architecture-lv1-fundamentals.html" />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css" media="(prefers-color-scheme: light)" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-11">2026-05-11</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=architecture" class="tag">architecture</a>
+            <a href="../index.html?tag=solid" class="tag">solid</a>
+            <a href="../index.html?tag=clean-code" class="tag">clean-code</a>
+            <a href="../index.html?tag=design-patterns" class="tag">design-patterns</a>
+            <a href="../index.html?tag=typescript" class="tag">typescript</a>
+            <a href="../index.html?tag=oop" class="tag">oop</a>
+          </span>
+        </p>
+        <h1>アーキテクチャ Lv1 — 基礎原則完全解説</h1>
+        <p class="lead">SOLID 5原則・Clean Code・GoFパターンを Before/After コード + 図解で1から学べる詳細解説。シリーズ全5回の第1回目。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次"><p id="toc-title">目次</p><ul></ul></nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>Lv1の到達点</strong>: 1関数・1クラスを「読みやすく・変更しやすく・テストしやすく」書ける</li>
+            <li><strong>SOLID</strong> = 5つの原則の頭文字。守ると「変更が連鎖しないコード」になる</li>
+            <li><strong>Clean Code</strong> = 命名・関数・コメントの3軸で読みやすさを担保</li>
+            <li><strong>GoFパターン</strong> = 23ある中で実務で頻出は7つ（Strategy/Factory/Singleton/Adapter/Decorator/Observer/Facade）</li>
+            <li><strong>このレベルが土台</strong>。Lv2以降のアーキは全部Lv1の上に乗る</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>このシリーズの位置づけ</h2>
+          <p>「ソフトウェアアーキテクチャ完全学習ガイド Lv1〜Lv5」のシリーズ第1回。前回の総覧記事（<a href="2026-05-10-software-architecture-lv1-5.html">Lv1〜5全体マップ</a>）を、各レベル毎に「一から学べる」詳細レベルで深掘りする企画。</p>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="シリーズ全体マップ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="20" y="60" width="120" height="80" fill="#a5d6a7" stroke="#388e3c" stroke-width="3" rx="8" />
+                <text x="80" y="90" text-anchor="middle" font-size="13" font-weight="bold">Lv1</text>
+                <text x="80" y="108" text-anchor="middle" font-size="10">基礎原則</text>
+                <text x="80" y="124" text-anchor="middle" font-size="9" fill="#388e3c">▶ 今ここ</text>
+                <rect x="160" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="220" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv2</text>
+                <text x="220" y="108" text-anchor="middle" font-size="10" fill="#666">アプリ構造</text>
+                <rect x="300" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="360" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv3</text>
+                <text x="360" y="108" text-anchor="middle" font-size="10" fill="#666">システム全体</text>
+                <rect x="440" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="500" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv4</text>
+                <text x="500" y="108" text-anchor="middle" font-size="10" fill="#666">分散・大規模</text>
+                <rect x="580" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="640" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv5</text>
+                <text x="640" y="108" text-anchor="middle" font-size="10" fill="#666">AI時代</text>
+                <text x="360" y="180" text-anchor="middle" font-size="11" fill="#444">下位が上位の土台 → Lv1なくして Lv2 以降は成立しない</text>
+              </g>
+            </svg>
+            <figcaption>図1: シリーズ全体マップ（今回はLv1の詳細）</figcaption>
+          </figure>
+          <aside class="callout tip">
+            <strong>Tip:</strong> Lv1は <strong>個人開発でも必須</strong>。AIに「クラス分けて」と指示する時、ここが分かってないと AIの出力もぐちゃぐちゃになる。
+          </aside>
+        </section>
+
+        <section>
+          <h2>導入 — なぜ「コードレベルの設計」が大切か</h2>
+          <p>Lv2以降の派手なアーキテクチャ（Clean Architecture、DDD、マイクロサービス）は、すべて <strong>Lv1の原則の上</strong>に成り立つ。SOLIDが守られていない関数を100個集めてClean Architectureに並べても、結局メンテできないシステムになる。</p>
+
+          <h3>「変更コスト」がエンジニアの最大の敵</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="変更コストの比較">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="30" text-anchor="middle" font-size="13" font-weight="bold">設計が悪いコード</text>
+                <rect x="40" y="50" width="280" height="60" fill="#ffcdd2" stroke="#c62828" rx="6" />
+                <text x="180" y="75" text-anchor="middle" font-size="12">1機能変更</text>
+                <text x="180" y="95" text-anchor="middle" font-size="11" fill="#c62828" font-weight="bold">→ 7ファイル波及</text>
+                <rect x="40" y="125" width="280" height="60" fill="#ef9a9a" stroke="#c62828" rx="6" />
+                <text x="180" y="150" text-anchor="middle" font-size="12">テスト</text>
+                <text x="180" y="170" text-anchor="middle" font-size="11" fill="#c62828" font-weight="bold">→ DB / 外部API起動必須</text>
+                <rect x="40" y="200" width="280" height="60" fill="#e57373" stroke="#c62828" rx="6" />
+                <text x="180" y="225" text-anchor="middle" font-size="12">バグ修正</text>
+                <text x="180" y="245" text-anchor="middle" font-size="11" fill="#c62828" font-weight="bold">→ 別バグ発生（モグラ叩き）</text>
+
+                <text x="540" y="30" text-anchor="middle" font-size="13" font-weight="bold">SOLID準拠コード</text>
+                <rect x="400" y="50" width="280" height="60" fill="#c8e6c9" stroke="#2e7d32" rx="6" />
+                <text x="540" y="75" text-anchor="middle" font-size="12">1機能変更</text>
+                <text x="540" y="95" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="bold">→ 1ファイルで完結</text>
+                <rect x="400" y="125" width="280" height="60" fill="#a5d6a7" stroke="#2e7d32" rx="6" />
+                <text x="540" y="150" text-anchor="middle" font-size="12">テスト</text>
+                <text x="540" y="170" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="bold">→ モック差し替えで完結</text>
+                <rect x="400" y="200" width="280" height="60" fill="#81c784" stroke="#2e7d32" rx="6" />
+                <text x="540" y="225" text-anchor="middle" font-size="12">バグ修正</text>
+                <text x="540" y="245" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="bold">→ 影響範囲が限定的</text>
+              </g>
+            </svg>
+            <figcaption>図2: 変更コストは設計品質に正比例する</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>SOLID — オブジェクト指向の5原則（完全版）</h2>
+          <p>1990年代後半に Robert C. Martin（Bobおじさん）が整理した、オブジェクト指向設計の中核5原則。順に詳しく見る。</p>
+
+          <h3>S — Single Responsibility Principle（単一責任原則）</h3>
+          <p>「<strong>1クラスを変更する理由は1つだけ</strong>」</p>
+
+          <h4>❌ 違反例: User クラスに3つの責務</h4>
+<pre><code class="language-typescript">// User がデータ + DB保存 + メール送信 + バリデーションを全部抱える
+class User {
+  constructor(public name: string, public email: string) {}
+
+  save() {
+    // PostgreSQL に保存
+    db.query(`INSERT INTO users(name, email) VALUES ($1, $2)`,
+             [this.name, this.email]);
+  }
+
+  sendWelcomeEmail() {
+    // SMTP で送信
+    smtp.send(this.email, "Welcome!", `Hi ${this.name}!`);
+  }
+
+  validate(): boolean {
+    return this.name.length > 0 && /@/.test(this.email);
+  }
+}
+</code></pre>
+          <p><strong>問題点:</strong></p>
+          <ul>
+            <li>DB変更（PostgreSQL → MySQL）で <code>User</code> を修正</li>
+            <li>メール送信先変更（SMTP → SendGrid）で <code>User</code> を修正</li>
+            <li>バリデーション追加（パスワード強度等）で <code>User</code> を修正</li>
+            <li>→ <strong>3つの異なる「変更理由」</strong>が1クラスに同居</li>
+          </ul>
+
+          <h4>✅ 修正後: 責務を分離</h4>
+<pre><code class="language-typescript">// データだけ持つ
+class User {
+  constructor(public name: string, public email: string) {}
+}
+
+// DB保存だけ担当
+class UserRepository {
+  async save(user: User): Promise&lt;void&gt; {
+    await db.query(`INSERT INTO users(name, email) VALUES ($1, $2)`,
+                   [user.name, user.email]);
+  }
+}
+
+// メール送信だけ担当
+class WelcomeMailer {
+  async send(user: User): Promise&lt;void&gt; {
+    await smtp.send(user.email, "Welcome!", `Hi ${user.name}!`);
+  }
+}
+
+// バリデーションだけ担当
+class UserValidator {
+  validate(user: User): boolean {
+    return user.name.length &gt; 0 && /@/.test(user.email);
+  }
+}
+</code></pre>
+
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="SRP前後の依存関係">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold">❌ Before（責務まみれ）</text>
+                <rect x="100" y="40" width="160" height="160" fill="#ffcdd2" stroke="#c62828" stroke-width="2" rx="8" />
+                <text x="180" y="65" text-anchor="middle" font-size="14" font-weight="bold">User</text>
+                <line x1="120" y1="75" x2="240" y2="75" stroke="#c62828" />
+                <text x="180" y="95" text-anchor="middle" font-size="10">+ name, email</text>
+                <text x="180" y="115" text-anchor="middle" font-size="10">+ save() [DB]</text>
+                <text x="180" y="135" text-anchor="middle" font-size="10">+ sendEmail() [SMTP]</text>
+                <text x="180" y="155" text-anchor="middle" font-size="10">+ validate()</text>
+                <text x="180" y="180" text-anchor="middle" font-size="9" fill="#c62828">3つの責務が同居</text>
+
+                <text x="540" y="20" text-anchor="middle" font-size="13" font-weight="bold">✅ After（責務分離）</text>
+                <rect x="430" y="40" width="100" height="40" fill="#c8e6c9" stroke="#2e7d32" rx="6" />
+                <text x="480" y="65" text-anchor="middle" font-size="11" font-weight="bold">User</text>
+                <rect x="560" y="40" width="120" height="40" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="620" y="65" text-anchor="middle" font-size="11">UserRepository</text>
+                <rect x="430" y="100" width="120" height="40" fill="#e1f5fe" stroke="#0277bd" rx="6" />
+                <text x="490" y="125" text-anchor="middle" font-size="11">WelcomeMailer</text>
+                <rect x="560" y="100" width="120" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="6" />
+                <text x="620" y="125" text-anchor="middle" font-size="11">UserValidator</text>
+                <line x1="500" y1="80" x2="600" y2="60" stroke="#666" stroke-dasharray="2,2" />
+                <line x1="500" y1="80" x2="500" y2="100" stroke="#666" stroke-dasharray="2,2" />
+                <line x1="500" y1="80" x2="600" y2="100" stroke="#666" stroke-dasharray="2,2" />
+                <text x="540" y="180" text-anchor="middle" font-size="9" fill="#2e7d32">User を中心に各責務が独立</text>
+              </g>
+            </svg>
+            <figcaption>図3: SRP前後の依存関係</figcaption>
+          </figure>
+
+          <aside class="callout warn">
+            <strong>注意:</strong> 「1クラス1メソッド」という意味ではない。「<strong>変更理由が1つ</strong>」が正しい解釈。同じ理由で変わるなら複数メソッドを持っていい。
+          </aside>
+
+          <hr />
+
+          <h3>O — Open/Closed Principle（開放閉鎖原則）</h3>
+          <p>「<strong>拡張に対して開き、修正に対して閉じる</strong>」</p>
+          <p>新機能追加時、既存コードを <strong>修正せずに追加だけ</strong>で済むようにする。</p>
+
+          <h4>❌ 違反例: if 文増殖</h4>
+<pre><code class="language-typescript">type PaymentMethod = "credit" | "paypal" | "crypto";
+
+function pay(method: PaymentMethod, amount: number) {
+  if (method === "credit") {
+    chargeCreditCard(amount);
+  } else if (method === "paypal") {
+    chargePayPal(amount);
+  } else if (method === "crypto") {           // ← 追加するたびに修正
+    chargeCrypto(amount);
+  }
+}
+</code></pre>
+          <p>→ 新しい支払い方法（Apple Pay等）を追加するたびに <code>pay()</code> を修正する必要がある。</p>
+
+          <h4>✅ 修正後: Strategy パターン</h4>
+<pre><code class="language-typescript">interface PaymentStrategy {
+  execute(amount: number): void;
+}
+
+class CreditCardPayment implements PaymentStrategy {
+  execute(amount: number) { chargeCreditCard(amount); }
+}
+
+class PayPalPayment implements PaymentStrategy {
+  execute(amount: number) { chargePayPal(amount); }
+}
+
+class CryptoPayment implements PaymentStrategy {
+  execute(amount: number) { chargeCrypto(amount); }
+}
+
+// pay() は変更不要、新しいクラスを追加するだけ
+function pay(strategy: PaymentStrategy, amount: number) {
+  strategy.execute(amount);
+}
+
+// 使う側
+pay(new CreditCardPayment(), 1000);
+pay(new ApplePayPayment(), 1000);  // ← 新規 class 追加だけで済む
+</code></pre>
+
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="OCP拡張可能性">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="280" y="40" width="160" height="50" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="8" />
+                <text x="360" y="60" text-anchor="middle" font-size="12" font-weight="bold">PaymentStrategy</text>
+                <text x="360" y="78" text-anchor="middle" font-size="10" fill="#666">interface</text>
+                <line x1="360" y1="90" x2="120" y2="140" stroke="#666" />
+                <line x1="360" y1="90" x2="280" y2="140" stroke="#666" />
+                <line x1="360" y1="90" x2="440" y2="140" stroke="#666" />
+                <line x1="360" y1="90" x2="600" y2="140" stroke="#388e3c" stroke-width="2" />
+                <rect x="40" y="140" width="160" height="50" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="120" y="170" text-anchor="middle" font-size="11">CreditCard</text>
+                <rect x="220" y="140" width="120" height="50" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="280" y="170" text-anchor="middle" font-size="11">PayPal</text>
+                <rect x="360" y="140" width="160" height="50" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="440" y="170" text-anchor="middle" font-size="11">Crypto</text>
+                <rect x="540" y="140" width="160" height="50" fill="#c8e6c9" stroke="#2e7d32" stroke-width="2" rx="6" stroke-dasharray="3,2" />
+                <text x="620" y="165" text-anchor="middle" font-size="11" font-weight="bold">ApplePay</text>
+                <text x="620" y="180" text-anchor="middle" font-size="9" fill="#2e7d32">追加時もpay()変更不要</text>
+                <text x="360" y="220" text-anchor="middle" font-size="11" fill="#444">interfaceに従えば無限に拡張可能</text>
+              </g>
+            </svg>
+            <figcaption>図4: OCP — 抽象に依存させて拡張可能にする</figcaption>
+          </figure>
+
+          <hr />
+
+          <h3>L — Liskov Substitution Principle（リスコフの置換原則）</h3>
+          <p>「<strong>親クラスを子クラスに差し替えても、プログラムは正しく動作する</strong>」</p>
+
+          <h4>❌ 違反例: Penguinが飛ぼうとして例外</h4>
+<pre><code class="language-typescript">class Bird {
+  fly(): void {
+    console.log("飛んでいます");
+  }
+}
+
+class Penguin extends Bird {
+  fly(): void {
+    throw new Error("ペンギンは飛べません");  // ← 親の前提を壊す
+  }
+}
+
+function makeBirdFly(bird: Bird) {
+  bird.fly();  // Bird を期待してるのに Penguin が来ると死ぬ
+}
+
+makeBirdFly(new Penguin());  // ❌ 実行時エラー
+</code></pre>
+          <p><strong>問題:</strong> <code>Bird</code> 型のつもりで使ったら例外で落ちる。「Bird = 飛べる」という暗黙の契約を子が破った。</p>
+
+          <h4>✅ 修正後: 抽象を分ける</h4>
+<pre><code class="language-typescript">interface Animal {
+  move(): void;
+}
+
+class Sparrow implements Animal {
+  move() { console.log("飛ぶ"); }
+}
+
+class Penguin implements Animal {
+  move() { console.log("泳ぐ"); }
+}
+
+function makeAnimalMove(animal: Animal) {
+  animal.move();  // どの実装でも安全
+}
+</code></pre>
+
+          <aside class="callout tip">
+            <strong>判定法:</strong> 「親で書かれてた事前条件・事後条件・例外契約を、子が <strong>同じか緩める</strong>方向にしか変更してない」ならOK。逆方向（厳しくする / 別の例外を追加）はNG。
+          </aside>
+
+          <hr />
+
+          <h3>I — Interface Segregation Principle（インターフェース分離原則）</h3>
+          <p>「<strong>クライアントは、使わないメソッドへの依存を強制されるべきでない</strong>」</p>
+
+          <h4>❌ 違反例: 太いインターフェース</h4>
+<pre><code class="language-typescript">interface Worker {
+  work(): void;
+  eat(): void;
+  sleep(): void;
+}
+
+// ロボットも実装することになると...
+class Robot implements Worker {
+  work() { /* OK */ }
+  eat()  { throw new Error("ロボットは食べない"); }    // ❌
+  sleep(){ throw new Error("ロボットは寝ない"); }      // ❌
+}
+</code></pre>
+
+          <h4>✅ 修正後: 小さなインターフェースに分割</h4>
+<pre><code class="language-typescript">interface Workable { work(): void }
+interface Eatable   { eat(): void }
+interface Sleepable { sleep(): void }
+
+class Human implements Workable, Eatable, Sleepable {
+  work()  { /* */ }
+  eat()   { /* */ }
+  sleep() { /* */ }
+}
+
+class Robot implements Workable {
+  work() { /* OK、Eatable/Sleepable は実装不要 */ }
+}
+</code></pre>
+
+          <hr />
+
+          <h3>D — Dependency Inversion Principle（依存性逆転原則）</h3>
+          <p>「<strong>上位モジュールは下位モジュールの具象に依存してはならない。両者は抽象に依存すべき</strong>」</p>
+
+          <h4>❌ 違反例: ビジネスロジックがDB実装に直接依存</h4>
+<pre><code class="language-typescript">class MySQLDatabase {
+  save(order: Order) { /* MySQL固有実装 */ }
+}
+
+class OrderService {
+  private db = new MySQLDatabase();  // ← 具象に直接依存
+
+  placeOrder(order: Order) {
+    this.db.save(order);
+  }
+}
+</code></pre>
+          <p><strong>問題:</strong> DB を PostgreSQL に変えたい時、<code>OrderService</code> も書き換えが必要。テストもMySQL接続が必要になる。</p>
+
+          <h4>✅ 修正後: interface 経由で依存性逆転</h4>
+<pre><code class="language-typescript">// 抽象（インターフェース）
+interface OrderRepository {
+  save(order: Order): Promise&lt;void&gt;;
+}
+
+// 具体実装（差し替え可能）
+class MySQLOrderRepository implements OrderRepository {
+  async save(order: Order) { /* MySQL */ }
+}
+class PostgresOrderRepository implements OrderRepository {
+  async save(order: Order) { /* PostgreSQL */ }
+}
+
+// 上位モジュール（抽象に依存、DI で具体を受け取る）
+class OrderService {
+  constructor(private readonly repo: OrderRepository) {}
+
+  async placeOrder(order: Order) {
+    await this.repo.save(order);
+  }
+}
+
+// 使う側で具体を注入
+const service = new OrderService(new MySQLOrderRepository());
+</code></pre>
+
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="DIP前後の依存方向">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold">❌ Before</text>
+                <rect x="100" y="40" width="160" height="40" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="180" y="65" text-anchor="middle" font-size="11">OrderService（上位）</text>
+                <line x1="180" y1="80" x2="180" y2="130" stroke="#c62828" stroke-width="3" marker-end="url(#bad)" />
+                <text x="200" y="110" font-size="10" fill="#c62828">直接依存（NG）</text>
+                <rect x="100" y="135" width="160" height="40" fill="#ffcdd2" stroke="#c62828" rx="6" />
+                <text x="180" y="160" text-anchor="middle" font-size="11">MySQLDatabase（下位）</text>
+
+                <text x="540" y="20" text-anchor="middle" font-size="13" font-weight="bold">✅ After</text>
+                <rect x="460" y="40" width="160" height="40" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="540" y="65" text-anchor="middle" font-size="11">OrderService（上位）</text>
+                <line x1="540" y1="80" x2="540" y2="100" stroke="#2e7d32" stroke-width="2" marker-end="url(#good)" />
+                <rect x="460" y="105" width="160" height="40" fill="#fff" stroke="#2e7d32" stroke-width="2" stroke-dasharray="4,2" rx="6" />
+                <text x="540" y="125" text-anchor="middle" font-size="11" font-weight="bold">OrderRepository</text>
+                <text x="540" y="140" text-anchor="middle" font-size="9" fill="#666">interface（抽象）</text>
+                <line x1="540" y1="170" x2="540" y2="145" stroke="#2e7d32" stroke-width="2" marker-end="url(#good)" />
+                <rect x="380" y="175" width="140" height="40" fill="#c8e6c9" stroke="#2e7d32" rx="6" />
+                <text x="450" y="200" text-anchor="middle" font-size="10">MySQLImpl</text>
+                <rect x="540" y="175" width="140" height="40" fill="#c8e6c9" stroke="#2e7d32" rx="6" />
+                <text x="610" y="200" text-anchor="middle" font-size="10">PostgresImpl</text>
+                <text x="540" y="245" text-anchor="middle" font-size="10" fill="#2e7d32">両方とも抽象に依存（DIP成立）</text>
+
+                <defs>
+                  <marker id="bad" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#c62828" /></marker>
+                  <marker id="good" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#2e7d32" /></marker>
+                </defs>
+              </g>
+            </svg>
+            <figcaption>図5: DIP — 抽象（interface）に依存するように依存方向を逆転</figcaption>
+          </figure>
+
+          <aside class="callout tip">
+            <strong>DIP と DI の違い:</strong>
+            <ul>
+              <li><strong>DIP（原則）</strong>: 抽象に依存しろ</li>
+              <li><strong>DI（実装パターン）</strong>: 依存を外から注入する技法（コンストラクタ注入など）</li>
+            </ul>
+            DIP を実現する手段の1つが DI。原則とパターンを区別する。
+          </aside>
+        </section>
+
+        <section>
+          <h2>SOLID チェックリスト</h2>
+          <p>自分のコードを SOLID で点検する質問集。</p>
+          <ul>
+            <li>☐ <strong>S</strong>: このクラスを変更する理由は1つだけか？「<em>○○の場合と××の場合に変える</em>」と言いたくなったら違反</li>
+            <li>☐ <strong>O</strong>: 機能追加で既存コードを変更してないか？ if-else が増殖してたら違反</li>
+            <li>☐ <strong>L</strong>: サブクラスが親の前提を破ってないか？例外を追加してたら要警戒</li>
+            <li>☐ <strong>I</strong>: 実装側で「使わないメソッド」を強制されてないか？throw new Error が並んでたら違反</li>
+            <li>☐ <strong>D</strong>: ビジネスロジックが具体クラス（DB/API/ファイル）を直接 new してないか？してたら違反</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Clean Code — 読みやすさの原則（詳細版）</h2>
+          <p>SOLIDが「クラス間の構造」なら、Clean Codeは「1関数の中の表現」。</p>
+
+          <h3>命名 — 10のNG/OK実例</h3>
+          <table>
+            <thead>
+              <tr><th>#</th><th>❌ NG</th><th>✅ OK</th><th>理由</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>d</code>（経過日数）</td><td><code>daysSinceCreation</code></td><td>意図不明</td></tr>
+              <tr><td>2</td><td><code>data</code></td><td><code>userProfile</code></td><td>具体性</td></tr>
+              <tr><td>3</td><td><code>flag</code></td><td><code>isAuthenticated</code></td><td>真偽の意味</td></tr>
+              <tr><td>4</td><td><code>tmp</code></td><td><code>uploadedImageBuffer</code></td><td>役割明示</td></tr>
+              <tr><td>5</td><td><code>getList()</code></td><td><code>getActiveUsers()</code></td><td>何のリスト？</td></tr>
+              <tr><td>6</td><td><code>process()</code></td><td><code>validatePaymentRequest()</code></td><td>動作明確化</td></tr>
+              <tr><td>7</td><td><code>info</code></td><td><code>shippingAddress</code></td><td>抽象すぎ</td></tr>
+              <tr><td>8</td><td><code>fn1</code>, <code>fn2</code></td><td><code>encryptPassword</code>, <code>verifyToken</code></td><td>連番禁止</td></tr>
+              <tr><td>9</td><td><code>obj.handle()</code></td><td><code>order.cancel()</code></td><td>動詞具体化</td></tr>
+              <tr><td>10</td><td>マジックナンバー <code>7</code></td><td><code>const MAX_RETRY = 7</code></td><td>名前付き定数</td></tr>
+            </tbody>
+          </table>
+
+          <h3>関数 — 巨大関数を分解する</h3>
+          <h4>❌ Before: 80行の関数</h4>
+<pre><code class="language-typescript">async function processOrder(orderData: any) {
+  // バリデーション 15行
+  if (!orderData.userId) throw new Error("userId required");
+  if (!orderData.items || orderData.items.length === 0) throw new Error("items required");
+  // ...省略...
+
+  // 価格計算 20行
+  let total = 0;
+  for (const item of orderData.items) {
+    const product = await db.query("SELECT * FROM products WHERE id = $1", [item.productId]);
+    total += product.price * item.qty;
+    // 割引計算...
+    // 税計算...
+  }
+
+  // DB保存 15行
+  const order = await db.query("INSERT INTO orders ...", [...]);
+  for (const item of orderData.items) {
+    await db.query("INSERT INTO order_items ...", [...]);
+  }
+
+  // メール送信 15行
+  // ...
+
+  // ログ 15行
+  // ...
+}
+</code></pre>
+
+          <h4>✅ After: 関数分解</h4>
+<pre><code class="language-typescript">async function processOrder(orderData: OrderInput): Promise&lt;Order&gt; {
+  const validated  = validate(orderData);
+  const priced     = await calculatePrice(validated);
+  const persisted  = await persist(priced);
+  await sendConfirmationMail(persisted);
+  await log("ORDER_CREATED", persisted);
+  return persisted;
+}
+
+// 各関数は20行以内、1責務
+function validate(input: OrderInput): ValidatedOrder { /* ... */ }
+async function calculatePrice(o: ValidatedOrder): Promise&lt;PricedOrder&gt; { /* ... */ }
+async function persist(o: PricedOrder): Promise&lt;Order&gt; { /* ... */ }
+async function sendConfirmationMail(o: Order): Promise&lt;void&gt; { /* ... */ }
+</code></pre>
+          <p><strong>関数の3原則:</strong></p>
+          <ul>
+            <li>📏 <strong>20行以内</strong>（できれば10行）</li>
+            <li>🎯 <strong>1つのことをする</strong> — 関数名以外のことをしない</li>
+            <li>🚫 <strong>引数3つ以下</strong> — 4つ以上ならオブジェクトにまとめる</li>
+          </ul>
+
+          <h3>コメント — WHY を書く、WHAT を書かない</h3>
+          <h4>❌ NG: WHATを書くコメント</h4>
+<pre><code class="language-typescript">// userId に user.id を代入
+const userId = user.id;  // ← コードを読めば分かる、無駄
+
+// ループで処理
+for (const item of items) {  // ← 自明
+  process(item);
+}
+</code></pre>
+
+          <h4>✅ OK: WHY/制約を書くコメント</h4>
+<pre><code class="language-typescript">// レガシーDBがUUIDを文字列で返すため、ここで数値に変換
+// （新規DBに移行したら不要）
+const numericId = parseInt(legacyResult.id, 10);
+
+// 7回 = 顧客サポートチームと合意した最大リトライ数
+// 経済的に許容できる失敗率を確保
+const MAX_RETRY = 7;
+</code></pre>
+        </section>
+
+        <section>
+          <h2>GoFパターン — 実務7選を完全解説</h2>
+          <p>23パターン全部覚える必要はない。実務で頻出する <strong>7つ</strong>を実装コード+UML図で見る。</p>
+
+          <h3>1. Strategy — アルゴリズムを差し替え可能にする</h3>
+          <p><strong>使いどころ:</strong> 同じ目的の処理が複数あり、実行時に切り替えたい（支払い方法・ソート手法・圧縮形式）。</p>
+<pre><code class="language-typescript">interface SortStrategy { sort(arr: number[]): number[]; }
+
+class QuickSort  implements SortStrategy { sort(a) { /* */ return a; } }
+class MergeSort  implements SortStrategy { sort(a) { /* */ return a; } }
+class BubbleSort implements SortStrategy { sort(a) { /* */ return a; } }
+
+class Sorter {
+  constructor(private strategy: SortStrategy) {}
+  setStrategy(s: SortStrategy) { this.strategy = s; }
+  execute(arr: number[]) { return this.strategy.sort(arr); }
+}
+
+const sorter = new Sorter(new QuickSort());
+sorter.execute([3, 1, 4, 1, 5]);
+sorter.setStrategy(new MergeSort());  // 実行時に差し替え
+</code></pre>
+
+          <h3>2. Factory — 生成ロジックを隠蔽</h3>
+          <p><strong>使いどころ:</strong> 環境やパラメータによって生成するクラスが変わる。</p>
+<pre><code class="language-typescript">interface Logger {
+  log(msg: string): void;
+}
+class FileLogger    implements Logger { log(m) { /* file */ } }
+class CloudLogger   implements Logger { log(m) { /* cloud */ } }
+class ConsoleLogger implements Logger { log(m) { console.log(m); } }
+
+class LoggerFactory {
+  static create(env: "prod" | "staging" | "dev"): Logger {
+    switch (env) {
+      case "prod":    return new CloudLogger();
+      case "staging": return new FileLogger();
+      case "dev":     return new ConsoleLogger();
+    }
+  }
+}
+
+const logger = LoggerFactory.create(process.env.NODE_ENV as any);
+logger.log("hello");
+</code></pre>
+
+          <h3>3. Singleton — 1インスタンスだけ存在保証</h3>
+          <p><strong>使いどころ:</strong> アプリ全体で共有する設定・接続プール・ロガー。</p>
+<pre><code class="language-typescript">class Config {
+  private static instance: Config;
+  private constructor(public readonly apiUrl: string) {}
+
+  static getInstance(): Config {
+    if (!Config.instance) {
+      Config.instance = new Config(process.env.API_URL!);
+    }
+    return Config.instance;
+  }
+}
+
+const c1 = Config.getInstance();
+const c2 = Config.getInstance();
+console.log(c1 === c2);  // true
+</code></pre>
+          <aside class="callout warn">
+            <strong>注意:</strong> Singletonはグローバル状態。テストが書きにくくなりがち。代替として「DIコンテナでスコープを Singleton にする」方が望ましい場面が多い。
+          </aside>
+
+          <h3>4. Adapter — 互換性のないAPIを橋渡し</h3>
+          <p><strong>使いどころ:</strong> 外部ライブラリやレガシーAPIを、自分のアプリのインターフェースに合わせる。</p>
+<pre><code class="language-typescript">// 自分のアプリが期待するインターフェース
+interface PaymentGateway {
+  charge(amount: number, cardToken: string): Promise&lt;{ id: string }&gt;;
+}
+
+// 外部の Stripe SDK
+class StripeSDK {
+  async createCharge(opts: { amount_cents: number; source: string }) {
+    return { stripe_charge_id: "ch_xyz" };
+  }
+}
+
+// 互換性をつなぐ Adapter
+class StripeAdapter implements PaymentGateway {
+  constructor(private stripe: StripeSDK) {}
+  async charge(amount: number, cardToken: string) {
+    const result = await this.stripe.createCharge({
+      amount_cents: amount * 100,
+      source: cardToken,
+    });
+    return { id: result.stripe_charge_id };
+  }
+}
+</code></pre>
+
+          <h3>5. Decorator — 機能を動的に追加</h3>
+          <p><strong>使いどころ:</strong> ミドルウェア、ロギング、認証、キャッシュなど横断的関心事を後付けする。</p>
+<pre><code class="language-typescript">interface Handler {
+  handle(req: Request): Promise&lt;Response&gt;;
+}
+
+class BaseHandler implements Handler {
+  async handle(req: Request) { return new Response("ok"); }
+}
+
+// ロギングを追加するDecorator
+class LoggingHandler implements Handler {
+  constructor(private inner: Handler) {}
+  async handle(req: Request) {
+    console.log(`-&gt; ${req.url}`);
+    const res = await this.inner.handle(req);
+    console.log(`&lt;- ${res.status}`);
+    return res;
+  }
+}
+
+// 認証を追加するDecorator
+class AuthHandler implements Handler {
+  constructor(private inner: Handler) {}
+  async handle(req: Request) {
+    if (!req.headers.get("Authorization")) return new Response("401", { status: 401 });
+    return this.inner.handle(req);
+  }
+}
+
+// 重ね合わせ
+const handler = new LoggingHandler(new AuthHandler(new BaseHandler()));
+</code></pre>
+
+          <h3>6. Observer — 状態変化を通知</h3>
+          <p><strong>使いどころ:</strong> イベント駆動UI、Redux、リアクティブシステム。</p>
+<pre><code class="language-typescript">type Listener&lt;T&gt; = (value: T) =&gt; void;
+
+class Subject&lt;T&gt; {
+  private listeners: Listener&lt;T&gt;[] = [];
+  subscribe(fn: Listener&lt;T&gt;) {
+    this.listeners.push(fn);
+    return () =&gt; { this.listeners = this.listeners.filter(l =&gt; l !== fn); };
+  }
+  notify(value: T) {
+    this.listeners.forEach(fn =&gt; fn(value));
+  }
+}
+
+const orderUpdated = new Subject&lt;{ id: string; status: string }&gt;();
+
+const unsub1 = orderUpdated.subscribe(o =&gt; console.log(`Logger: ${o.id}`));
+const unsub2 = orderUpdated.subscribe(o =&gt; sendNotification(o.id));
+
+orderUpdated.notify({ id: "ord_1", status: "paid" });
+</code></pre>
+
+          <h3>7. Facade — 複雑なサブシステムを単純化</h3>
+          <p><strong>使いどころ:</strong> 複数のクラス操作を1つのインターフェースで隠蔽（API Gateway、ライブラリのエントリポイント）。</p>
+<pre><code class="language-typescript">// 内部の複雑なサブシステム
+class InventoryService { reserve(itemId: string, qty: number) { /* */ } }
+class PaymentService   { charge(userId: string, amount: number) { /* */ } }
+class ShippingService  { schedule(orderId: string, addr: string) { /* */ } }
+class MailService      { send(to: string, body: string) { /* */ } }
+
+// クライアントが使う Facade
+class OrderFacade {
+  constructor(
+    private inventory: InventoryService,
+    private payment:   PaymentService,
+    private shipping:  ShippingService,
+    private mail:      MailService,
+  ) {}
+
+  async placeOrder(userId: string, items: Item[], address: string) {
+    items.forEach(i =&gt; this.inventory.reserve(i.id, i.qty));
+    const total = items.reduce((s, i) =&gt; s + i.price * i.qty, 0);
+    this.payment.charge(userId, total);
+    const orderId = generateId();
+    this.shipping.schedule(orderId, address);
+    this.mail.send(userId, `Order ${orderId} placed`);
+    return { orderId };
+  }
+}
+
+// クライアントは Facade だけ知ればOK
+facade.placeOrder("user1", items, "Tokyo");
+</code></pre>
+
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="GoF7パターンの分類">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="360" y="25" text-anchor="middle" font-size="14" font-weight="bold">GoF 7パターンの分類</text>
+
+                <rect x="40" y="50" width="200" height="200" fill="#fff3e0" stroke="#f57c00" rx="8" />
+                <text x="140" y="75" text-anchor="middle" font-size="13" font-weight="bold">生成系（Creational）</text>
+                <rect x="60" y="95" width="160" height="35" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="140" y="118" text-anchor="middle" font-size="11">Factory</text>
+                <rect x="60" y="140" width="160" height="35" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="140" y="163" text-anchor="middle" font-size="11">Singleton</text>
+                <text x="140" y="220" text-anchor="middle" font-size="10" fill="#666">「どう作るか」</text>
+
+                <rect x="260" y="50" width="200" height="200" fill="#e3f2fd" stroke="#1976d2" rx="8" />
+                <text x="360" y="75" text-anchor="middle" font-size="13" font-weight="bold">構造系（Structural）</text>
+                <rect x="280" y="95" width="160" height="35" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="360" y="118" text-anchor="middle" font-size="11">Adapter</text>
+                <rect x="280" y="140" width="160" height="35" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="360" y="163" text-anchor="middle" font-size="11">Decorator</text>
+                <rect x="280" y="185" width="160" height="35" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="360" y="208" text-anchor="middle" font-size="11">Facade</text>
+                <text x="360" y="245" text-anchor="middle" font-size="10" fill="#666">「どう組み合わせるか」</text>
+
+                <rect x="480" y="50" width="200" height="200" fill="#fce4ec" stroke="#c2185b" rx="8" />
+                <text x="580" y="75" text-anchor="middle" font-size="13" font-weight="bold">振る舞い系（Behavioral）</text>
+                <rect x="500" y="95" width="160" height="35" fill="#fff" stroke="#c2185b" rx="4" />
+                <text x="580" y="118" text-anchor="middle" font-size="11">Strategy</text>
+                <rect x="500" y="140" width="160" height="35" fill="#fff" stroke="#c2185b" rx="4" />
+                <text x="580" y="163" text-anchor="middle" font-size="11">Observer</text>
+                <text x="580" y="220" text-anchor="middle" font-size="10" fill="#666">「どう動くか」</text>
+              </g>
+            </svg>
+            <figcaption>図6: GoF 7パターンの3分類</figcaption>
+          </figure>
+
+          <aside class="callout warn">
+            <strong>パターン乱用の罠:</strong> 「学んだから使う」じゃなく「問題があるから使う」。Singletonをグローバル変数代わりにする、全部Factoryでくるむ等は <strong>過剰設計</strong>でコードを複雑にするだけ。
+          </aside>
+        </section>
+
+        <section>
+          <h2>演習問題</h2>
+          <p>理解度チェック。各問の「考えるポイント」を見る前にまず自分で考える。</p>
+
+          <h3>Q1. 以下のクラスは何が問題？</h3>
+<pre><code class="language-typescript">class Report {
+  generate() { /* PDF生成 */ }
+  email() { /* メール送信 */ }
+  saveToS3() { /* S3保存 */ }
+  parseJSON(s: string) { /* JSON parse */ }
+}
+</code></pre>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>S違反</strong>。生成・メール・保存・パースの4責務が同居。</p>
+            <p><strong>修正:</strong> <code>ReportGenerator</code> / <code>ReportMailer</code> / <code>ReportS3Storage</code> / <code>JsonParser</code> に分離。</p>
+          </details>
+
+          <h3>Q2. 以下のコードを OCP に従う形に書き換えて</h3>
+<pre><code class="language-typescript">function calculateDiscount(type: string, price: number) {
+  if (type === "regular") return price * 0.95;
+  if (type === "premium") return price * 0.85;
+  if (type === "vip")     return price * 0.75;
+  return price;
+}
+</code></pre>
+          <details>
+            <summary>解答を見る</summary>
+<pre><code class="language-typescript">interface DiscountStrategy {
+  apply(price: number): number;
+}
+class RegularDiscount implements DiscountStrategy { apply(p) { return p * 0.95; } }
+class PremiumDiscount implements DiscountStrategy { apply(p) { return p * 0.85; } }
+class VipDiscount     implements DiscountStrategy { apply(p) { return p * 0.75; } }
+
+function calculateDiscount(strategy: DiscountStrategy, price: number) {
+  return strategy.apply(price);
+}
+</code></pre>
+            <p>新割引追加時 <code>calculateDiscount</code> は変更不要。</p>
+          </details>
+
+          <h3>Q3. 以下の Bird は LSP違反？</h3>
+<pre><code class="language-typescript">class Bird {
+  fly() { /* 飛ぶ */ }
+}
+class Eagle extends Bird {}
+class Ostrich extends Bird {
+  fly() { throw new Error("ダチョウは飛べない"); }
+}
+</code></pre>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>LSP違反</strong>。Bird型として使った時、Ostrich は例外で死ぬ。<br />解決: <code>FlightlessBird</code> を別クラスに分けるか、<code>Animal { move() }</code> という抽象に変える。</p>
+          </details>
+        </section>
+
+        <section>
+          <h2>まとめ — Lv1の要点</h2>
+          <ol>
+            <li><strong>SOLIDは変更コストを下げる5原則</strong> — 1つでも崩れると保守性が落ちる</li>
+            <li><strong>Single Responsibility</strong> — 1クラス1責務（変更理由が1つ）</li>
+            <li><strong>Open/Closed</strong> — 拡張に開く、修正に閉じる（Strategy が定石）</li>
+            <li><strong>Liskov Substitution</strong> — 親の契約を子が破らない</li>
+            <li><strong>Interface Segregation</strong> — interface は小さく分割</li>
+            <li><strong>Dependency Inversion</strong> — 抽象に依存、具象に依存しない</li>
+            <li><strong>Clean Code</strong> — 命名・関数長・コメントの3軸で読みやすく</li>
+            <li><strong>GoF 7パターン</strong> — Strategy/Factory/Singleton/Adapter/Decorator/Observer/Facade</li>
+            <li><strong>パターンは問題に対する解</strong> — 問題なければ使わない</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>次のステップ</h2>
+          <ul>
+            <li>📘 <strong>Lv2 詳細記事（次回）</strong>: レイヤード/ヘキサゴナル/Clean Architecture/DDD を Before/After で完全解説</li>
+            <li>🛠 <strong>実践</strong>: 自分のコードに SOLID チェックリストを当てて1ファイルだけリファクタしてみる</li>
+            <li>📕 <strong>推奨書籍</strong>:
+              <ul>
+                <li>Clean Code（Robert C. Martin）</li>
+                <li>A Philosophy of Software Design（John Ousterhout）</li>
+                <li>リーダブルコード（Dustin Boswell）</li>
+              </ul>
+            </li>
+          </ul>
+          <p>シリーズ前の総覧は: <a href="2026-05-10-software-architecture-lv1-5.html">ソフトウェアアーキテクチャ完全学習ガイド — Lv1〜Lv5</a></p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://en.wikipedia.org/wiki/SOLID" target="_blank" rel="noopener">SOLID - Wikipedia</a></li>
+            <li><a href="https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html" target="_blank" rel="noopener">The Single Responsibility Principle - Bob Martin</a></li>
+            <li><a href="https://refactoring.guru/design-patterns" target="_blank" rel="noopener">Refactoring.Guru - Design Patterns</a></li>
+            <li><a href="https://martinfowler.com/articles/injection.html" target="_blank" rel="noopener">Inversion of Control Containers and DI - Martin Fowler</a></li>
+            <li><a href="https://www.amazon.co.jp/dp/4048930591" target="_blank" rel="noopener">Clean Code（書籍）</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>
