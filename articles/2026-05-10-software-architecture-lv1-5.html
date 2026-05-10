@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>ソフトウェアアーキテクチャ完全学習ガイド — Lv1〜Lv5 — learning-notes</title>
+    <meta
+      name="description"
+      content="SOLIDからAIエージェント設計まで、5レベルで体系化したアーキテクチャ学習ガイド。図解中心、ariadne・SkillHubの実プロダクト分析付き。AIに正しく指示を出すための「設計の地図」を頭に作る。"
+    />
+
+    <meta name="article:slug" content="software-architecture-lv1-5" />
+    <meta name="article:date" content="2026-05-10" />
+    <meta name="article:tags" content="architecture,software-engineering,ddd,system-design,harness-engineering,ai-agent" />
+    <meta name="article:summary" content="SOLIDからAI Agent設計まで、図解中心でLv1〜Lv5を体系化" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="ソフトウェアアーキテクチャ完全学習ガイド — Lv1〜Lv5" />
+    <meta property="og:description" content="SOLIDからAIエージェント設計まで、5レベルで体系化したアーキテクチャ学習ガイド。" />
+    <meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-05-10-software-architecture-lv1-5.html" />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css" media="(prefers-color-scheme: light)" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-10">2026-05-10</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=architecture" class="tag">architecture</a>
+            <a href="../index.html?tag=software-engineering" class="tag">software-engineering</a>
+            <a href="../index.html?tag=ddd" class="tag">ddd</a>
+            <a href="../index.html?tag=system-design" class="tag">system-design</a>
+            <a href="../index.html?tag=harness-engineering" class="tag">harness-engineering</a>
+            <a href="../index.html?tag=ai-agent" class="tag">ai-agent</a>
+          </span>
+        </p>
+        <h1>ソフトウェアアーキテクチャ完全学習ガイド — Lv1〜Lv5</h1>
+        <p class="lead">
+          SOLIDからAIエージェント設計まで、5レベルで体系化したアーキテクチャ学習ガイド。AIに正しく指示を出すための「設計の地図」を頭に作る。
+        </p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>AI時代こそ「設計の地図」</strong> — AIは実装は得意、設計判断は苦手。指示者の頭の中の解像度がそのまま出力品質になる</li>
+            <li><strong>Lv1〜Lv5の段階構造</strong> — コード(Lv1)→アプリ構造(Lv2)→システム全体(Lv3)→分散・大規模(Lv4)→AI時代(Lv5)</li>
+            <li><strong>個人開発はLv1+2+5</strong> 必修。チーム開発はLv3まで。エンタープライズはLv4以降も</li>
+            <li><strong>Lv5「Harness Engineering」</strong> がAIプロダクト運用の核心。観測・評価・安全装置・コスト制御の7軸</li>
+            <li><strong>実例分析つき</strong> — ariadne(takt-runner) と SkillHub の実コードで「どう適用するか」を見せる</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>はじめに — なぜ今アーキテクチャか</h2>
+          <p>AIが実装を肩代わりする時代、エンジニアの価値は「<strong>何をどう作るかを設計する力</strong>」へシフトしている。設計が曖昧 = AIの出力も曖昧。設計の解像度がそのままプロダクトの品質に直結する。</p>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="AI時代の価値シフト">
+              <defs>
+                <linearGradient id="oldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#90caf9" /><stop offset="100%" stop-color="#1976d2" />
+                </linearGradient>
+                <linearGradient id="newGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#ffcc80" /><stop offset="100%" stop-color="#f57c00" />
+                </linearGradient>
+              </defs>
+              <text x="360" y="30" text-anchor="middle" font-size="18" font-weight="bold">価値の重心が「実装」→「設計」へ</text>
+              <g transform="translate(40,70)">
+                <text x="140" y="0" text-anchor="middle" font-size="14" font-weight="bold">AI時代以前</text>
+                <rect x="0" y="20" width="280" height="40" fill="url(#oldGrad)" rx="6" />
+                <text x="140" y="46" text-anchor="middle" font-size="13" fill="white" font-weight="bold">実装力 = 価値</text>
+                <rect x="60" y="80" width="160" height="30" fill="#e0e0e0" rx="4" />
+                <text x="140" y="100" text-anchor="middle" font-size="11" fill="#555">設計力（補助）</text>
+              </g>
+              <g transform="translate(400,70)">
+                <text x="140" y="0" text-anchor="middle" font-size="14" font-weight="bold">AI時代</text>
+                <rect x="60" y="20" width="160" height="30" fill="#e0e0e0" rx="4" />
+                <text x="140" y="40" text-anchor="middle" font-size="11" fill="#555">実装力（AIが代行）</text>
+                <rect x="0" y="60" width="280" height="60" fill="url(#newGrad)" rx="6" />
+                <text x="140" y="86" text-anchor="middle" font-size="13" fill="white" font-weight="bold">設計力 = 価値</text>
+                <text x="140" y="106" text-anchor="middle" font-size="10" fill="white">要件定義 / アーキ / Harness</text>
+              </g>
+            </svg>
+            <figcaption>図1: AI時代における価値の重心シフト</figcaption>
+          </figure>
+          <aside class="callout tip"><strong>Tip:</strong> このガイドのゴールは「プロダクトを作る人」ではなく「<strong>プロダクトを設計してAIに任せる人</strong>」になること。</aside>
+        </section>
+
+        <section>
+          <h2>全体マップ — 5レベルのピラミッド</h2>
+          <p>下から積み上げる5階層。各レベルは独立ではなく、下位レベルが上位レベルの土台になる。</p>
+          <figure>
+            <svg viewBox="0 0 720 420" role="img" aria-label="5階層のピラミッド">
+              <defs>
+                <linearGradient id="lvl1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#a5d6a7" /><stop offset="100%" stop-color="#66bb6a" /></linearGradient>
+                <linearGradient id="lvl2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#90caf9" /><stop offset="100%" stop-color="#42a5f5" /></linearGradient>
+                <linearGradient id="lvl3" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ce93d8" /><stop offset="100%" stop-color="#ab47bc" /></linearGradient>
+                <linearGradient id="lvl4" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ffab91" /><stop offset="100%" stop-color="#ff7043" /></linearGradient>
+                <linearGradient id="lvl5" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#fff176" /><stop offset="100%" stop-color="#ffd54f" /></linearGradient>
+              </defs>
+              <polygon points="60,400 660,400 600,330 120,330" fill="url(#lvl1)" />
+              <text x="360" y="370" text-anchor="middle" font-size="16" font-weight="bold" fill="#1b5e20">Lv1: 基礎原則 (コード)</text>
+              <text x="360" y="390" text-anchor="middle" font-size="11" fill="#1b5e20">SOLID / Clean Code / GoF</text>
+              <polygon points="120,330 600,330 540,260 180,260" fill="url(#lvl2)" />
+              <text x="360" y="295" text-anchor="middle" font-size="16" font-weight="bold" fill="#0d47a1">Lv2: アプリ構造</text>
+              <text x="360" y="315" text-anchor="middle" font-size="11" fill="#0d47a1">レイヤード / Clean Arch / DDD</text>
+              <polygon points="180,260 540,260 480,190 240,190" fill="url(#lvl3)" />
+              <text x="360" y="225" text-anchor="middle" font-size="15" font-weight="bold" fill="#4a148c">Lv3: システム全体</text>
+              <text x="360" y="244" text-anchor="middle" font-size="11" fill="#4a148c">C4 / マイクロサービス / イベント駆動</text>
+              <polygon points="240,190 480,190 420,120 300,120" fill="url(#lvl4)" />
+              <text x="360" y="155" text-anchor="middle" font-size="14" font-weight="bold" fill="#bf360c">Lv4: 分散・大規模</text>
+              <text x="360" y="174" text-anchor="middle" font-size="10" fill="#bf360c">CAP / Saga / DDIA</text>
+              <polygon points="300,120 420,120 360,50" fill="url(#lvl5)" />
+              <text x="360" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#e65100">Lv5: AI時代 ⭐</text>
+              <text x="360" y="108" text-anchor="middle" font-size="9" fill="#e65100">Agent / Harness</text>
+            </svg>
+            <figcaption>図2: 5階層ピラミッド（下位が上位の土台）</figcaption>
+          </figure>
+          <h3>適用範囲の目安</h3>
+          <table>
+            <thead><tr><th>立場</th><th>必修</th><th>任意</th></tr></thead>
+            <tbody>
+              <tr><td>個人開発者 / プロト</td><td>Lv1, Lv2, Lv5</td><td>Lv3, Lv4</td></tr>
+              <tr><td>スタートアップ</td><td>Lv1〜Lv3, Lv5</td><td>Lv4</td></tr>
+              <tr><td>エンタープライズ</td><td>Lv1〜Lv5 全部</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>Lv1: 基礎原則 — コードレベルの設計</h2>
+          <h3>SOLID — オブジェクト指向の5原則</h3>
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="SOLID 5原則">
+              <g font-family="ui-monospace,monospace">
+                <g transform="translate(20,40)"><circle cx="35" cy="35" r="32" fill="#ef5350" /><text x="35" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="white">S</text><text x="35" y="100" text-anchor="middle" font-size="11" font-weight="bold">Single Responsibility</text><text x="35" y="116" text-anchor="middle" font-size="10" fill="#666">1クラス1責務</text></g>
+                <g transform="translate(160,40)"><circle cx="35" cy="35" r="32" fill="#ff9800" /><text x="35" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="white">O</text><text x="35" y="100" text-anchor="middle" font-size="11" font-weight="bold">Open/Closed</text><text x="35" y="116" text-anchor="middle" font-size="10" fill="#666">拡張に開く / 修正に閉じる</text></g>
+                <g transform="translate(300,40)"><circle cx="35" cy="35" r="32" fill="#ffc107" /><text x="35" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="white">L</text><text x="35" y="100" text-anchor="middle" font-size="11" font-weight="bold">Liskov Substitution</text><text x="35" y="116" text-anchor="middle" font-size="10" fill="#666">親と子は置換可能</text></g>
+                <g transform="translate(440,40)"><circle cx="35" cy="35" r="32" fill="#4caf50" /><text x="35" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="white">I</text><text x="35" y="100" text-anchor="middle" font-size="11" font-weight="bold">Interface Segregation</text><text x="35" y="116" text-anchor="middle" font-size="10" fill="#666">interface は小さく</text></g>
+                <g transform="translate(580,40)"><circle cx="35" cy="35" r="32" fill="#2196f3" /><text x="35" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="white">D</text><text x="35" y="100" text-anchor="middle" font-size="11" font-weight="bold">Dependency Inversion</text><text x="35" y="116" text-anchor="middle" font-size="10" fill="#666">抽象に依存</text></g>
+                <text x="360" y="180" text-anchor="middle" font-size="13" font-weight="bold">読み: ソリッド</text>
+                <text x="360" y="200" text-anchor="middle" font-size="11" fill="#666">5原則を守れば変更コストが激減する</text>
+              </g>
+            </svg>
+            <figcaption>図3: SOLID 5原則</figcaption>
+          </figure>
+          <h4>例: Single Responsibility 違反 → 修正</h4>
+<pre><code class="language-typescript">// ❌ 1クラスに3つの責務
+class User {
+  save() { /* DB */ }
+  sendEmail() { /* メール */ }
+  validate() { /* バリデーション */ }
+}
+
+// ✅ 責務を分離
+class User { /* データだけ */ }
+class UserRepository { save(user: User) {} }
+class EmailService { send(user: User) {} }
+class UserValidator { validate(user: User) {} }
+</code></pre>
+          <h3>Clean Code — 読みやすさの3原則</h3>
+          <table>
+            <thead><tr><th>軸</th><th>NG</th><th>OK</th></tr></thead>
+            <tbody>
+              <tr><td>命名</td><td><code>data</code>, <code>flag</code></td><td><code>userProfile</code>, <code>isAuthenticated</code></td></tr>
+              <tr><td>関数長</td><td>200行の巨大関数</td><td>20行以内、1責務</td></tr>
+              <tr><td>引数</td><td>5個以上のフラット引数</td><td>3個以下 or オブジェクト化</td></tr>
+              <tr><td>コメント</td><td>WHATを書く</td><td>WHY/制約を書く</td></tr>
+            </tbody>
+          </table>
+          <h3>GoFパターン7選</h3>
+          <table>
+            <thead><tr><th>パターン</th><th>用途</th><th>実例</th></tr></thead>
+            <tbody>
+              <tr><td>Strategy</td><td>アルゴリズム差し替え</td><td>支払い方法 / ソート</td></tr>
+              <tr><td>Factory</td><td>生成ロジック隠蔽</td><td>DB接続生成</td></tr>
+              <tr><td>Singleton</td><td>1インスタンス保証</td><td>設定 / Logger</td></tr>
+              <tr><td>Adapter</td><td>互換 API 接続</td><td>レガシー連携</td></tr>
+              <tr><td>Decorator</td><td>機能の動的追加</td><td>ミドルウェア</td></tr>
+              <tr><td>Observer</td><td>状態変化通知</td><td>イベント駆動UI</td></tr>
+              <tr><td>Facade</td><td>複雑なAPIを単純化</td><td>API Gateway</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout warn"><strong>注意:</strong> パターンの乱用は害。問題ありきで使う。</aside>
+        </section>
+
+        <section>
+          <h2>Lv2: アプリ構造 — モジュール設計</h2>
+          <h3>レイヤード → ヘキサゴナル → Clean Architecture</h3>
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="3つのアーキテクチャ比較">
+              <g font-size="11" font-family="ui-sans-serif,sans-serif">
+                <g transform="translate(20,30)">
+                  <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold">レイヤード</text>
+                  <rect x="0" y="20" width="200" height="40" fill="#e3f2fd" stroke="#1976d2" /><text x="100" y="44" text-anchor="middle">Presentation</text>
+                  <rect x="0" y="65" width="200" height="40" fill="#fff3e0" stroke="#f57c00" /><text x="100" y="89" text-anchor="middle">Application</text>
+                  <rect x="0" y="110" width="200" height="40" fill="#fce4ec" stroke="#c2185b" /><text x="100" y="134" text-anchor="middle">Domain</text>
+                  <rect x="0" y="155" width="200" height="40" fill="#f3e5f5" stroke="#7b1fa2" /><text x="100" y="179" text-anchor="middle">Infrastructure</text>
+                  <text x="100" y="220" text-anchor="middle" font-size="10" fill="#666">上から下へ依存</text>
+                </g>
+                <g transform="translate(260,30)">
+                  <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold">ヘキサゴナル</text>
+                  <polygon points="100,20 180,60 180,140 100,180 20,140 20,60" fill="#fff3e0" stroke="#f57c00" stroke-width="2" />
+                  <text x="100" y="100" text-anchor="middle" font-weight="bold">Domain</text>
+                  <text x="100" y="116" text-anchor="middle" font-size="10">Core</text>
+                  <text x="100" y="240" text-anchor="middle" font-size="10" fill="#666">中心 = Domain、外殻 = Adapter</text>
+                </g>
+                <g transform="translate(500,30)">
+                  <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold">Clean Architecture</text>
+                  <circle cx="100" cy="100" r="80" fill="#f3e5f5" stroke="#7b1fa2" />
+                  <circle cx="100" cy="100" r="60" fill="#e3f2fd" stroke="#1976d2" />
+                  <circle cx="100" cy="100" r="40" fill="#fce4ec" stroke="#c2185b" />
+                  <circle cx="100" cy="100" r="20" fill="#fff3e0" stroke="#f57c00" />
+                  <text x="100" y="35" text-anchor="middle" font-size="9">Frameworks</text>
+                  <text x="100" y="55" text-anchor="middle" font-size="9">Adapters</text>
+                  <text x="100" y="80" text-anchor="middle" font-size="9">UseCase</text>
+                  <text x="100" y="103" text-anchor="middle" font-size="9" font-weight="bold">Entity</text>
+                  <text x="100" y="220" text-anchor="middle" font-size="10" fill="#666">依存は内側のみ</text>
+                </g>
+              </g>
+            </svg>
+            <figcaption>図4: 3つのアーキテクチャ（同じ思想の発展形）</figcaption>
+          </figure>
+          <aside class="callout tip"><strong>Tip:</strong> 共通する黄金ルールは「<strong>依存方向は外→内のみ</strong>」。</aside>
+
+          <h3>DDD — 戦略設計と戦術設計</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="DDD構成要素">
+              <g font-size="11" font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold">戦略設計（マクロ）</text>
+                <rect x="40" y="40" width="280" height="200" fill="#e8f5e9" stroke="#388e3c" rx="8" />
+                <rect x="60" y="60" width="120" height="50" fill="#fff" stroke="#388e3c" rx="4" /><text x="120" y="80" text-anchor="middle">Bounded Context</text><text x="120" y="98" text-anchor="middle" font-size="9" fill="#555">商品カタログ</text>
+                <rect x="190" y="60" width="120" height="50" fill="#fff" stroke="#388e3c" rx="4" /><text x="250" y="80" text-anchor="middle">Bounded Context</text><text x="250" y="98" text-anchor="middle" font-size="9" fill="#555">在庫管理</text>
+                <rect x="60" y="130" width="120" height="50" fill="#fff" stroke="#388e3c" rx="4" /><text x="120" y="150" text-anchor="middle">Ubiquitous</text><text x="120" y="166" text-anchor="middle">Language</text>
+                <rect x="190" y="130" width="120" height="50" fill="#fff" stroke="#388e3c" rx="4" /><text x="250" y="150" text-anchor="middle">Subdomain</text>
+                <text x="180" y="220" text-anchor="middle" font-size="10" fill="#555">「同じ言葉が違う意味を持つ境界」</text>
+
+                <text x="540" y="20" text-anchor="middle" font-size="13" font-weight="bold">戦術設計（ミクロ）</text>
+                <rect x="400" y="40" width="280" height="200" fill="#fff3e0" stroke="#f57c00" rx="8" />
+                <rect x="420" y="60" width="110" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="475" y="84" text-anchor="middle">Entity</text>
+                <rect x="540" y="60" width="120" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="600" y="84" text-anchor="middle">Value Object</text>
+                <rect x="420" y="110" width="110" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="475" y="134" text-anchor="middle">Aggregate</text>
+                <rect x="540" y="110" width="120" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="600" y="134" text-anchor="middle">Repository</text>
+                <rect x="420" y="160" width="110" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="475" y="184" text-anchor="middle">Domain Service</text>
+                <rect x="540" y="160" width="120" height="40" fill="#fff" stroke="#f57c00" rx="4" /><text x="600" y="184" text-anchor="middle">Domain Event</text>
+              </g>
+            </svg>
+            <figcaption>図5: DDD = 戦略設計 + 戦術設計</figcaption>
+          </figure>
+
+          <h3>実プロダクト分析: ariadne (takt-runner)</h3>
+<pre><code class="language-bash">src/
+├── core/           # Domain + UseCase 層
+│   ├── tasks/      # Aggregate
+│   ├── workflow/   # Domain Service
+│   ├── review/     # Domain Service
+│   └── prompts/    # Value Object
+├── infra/          # Infrastructure 層
+│   ├── providers/  # Adapter: Claude / Codex / Shell
+│   └── git/        # Adapter: worktree
+├── cli/            # Interface Adapter 層
+└── shared/         # cross-cutting
+</code></pre>
+          <aside class="callout tip"><strong>Tip:</strong> <code>infra/providers/</code> がポート＆アダプターの教科書実装。</aside>
+        </section>
+
+        <section>
+          <h2>Lv3: システム全体 — 複数サービスの設計</h2>
+          <h3>C4モデル — 解像度を変えて描く</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="C4モデル4階層">
+              <g font-family="ui-sans-serif,sans-serif">
+                <g transform="translate(40,30)"><rect width="140" height="220" fill="#e3f2fd" stroke="#1976d2" rx="8" /><text x="70" y="30" text-anchor="middle" font-size="13" font-weight="bold">Lv1</text><text x="70" y="50" text-anchor="middle" font-size="11">System Context</text><text x="70" y="170" text-anchor="middle" font-size="10">外部との関係</text></g>
+                <g transform="translate(200,30)"><rect width="140" height="220" fill="#fff3e0" stroke="#f57c00" rx="8" /><text x="70" y="30" text-anchor="middle" font-size="13" font-weight="bold">Lv2</text><text x="70" y="50" text-anchor="middle" font-size="11">Container</text><text x="70" y="190" text-anchor="middle" font-size="10">サーバー単位</text></g>
+                <g transform="translate(360,30)"><rect width="140" height="220" fill="#fce4ec" stroke="#c2185b" rx="8" /><text x="70" y="30" text-anchor="middle" font-size="13" font-weight="bold">Lv3</text><text x="70" y="50" text-anchor="middle" font-size="11">Component</text><text x="70" y="170" text-anchor="middle" font-size="10">主要モジュール</text></g>
+                <g transform="translate(520,30)"><rect width="140" height="220" fill="#f3e5f5" stroke="#7b1fa2" rx="8" /><text x="70" y="30" text-anchor="middle" font-size="13" font-weight="bold">Lv4</text><text x="70" y="50" text-anchor="middle" font-size="11">Code</text><text x="70" y="190" text-anchor="middle" font-size="10">クラス・関数</text></g>
+              </g>
+            </svg>
+            <figcaption>図6: C4モデル — 解像度を変えて4枚の図</figcaption>
+          </figure>
+
+          <h3>イベント駆動アーキテクチャ</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="イベント駆動シーケンス">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="60" y="20" width="100" height="40" fill="#e3f2fd" stroke="#1976d2" rx="4" /><text x="110" y="44" text-anchor="middle" font-size="12">Order Service</text>
+                <line x1="110" y1="60" x2="110" y2="240" stroke="#1976d2" stroke-dasharray="4,2" />
+                <rect x="240" y="20" width="100" height="40" fill="#fff3e0" stroke="#f57c00" rx="4" /><text x="290" y="44" text-anchor="middle" font-size="12">Event Bus</text>
+                <line x1="290" y1="60" x2="290" y2="240" stroke="#f57c00" stroke-dasharray="4,2" />
+                <rect x="420" y="20" width="100" height="40" fill="#fce4ec" stroke="#c2185b" rx="4" /><text x="470" y="44" text-anchor="middle" font-size="12">Shipping</text>
+                <line x1="470" y1="60" x2="470" y2="240" stroke="#c2185b" stroke-dasharray="4,2" />
+                <rect x="580" y="20" width="100" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="4" /><text x="630" y="44" text-anchor="middle" font-size="12">Mail</text>
+                <line x1="580" y1="40" x2="580" y2="240" stroke="#7b1fa2" stroke-dasharray="4,2" />
+                <line x1="110" y1="100" x2="290" y2="100" stroke="#1976d2" stroke-width="2" />
+                <text x="200" y="93" text-anchor="middle" font-size="11" fill="#1976d2">OrderPlaced</text>
+                <line x1="290" y1="140" x2="470" y2="140" stroke="#f57c00" stroke-width="2" />
+                <text x="380" y="133" text-anchor="middle" font-size="11" fill="#f57c00">subscribe</text>
+                <line x1="290" y1="180" x2="630" y2="180" stroke="#f57c00" stroke-width="2" />
+                <text x="460" y="173" text-anchor="middle" font-size="11" fill="#f57c00">subscribe</text>
+                <text x="360" y="260" text-anchor="middle" font-size="11" fill="#666">サービス間が疎結合化 / 障害が分離される</text>
+              </g>
+            </svg>
+            <figcaption>図7: イベント駆動 — Pub/Subで疎結合化</figcaption>
+          </figure>
+
+          <h3>マイクロサービス vs モノリス</h3>
+          <table>
+            <thead><tr><th>項目</th><th>モノリス</th><th>マイクロサービス</th></tr></thead>
+            <tbody>
+              <tr><td>構成</td><td>1つのアプリ</td><td>複数の独立サービス</td></tr>
+              <tr><td>デプロイ</td><td>一括</td><td>サービス単位</td></tr>
+              <tr><td>適性</td><td>立ち上げ期 / 〜10人</td><td>中規模以降 / 30人以上</td></tr>
+              <tr><td>運用負荷</td><td>低い</td><td>高い</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout warn"><strong>Martin Fowler:</strong> "Monolith First"。境界の引き方は実装してわかる。</aside>
+        </section>
+
+        <section>
+          <h2>Lv4: 分散・大規模 — ハマる領域</h2>
+          <h3>CAP定理</h3>
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="CAP定理">
+              <g font-family="ui-sans-serif,sans-serif">
+                <polygon points="360,40 600,260 120,260" fill="none" stroke="#444" stroke-width="2" />
+                <circle cx="360" cy="40" r="40" fill="#ef5350" /><text x="360" y="35" text-anchor="middle" font-size="14" font-weight="bold" fill="white">C</text><text x="360" y="52" text-anchor="middle" font-size="9" fill="white">Consistency</text>
+                <circle cx="120" cy="260" r="40" fill="#42a5f5" /><text x="120" y="255" text-anchor="middle" font-size="14" font-weight="bold" fill="white">A</text><text x="120" y="272" text-anchor="middle" font-size="9" fill="white">Availability</text>
+                <circle cx="600" cy="260" r="40" fill="#66bb6a" /><text x="600" y="255" text-anchor="middle" font-size="14" font-weight="bold" fill="white">P</text><text x="600" y="272" text-anchor="middle" font-size="9" fill="white">Partition</text>
+                <text x="240" y="170" text-anchor="middle" font-size="11" font-weight="bold">CP系</text><text x="240" y="186" text-anchor="middle" font-size="10">MongoDB / HBase</text>
+                <text x="480" y="170" text-anchor="middle" font-size="11" font-weight="bold">AP系</text><text x="480" y="186" text-anchor="middle" font-size="10">Cassandra / DynamoDB</text>
+                <text x="360" y="305" text-anchor="middle" font-size="11" fill="#444">分散システムでは P 必須 → C と A の選択</text>
+              </g>
+            </svg>
+            <figcaption>図8: CAP定理 — 3つのうち2つしか同時に取れない</figcaption>
+          </figure>
+          <h3>主要分散パターン</h3>
+          <table>
+            <thead><tr><th>パターン</th><th>解決する問題</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Saga</strong></td><td>分散トランザクション。補償でロールバック</td></tr>
+              <tr><td><strong>Outbox</strong></td><td>DB更新とイベント発行のアトミック化</td></tr>
+              <tr><td><strong>Idempotency Key</strong></td><td>同じリクエストの重複実行防止</td></tr>
+              <tr><td><strong>Circuit Breaker</strong></td><td>障害サービスへの呼び出し遮断</td></tr>
+              <tr><td><strong>Bulkhead</strong></td><td>リソース区画化で連鎖障害防止</td></tr>
+            </tbody>
+          </table>
+          <h3>Designing Data-Intensive Applications（神本）</h3>
+          <ul>
+            <li>Part 1: 単一マシンのデータシステム（B-tree / LSM-tree）</li>
+            <li>Part 2: 分散データ（Replication / Partitioning / Consensus）</li>
+            <li>Part 3: 派生データ（Batch / Stream / Lambda）</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Lv5: AI時代の新領域 ⭐</h2>
+          <p>ariadne / SkillHub でやってる領域。なおちゃんの本丸。</p>
+
+          <h3>エージェントの定義</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="エージェントループ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <circle cx="80" cy="140" r="35" fill="#90caf9" /><text x="80" y="145" text-anchor="middle" font-size="12" font-weight="bold" fill="white">User</text>
+                <rect x="180" y="80" width="380" height="120" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="12" />
+                <text x="370" y="105" text-anchor="middle" font-size="13" font-weight="bold" fill="#f57c00">Agent Loop</text>
+                <rect x="210" y="125" width="100" height="50" fill="#fce4ec" stroke="#c2185b" rx="6" /><text x="260" y="145" text-anchor="middle" font-size="11">LLM</text><text x="260" y="162" text-anchor="middle" font-size="9" fill="#666">推論</text>
+                <rect x="340" y="125" width="100" height="50" fill="#e8f5e9" stroke="#388e3c" rx="6" /><text x="390" y="145" text-anchor="middle" font-size="11">Tools</text><text x="390" y="162" text-anchor="middle" font-size="9" fill="#666">実行</text>
+                <rect x="470" y="125" width="80" height="50" fill="#f3e5f5" stroke="#7b1fa2" rx="6" /><text x="510" y="145" text-anchor="middle" font-size="11">Memory</text><text x="510" y="162" text-anchor="middle" font-size="9" fill="#666">状態</text>
+                <rect x="600" y="115" width="80" height="50" fill="#a5d6a7" stroke="#2e7d32" rx="6" /><text x="640" y="135" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Output</text>
+                <text x="370" y="240" text-anchor="middle" font-size="11" fill="#555">エージェント = LLM + Tools + Memory + Loop</text>
+              </g>
+            </svg>
+            <figcaption>図9: エージェントの基本構造</figcaption>
+          </figure>
+
+          <h3>Harness Engineering — 7軸 ⭐</h3>
+          <p>AIエージェントを「正しく動かすための土台」をエンジニアリングする領域。<strong>これが無いAIアプリは「Vibe Engineering」</strong>。</p>
+          <figure>
+            <svg viewBox="0 0 720 380" role="img" aria-label="Harness Engineering 7軸">
+              <g font-family="ui-sans-serif,sans-serif">
+                <circle cx="360" cy="190" r="50" fill="#ffd54f" stroke="#f57c00" stroke-width="2" />
+                <text x="360" y="186" text-anchor="middle" font-size="13" font-weight="bold">AI Agent</text>
+                <text x="360" y="204" text-anchor="middle" font-size="10" fill="#444">本体</text>
+                <g transform="translate(360,40)"><rect x="-65" y="-30" width="130" height="50" fill="#e3f2fd" stroke="#1976d2" rx="8" /><text x="0" y="-12" text-anchor="middle" font-size="11" font-weight="bold">1. Observability</text><text x="0" y="6" text-anchor="middle" font-size="10" fill="#666">トレース / ログ</text></g>
+                <g transform="translate(580,90)"><rect x="-65" y="-25" width="130" height="50" fill="#fff3e0" stroke="#f57c00" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">2. Evaluation</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">評価セット</text></g>
+                <g transform="translate(620,210)"><rect x="-65" y="-25" width="130" height="50" fill="#fce4ec" stroke="#c2185b" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">3. Safety</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">ガードレール</text></g>
+                <g transform="translate(540,320)"><rect x="-65" y="-25" width="130" height="50" fill="#f3e5f5" stroke="#7b1fa2" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">4. Cost Control</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">予算 / トークン</text></g>
+                <g transform="translate(180,320)"><rect x="-65" y="-25" width="130" height="50" fill="#e8f5e9" stroke="#388e3c" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">5. A/B Test</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">並行比較</text></g>
+                <g transform="translate(100,210)"><rect x="-65" y="-25" width="130" height="50" fill="#fff8e1" stroke="#f9a825" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">6. Regression</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">回帰テスト</text></g>
+                <g transform="translate(140,90)"><rect x="-65" y="-25" width="130" height="50" fill="#ffebee" stroke="#c62828" rx="8" /><text x="0" y="-7" text-anchor="middle" font-size="11" font-weight="bold">7. Alerting</text><text x="0" y="11" text-anchor="middle" font-size="10" fill="#666">異常検知</text></g>
+              </g>
+            </svg>
+            <figcaption>図10: Harness Engineering 7コンポーネント</figcaption>
+          </figure>
+
+          <h3>RAGアーキテクチャ</h3>
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="RAGフロー">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="20" y="100" width="80" height="40" fill="#e3f2fd" stroke="#1976d2" rx="4" /><text x="60" y="124" text-anchor="middle" font-size="11">Query</text>
+                <rect x="130" y="100" width="80" height="40" fill="#fff3e0" stroke="#f57c00" rx="4" /><text x="170" y="124" text-anchor="middle" font-size="11">Embed</text>
+                <rect x="240" y="100" width="100" height="40" fill="#fce4ec" stroke="#c2185b" rx="4" /><text x="290" y="118" text-anchor="middle" font-size="11">Vector</text><text x="290" y="132" text-anchor="middle" font-size="11">Search</text>
+                <rect x="370" y="100" width="80" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="4" /><text x="410" y="124" text-anchor="middle" font-size="11">Top-K</text>
+                <rect x="480" y="100" width="80" height="40" fill="#e8f5e9" stroke="#388e3c" rx="4" /><text x="520" y="124" text-anchor="middle" font-size="11">Prompt</text>
+                <rect x="590" y="100" width="80" height="40" fill="#ffd54f" stroke="#f57c00" rx="4" /><text x="630" y="124" text-anchor="middle" font-size="11">LLM</text>
+                <rect x="220" y="20" width="140" height="40" fill="#fff" stroke="#c2185b" stroke-dasharray="4,2" rx="4" /><text x="290" y="38" text-anchor="middle" font-size="10">事前埋め込み</text><text x="290" y="52" text-anchor="middle" font-size="10">Document DB</text>
+                <line x1="290" y1="60" x2="290" y2="100" stroke="#c2185b" stroke-dasharray="4,2" />
+                <line x1="100" y1="120" x2="130" y2="120" stroke="#444" />
+                <line x1="210" y1="120" x2="240" y2="120" stroke="#444" />
+                <line x1="340" y1="120" x2="370" y2="120" stroke="#444" />
+                <line x1="450" y1="120" x2="480" y2="120" stroke="#444" />
+                <line x1="560" y1="120" x2="590" y2="120" stroke="#444" />
+                <text x="345" y="200" text-anchor="middle" font-size="11" fill="#555">SkillHub TASK-001 がまさにこれ（FTS5 × ベクトルのハイブリッド）</text>
+              </g>
+            </svg>
+            <figcaption>図11: RAG基本フロー</figcaption>
+          </figure>
+
+          <h3>主要エージェントパターン</h3>
+          <table>
+            <thead><tr><th>パターン</th><th>特徴</th><th>例</th></tr></thead>
+            <tbody>
+              <tr><td>ReAct</td><td>思考→行動→観察ループ</td><td>最も基本</td></tr>
+              <tr><td>Reflexion</td><td>失敗から学習して再試行</td><td>難問解き直し</td></tr>
+              <tr><td>Plan-and-Execute</td><td>計画してから実行</td><td>ariadne ワークフロー</td></tr>
+              <tr><td>Tree of Thoughts</td><td>複数経路を展開</td><td>複雑推論</td></tr>
+            </tbody>
+          </table>
+
+          <h3>ariadne の Harness 採点</h3>
+          <table>
+            <thead><tr><th>軸</th><th>現状</th><th>改善余地</th></tr></thead>
+            <tbody>
+              <tr><td>Observability</td><td>⚠️ trace未実装</td><td><code>ari trace</code> 実装</td></tr>
+              <tr><td>Evaluation</td><td>⚠️ rubric抽象的</td><td>評価セット導入</td></tr>
+              <tr><td>Safety</td><td>✅ レビュー哲学が強み</td><td>self-report NG実装強化</td></tr>
+              <tr><td>Cost Control</td><td>❌ 未実装</td><td>budget guardrail追加</td></tr>
+              <tr><td>A/B Testing</td><td>❌ 未実装</td><td>プロンプト v2管理から</td></tr>
+              <tr><td>Regression</td><td>⚠️ 手動</td><td>CI連携で自動化</td></tr>
+              <tr><td>Alerting</td><td>❌ 未実装</td><td>後回しでOK</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>横断トピック</h2>
+          <h3>ADR（Architecture Decision Records）</h3>
+          <p>「なぜその設計を選んだか」を残す軽量ドキュメント。1決定 = 1ファイル、連番管理。</p>
+<pre><code class="language-markdown"># ADR-001: SQLite を採用する
+
+## Status
+Accepted (2026-05-10)
+
+## Decision
+SQLite を採用する。
+
+## Consequences
+- ✅ Tauri から native アクセス可能
+- ✅ FTS5 / sqlite-vec が使える
+- ❌ ブラウザ単体では動かない
+</code></pre>
+          <h3>Fitness Functions — 品質を関数で表現</h3>
+<pre><code class="language-typescript">test("API応答時間 P95 &lt; 500ms", async () =&gt; {
+  const times = await measureAPI(100);
+  expect(p95(times)).toBeLessThan(500);
+});
+</code></pre>
+        </section>
+
+        <section>
+          <h2>学習ロードマップ</h2>
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="学習ロードマップ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="50" y="40" text-anchor="end" font-size="10" fill="#666">0w</text>
+                <text x="50" y="100" text-anchor="end" font-size="10" fill="#666">3w</text>
+                <text x="50" y="160" text-anchor="end" font-size="10" fill="#666">6w</text>
+                <text x="50" y="220" text-anchor="end" font-size="10" fill="#666">12w</text>
+                <text x="50" y="280" text-anchor="end" font-size="10" fill="#666">24w</text>
+                <line x1="60" y1="40" x2="60" y2="290" stroke="#999" />
+                <rect x="80" y="50" width="160" height="20" fill="#a5d6a7" stroke="#388e3c" rx="3" /><text x="160" y="64" text-anchor="middle" font-size="10">Lv1: SOLID + GoF</text>
+                <rect x="80" y="80" width="220" height="20" fill="#90caf9" stroke="#1976d2" rx="3" /><text x="190" y="94" text-anchor="middle" font-size="10">Lv2: Clean Arch + DDD</text>
+                <rect x="80" y="110" width="280" height="20" fill="#ce93d8" stroke="#7b1fa2" rx="3" /><text x="220" y="124" text-anchor="middle" font-size="10">Lv3: C4 + イベント駆動</text>
+                <rect x="80" y="140" width="500" height="20" fill="#ffab91" stroke="#bf360c" rx="3" /><text x="330" y="154" text-anchor="middle" font-size="10">Lv4: DDIA + System Design</text>
+                <rect x="80" y="170" width="320" height="20" fill="#fff176" stroke="#f57f17" rx="3" /><text x="240" y="184" text-anchor="middle" font-size="10">Lv5: Agent + Harness</text>
+                <text x="350" y="240" text-anchor="middle" font-size="12" font-weight="bold">推奨順 = Lv1 → Lv2 → Lv5</text>
+                <text x="350" y="260" text-anchor="middle" font-size="11" fill="#666">Lv3, Lv4 はチーム規模・要件に応じて</text>
+              </g>
+            </svg>
+            <figcaption>図12: 学習ロードマップ（24週で全網羅）</figcaption>
+          </figure>
+          <h3>推奨書籍</h3>
+          <table>
+            <thead><tr><th>レベル</th><th>書籍</th></tr></thead>
+            <tbody>
+              <tr><td>Lv1</td><td>Clean Code / リーダブルコード</td></tr>
+              <tr><td>Lv2</td><td>Clean Architecture / 実践DDD / エヴァンスDDD</td></tr>
+              <tr><td>Lv3</td><td>Building Microservices / Software Architecture: The Hard Parts</td></tr>
+              <tr><td>Lv4</td><td>Designing Data-Intensive Applications ⭐ / System Design Interview</td></tr>
+              <tr><td>Lv5</td><td>Building LLM Apps / AI Engineering（Chip Huyen）</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>まとめ — アーキテクトの10原則</h2>
+          <ol>
+            <li><strong>問題が先、パターンが後</strong></li>
+            <li><strong>トレードオフを言語化する</strong></li>
+            <li><strong>可逆性を最大化する</strong></li>
+            <li><strong>YAGNI</strong> — 今いらない機能は作らない</li>
+            <li><strong>抽象化はコスト</strong></li>
+            <li><strong>境界を引く</strong> — Bounded Context、レイヤー、サービス境界</li>
+            <li><strong>依存方向を制御する</strong> — 外→内のみ</li>
+            <li><strong>観測性を最初から組み込む</strong></li>
+            <li><strong>失敗を前提に設計する</strong></li>
+            <li><strong>コンウェイの法則を意識する</strong></li>
+          </ol>
+          <aside class="callout tip"><strong>一周して気付くこと:</strong> AIに正しく指示出すには、自分の頭の中の「設計の地図」の解像度が全て。Lv1〜Lv5 = AIへの指示書を書ける言語の獲得。</aside>
+          <h3>例え話で総まとめ</h3>
+          <table>
+            <thead><tr><th>レベル</th><th>例え</th></tr></thead>
+            <tbody>
+              <tr><td>Lv1</td><td>一人前の料理人になる</td></tr>
+              <tr><td>Lv2</td><td>厨房をデザインする</td></tr>
+              <tr><td>Lv3</td><td>レストランチェーンを設計する</td></tr>
+              <tr><td>Lv4</td><td>全国フランチャイズを運営する</td></tr>
+              <tr><td>Lv5</td><td>AI料理人を雇って指示出しできる料理長になる</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://c4model.com/" target="_blank" rel="noopener">C4 model - Simon Brown</a></li>
+            <li><a href="https://martinfowler.com/articles/microservices.html" target="_blank" rel="noopener">Microservices - Martin Fowler</a></li>
+            <li><a href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html" target="_blank" rel="noopener">The Clean Architecture - Robert C. Martin</a></li>
+            <li><a href="https://dataintensive.net/" target="_blank" rel="noopener">Designing Data-Intensive Applications - Martin Kleppmann</a></li>
+            <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">system-design-primer (GitHub)</a></li>
+            <li><a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" rel="noopener">Building effective agents - Anthropic</a></li>
+            <li><a href="https://huyenchip.com/" target="_blank" rel="noopener">Chip Huyen - AI Engineering</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>

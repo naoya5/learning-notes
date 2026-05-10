@@ -13,5 +13,21 @@
       "optimization"
     ],
     "updated": null
+  },
+  {
+    "slug": "software-architecture-lv1-5",
+    "date": "2026-05-10",
+    "title": "ソフトウェアアーキテクチャ完全学習ガイド — Lv1〜Lv5",
+    "summary": "SOLIDからAI Agent設計まで、図解中心でLv1〜Lv5を体系化",
+    "description": "SOLIDからAIエージェント設計まで、5レベルで体系化したアーキテクチャ学習ガイド。図解中心、ariadne・SkillHubの実プロダクト分析付き。AIに正しく指示を出すための「設計の地図」を頭に作る。",
+    "tags": [
+      "architecture",
+      "software-engineering",
+      "ddd",
+      "system-design",
+      "harness-engineering",
+      "ai-agent"
+    ],
+    "updated": null
   }
 ]
