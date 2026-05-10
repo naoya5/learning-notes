@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>アーキテクチャ Lv2 — アプリ構造（レイヤード/ヘキサゴナル/Clean/DDD） — learning-notes</title>
+    <meta name="description" content="アーキテクチャ学習Lv2の詳細版。レイヤード・ヘキサゴナル・Clean Architecture・DDD（戦略+戦術）を Before/After のフォルダ構成+TypeScriptコード+SVG図解で完全解説。ariadne分析付き。" />
+
+    <meta name="article:slug" content="architecture-lv2-application-structure" />
+    <meta name="article:date" content="2026-05-11" />
+    <meta name="article:tags" content="architecture,clean-architecture,ddd,hexagonal,layered,typescript" />
+    <meta name="article:summary" content="レイヤード/ヘキサゴナル/Clean/DDD を Before/After で完全解説（Lv2詳細版）" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="アーキテクチャ Lv2 — アプリ構造完全解説" />
+    <meta property="og:description" content="レイヤード/ヘキサゴナル/Clean Architecture/DDD を Before/After で1から学べる詳細解説。" />
+    <meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-05-11-architecture-lv2-application-structure.html" />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css" media="(prefers-color-scheme: light)" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-11">2026-05-11</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=architecture" class="tag">architecture</a>
+            <a href="../index.html?tag=clean-architecture" class="tag">clean-architecture</a>
+            <a href="../index.html?tag=ddd" class="tag">ddd</a>
+            <a href="../index.html?tag=hexagonal" class="tag">hexagonal</a>
+            <a href="../index.html?tag=layered" class="tag">layered</a>
+            <a href="../index.html?tag=typescript" class="tag">typescript</a>
+          </span>
+        </p>
+        <h1>アーキテクチャ Lv2 — アプリ構造完全解説</h1>
+        <p class="lead">レイヤード/ヘキサゴナル/Clean Architecture/DDD（戦略+戦術）を Before/After のフォルダ構成+TypeScript実装+SVG図解で1から学べる詳細解説。シリーズ全5回の第2回。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次"><p id="toc-title">目次</p><ul></ul></nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>Lv2の到達点</strong>: 1アプリケーションを「変更しやすい構造」に組める。ビジネスロジックとインフラの境界を引ける</li>
+            <li><strong>4つのアーキは思想の発展形</strong>: レイヤード → ヘキサゴナル → Clean Architecture → DDD</li>
+            <li><strong>共通する黄金ルール</strong>: <strong>依存方向は外→内のみ</strong>。Domain（業務ルール）が一番内側、フレームワークやDBに依存しない</li>
+            <li><strong>DDDは戦略+戦術の2層</strong>: 戦略=境界の引き方（Bounded Context）、戦術=Context内の構成要素（Entity/VO/Aggregate）</li>
+            <li><strong>過剰設計に注意</strong>: 個人プロト/PoCではClean Archは過剰。チーム3人以上+長期保守+テスト重視で初めて費用対効果が出る</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>このシリーズの位置づけ</h2>
+          <p>シリーズ第2回。<a href="2026-05-11-architecture-lv1-fundamentals.html">Lv1（基礎原則）</a>で身につけたSOLIDを土台に、複数クラス・複数モジュールをどう組み立てるか（=アプリケーション構造）を扱う。</p>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="シリーズ全体マップ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="20" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="80" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv1</text>
+                <text x="80" y="108" text-anchor="middle" font-size="10" fill="#666">基礎原則 ✓</text>
+                <rect x="160" y="60" width="120" height="80" fill="#90caf9" stroke="#0d47a1" stroke-width="3" rx="8" />
+                <text x="220" y="90" text-anchor="middle" font-size="13" font-weight="bold">Lv2</text>
+                <text x="220" y="108" text-anchor="middle" font-size="10">アプリ構造</text>
+                <text x="220" y="124" text-anchor="middle" font-size="9" fill="#0d47a1">▶ 今ここ</text>
+                <rect x="300" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="360" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv3</text>
+                <text x="360" y="108" text-anchor="middle" font-size="10" fill="#666">システム全体</text>
+                <rect x="440" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="500" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv4</text>
+                <text x="500" y="108" text-anchor="middle" font-size="10" fill="#666">分散・大規模</text>
+                <rect x="580" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="640" y="90" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv5</text>
+                <text x="640" y="108" text-anchor="middle" font-size="10" fill="#666">AI時代</text>
+                <text x="360" y="180" text-anchor="middle" font-size="11" fill="#444">Lv1の上に Lv2 が乗る</text>
+              </g>
+            </svg>
+            <figcaption>図1: シリーズ全体マップ</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>導入 — なぜアプリ構造を設計するのか</h2>
+          <p>SOLIDで個別のクラス品質を上げても、「フォルダの並べ方」「依存の向き」がぐちゃぐちゃだと結局メンテ困難になる。アプリ構造の設計は <strong>「規模が大きくなった時に崩壊しないための地図」</strong>。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="無構造vs構造化の比較">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="25" text-anchor="middle" font-size="13" font-weight="bold">❌ 無構造（フラット）</text>
+                <rect x="40" y="40" width="280" height="220" fill="#ffebee" stroke="#c62828" rx="8" />
+                <g font-family="ui-monospace,monospace" font-size="10" fill="#333">
+                  <text x="60" y="65">src/</text>
+                  <text x="80" y="83">order.ts</text>
+                  <text x="80" y="100">user.ts</text>
+                  <text x="80" y="117">payment.ts</text>
+                  <text x="80" y="134">db.ts</text>
+                  <text x="80" y="151">mailer.ts</text>
+                  <text x="80" y="168">helpers.ts</text>
+                  <text x="80" y="185">api.ts</text>
+                  <text x="80" y="202">utils.ts</text>
+                  <text x="80" y="219">main.ts</text>
+                </g>
+                <text x="180" y="245" text-anchor="middle" font-size="10" fill="#c62828">どこに何があるか分からない</text>
+
+                <text x="540" y="25" text-anchor="middle" font-size="13" font-weight="bold">✅ レイヤード構造</text>
+                <rect x="400" y="40" width="280" height="220" fill="#e8f5e9" stroke="#2e7d32" rx="8" />
+                <g font-family="ui-monospace,monospace" font-size="10" fill="#333">
+                  <text x="420" y="65">src/</text>
+                  <text x="440" y="82">presentation/  # UI/Controller</text>
+                  <text x="440" y="99">application/   # Use Case</text>
+                  <text x="440" y="116">domain/        # Entity/Service</text>
+                  <text x="440" y="133">infrastructure/# DB/External</text>
+                </g>
+                <text x="540" y="190" text-anchor="middle" font-size="11" fill="#2e7d32">役割が明確</text>
+                <text x="540" y="210" text-anchor="middle" font-size="10" fill="#2e7d32">変更すべき場所が即特定可能</text>
+              </g>
+            </svg>
+            <figcaption>図2: 無構造とレイヤード構造の違い</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>1. レイヤードアーキテクチャ — 最も基本</h2>
+          <p>「Presentation → Application → Domain → Infrastructure」の4層に分け、上から下へ依存する。最古典かつ最も学習コストが低い。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="レイヤード4層">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="160" y="40" width="400" height="50" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="6" />
+                <text x="360" y="62" text-anchor="middle" font-size="14" font-weight="bold">Presentation</text>
+                <text x="360" y="80" text-anchor="middle" font-size="10" fill="#666">Controller / API endpoint / View</text>
+                <line x1="360" y1="90" x2="360" y2="110" stroke="#444" stroke-width="2" marker-end="url(#down)" />
+                <rect x="160" y="115" width="400" height="50" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="6" />
+                <text x="360" y="137" text-anchor="middle" font-size="14" font-weight="bold">Application</text>
+                <text x="360" y="155" text-anchor="middle" font-size="10" fill="#666">Use Case / Application Service（オーケストレーション）</text>
+                <line x1="360" y1="165" x2="360" y2="185" stroke="#444" stroke-width="2" marker-end="url(#down)" />
+                <rect x="160" y="190" width="400" height="50" fill="#fce4ec" stroke="#c2185b" stroke-width="2" rx="6" />
+                <text x="360" y="212" text-anchor="middle" font-size="14" font-weight="bold">Domain</text>
+                <text x="360" y="230" text-anchor="middle" font-size="10" fill="#666">Entity / Domain Service / 業務ルール</text>
+                <line x1="360" y1="240" x2="360" y2="260" stroke="#444" stroke-width="2" marker-end="url(#down)" />
+                <rect x="160" y="265" width="400" height="50" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2" rx="6" />
+                <text x="360" y="287" text-anchor="middle" font-size="14" font-weight="bold">Infrastructure</text>
+                <text x="360" y="305" text-anchor="middle" font-size="10" fill="#666">DB / 外部API / メール / ファイル</text>
+                <defs>
+                  <marker id="down" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                    <path d="M0,0 L10,5 L0,10 Z" fill="#444" />
+                  </marker>
+                </defs>
+              </g>
+            </svg>
+            <figcaption>図3: レイヤード4層と依存方向</figcaption>
+          </figure>
+
+          <h3>各レイヤーの責務とコード例</h3>
+<pre><code class="language-typescript">// Domain層 — 業務ルール（フレームワーク非依存）
+class Order {
+  constructor(public id: string, public items: OrderItem[]) {}
+  total(): number {
+    return this.items.reduce((s, i) =&gt; s + i.price * i.qty, 0);
+  }
+  canCancel(): boolean {
+    return this.status === "pending";
+  }
+}
+
+// Application層 — ユースケース調整
+class PlaceOrderUseCase {
+  constructor(private repo: OrderRepository, private mailer: Mailer) {}
+
+  async execute(input: PlaceOrderInput): Promise&lt;Order&gt; {
+    const order = new Order(generateId(), input.items);
+    if (order.total() &lt; 100) throw new Error("最低金額未満");
+    await this.repo.save(order);
+    await this.mailer.sendConfirmation(order);
+    return order;
+  }
+}
+
+// Presentation層 — HTTP受け口
+app.post("/orders", async (req, res) =&gt; {
+  const useCase = new PlaceOrderUseCase(orderRepo, mailer);
+  const order = await useCase.execute(req.body);
+  res.json(order);
+});
+
+// Infrastructure層 — DB実装
+class PostgresOrderRepository implements OrderRepository {
+  async save(order: Order) {
+    await db.query("INSERT INTO orders ...", [...]);
+  }
+}
+</code></pre>
+
+          <h3>「貧血ドメインモデル」の罠</h3>
+          <aside class="callout warn">
+            <strong>注意:</strong> レイヤードでよくある失敗が「<strong>貧血ドメインモデル</strong>」。
+            <p>Entityがgetter/setterだけになり、ビジネスロジックがすべてApplication/Serviceに流れ込む現象。結果として Service が肥大化し、ドメインの意味が消える。</p>
+            <p><strong>対策:</strong> ロジックは可能な限り Entity 内に置く（<code>order.canCancel()</code>、<code>user.changeEmail()</code> 等）。</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>2. ヘキサゴナル / ポート＆アダプター</h2>
+          <p>別名「Ports &amp; Adapters」。アリスター・コックバーン提唱。<strong>ビジネスロジックを中心に置き、外部接続はすべてアダプターで隔離する</strong>思想。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 360" role="img" aria-label="ヘキサゴナル構造">
+              <g font-family="ui-sans-serif,sans-serif">
+                <polygon points="360,40 540,140 540,260 360,360 180,260 180,140" fill="#fff3e0" stroke="#f57c00" stroke-width="3" />
+                <text x="360" y="190" text-anchor="middle" font-size="16" font-weight="bold">Domain</text>
+                <text x="360" y="210" text-anchor="middle" font-size="11" fill="#666">Core / 業務ルール</text>
+                <text x="360" y="226" text-anchor="middle" font-size="10" fill="#666">フレームワーク非依存</text>
+
+                <rect x="40" y="80" width="120" height="60" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="100" y="105" text-anchor="middle" font-size="11">Web UI</text>
+                <text x="100" y="123" text-anchor="middle" font-size="9" fill="#666">Inbound Adapter</text>
+                <line x1="160" y1="110" x2="200" y2="140" stroke="#444" />
+
+                <rect x="40" y="200" width="120" height="60" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="100" y="225" text-anchor="middle" font-size="11">CLI</text>
+                <text x="100" y="243" text-anchor="middle" font-size="9" fill="#666">Inbound Adapter</text>
+                <line x1="160" y1="230" x2="200" y2="220" stroke="#444" />
+
+                <rect x="560" y="80" width="120" height="60" fill="#fce4ec" stroke="#c2185b" rx="6" />
+                <text x="620" y="105" text-anchor="middle" font-size="11">PostgreSQL</text>
+                <text x="620" y="123" text-anchor="middle" font-size="9" fill="#666">Outbound Adapter</text>
+                <line x1="540" y1="140" x2="560" y2="110" stroke="#444" />
+
+                <rect x="560" y="200" width="120" height="60" fill="#fce4ec" stroke="#c2185b" rx="6" />
+                <text x="620" y="225" text-anchor="middle" font-size="11">SendGrid</text>
+                <text x="620" y="243" text-anchor="middle" font-size="9" fill="#666">Outbound Adapter</text>
+                <line x1="540" y1="220" x2="560" y2="230" stroke="#444" />
+              </g>
+            </svg>
+            <figcaption>図4: ヘキサゴナル — 中心 = Domain、外殻 = Adapter</figcaption>
+          </figure>
+
+          <h3>ポートとアダプターの実装</h3>
+<pre><code class="language-typescript">// Port（インターフェース） — Domain側で定義
+interface OrderRepository {
+  save(order: Order): Promise&lt;void&gt;;
+  findById(id: string): Promise&lt;Order | null&gt;;
+}
+
+interface NotificationService {
+  notify(userId: string, message: string): Promise&lt;void&gt;;
+}
+
+// Domain Core（DBもメールも知らない、Portだけ知る）
+class OrderService {
+  constructor(
+    private repo: OrderRepository,
+    private notifier: NotificationService,
+  ) {}
+
+  async place(order: Order) {
+    order.validate();
+    await this.repo.save(order);
+    await this.notifier.notify(order.userId, `Order ${order.id} placed`);
+  }
+}
+
+// Outbound Adapter（具体実装）
+class PostgresOrderRepository implements OrderRepository {
+  async save(order: Order) { /* SQL */ }
+  async findById(id: string) { /* SQL */ }
+}
+
+class SendGridNotifier implements NotificationService {
+  async notify(userId: string, msg: string) { /* SendGrid API */ }
+}
+
+// Inbound Adapter（HTTP / CLI / イベントなどを Domain に橋渡し）
+app.post("/orders", async (req, res) =&gt; {
+  const service = new OrderService(
+    new PostgresOrderRepository(),
+    new SendGridNotifier(),
+  );
+  await service.place(new Order(req.body));
+  res.send("OK");
+});
+</code></pre>
+
+          <h3>利点</h3>
+          <ul>
+            <li>✅ <strong>ビジネスロジックがフレームワーク非依存</strong> — Express、NestJS、何でも差し替え可</li>
+            <li>✅ <strong>テストが容易</strong> — Adapter をモック化して Core だけテスト</li>
+            <li>✅ <strong>入出力を後から差し替え可能</strong> — REST → GraphQL、PostgreSQL → MongoDB</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>3. Clean Architecture（Bobおじさん）</h2>
+          <p>ヘキサゴナルを発展させた <strong>同心円モデル</strong>。Robert C. Martin が2012年に提唱。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 360" role="img" aria-label="Clean Architecture同心円">
+              <g font-family="ui-sans-serif,sans-serif">
+                <circle cx="360" cy="180" r="160" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2" />
+                <circle cx="360" cy="180" r="120" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" />
+                <circle cx="360" cy="180" r="80" fill="#fce4ec" stroke="#c2185b" stroke-width="2" />
+                <circle cx="360" cy="180" r="40" fill="#fff3e0" stroke="#f57c00" stroke-width="2" />
+                <text x="360" y="184" text-anchor="middle" font-size="11" font-weight="bold">Entity</text>
+                <text x="360" y="125" text-anchor="middle" font-size="11" font-weight="bold">UseCase</text>
+                <text x="360" y="80" text-anchor="middle" font-size="11" font-weight="bold">Adapters</text>
+                <text x="360" y="40" text-anchor="middle" font-size="11" font-weight="bold">Frameworks &amp; Drivers</text>
+                <text x="360" y="345" text-anchor="middle" font-size="13" font-weight="bold" fill="#7b1fa2">依存方向: 外 → 内 のみ</text>
+              </g>
+            </svg>
+            <figcaption>図5: Clean Architecture 同心円モデル</figcaption>
+          </figure>
+
+          <h3>4層の意味</h3>
+          <table>
+            <thead>
+              <tr><th>層</th><th>役割</th><th>例</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Entity</strong>（最内）</td><td>業務ルール（最も普遍的）</td><td>Userの年齢制限、注文の最低金額</td></tr>
+              <tr><td><strong>Use Case</strong></td><td>「何ができるか」</td><td>注文する、退会する、検索する</td></tr>
+              <tr><td><strong>Interface Adapter</strong></td><td>入出力の橋渡し</td><td>Controller / Presenter / Gateway</td></tr>
+              <tr><td><strong>Frameworks &amp; Drivers</strong>（最外）</td><td>具体技術</td><td>Express / React / MongoDB</td></tr>
+            </tbody>
+          </table>
+
+          <h3>フォルダ構成例</h3>
+<pre><code class="language-bash">src/
+├── entities/                # Lv4: 内側
+│   ├── Order.ts
+│   ├── User.ts
+│   └── Money.ts             # Value Object
+│
+├── usecases/                # Lv3
+│   ├── PlaceOrder.ts
+│   ├── CancelOrder.ts
+│   └── ports/               # interfaces (Repository, Notifier)
+│       ├── OrderRepository.ts
+│       └── NotificationService.ts
+│
+├── adapters/                # Lv2
+│   ├── controllers/
+│   │   └── OrderController.ts
+│   ├── presenters/
+│   │   └── OrderPresenter.ts
+│   └── repositories/
+│       └── PostgresOrderRepository.ts
+│
+└── infrastructure/          # Lv1: 外側
+    ├── express/
+    │   └── server.ts
+    └── postgres/
+        └── client.ts
+</code></pre>
+
+          <h3>黄金ルール</h3>
+          <aside class="callout tip">
+            <strong>依存ルール:</strong> 外側の層は内側の層を知ってよい。<strong>内側は外側を知らない</strong>。
+            <p>例: <code>UseCase</code> は <code>Entity</code> を import するが、<code>Entity</code> は <code>UseCase</code> を import しない。</p>
+          </aside>
+
+          <h3>Clean Architecture を採用すべきか？</h3>
+          <table>
+            <thead>
+              <tr><th>状況</th><th>適用</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>個人プロト / PoC / 小規模アプリ</td><td>❌ 過剰、レイヤードで十分</td></tr>
+              <tr><td>チーム3人以上 / 長期保守 / テスト重視</td><td>✅ 真価を発揮</td></tr>
+              <tr><td>業務ロジックが複雑なシステム</td><td>✅ 推奨</td></tr>
+              <tr><td>シンプルなCRUDアプリ</td><td>❌ 過剰</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>4. DDD（Domain-Driven Design）</h2>
+          <p>Eric Evans が2003年に著書 <em>Domain-Driven Design</em> で提唱。<strong>ドメインモデル（業務知識）を中心に据えた設計手法</strong>。戦略設計（マクロ）と戦術設計（ミクロ）の2層で構成される。</p>
+
+          <h3>戦略設計（マクロ） — 大きな境界の引き方</h3>
+
+          <h4>Bounded Context（境界づけられたコンテキスト）</h4>
+          <p>「<strong>同じ言葉が違う意味を持つ境界</strong>」を引く。</p>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="Bounded Context例">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="360" y="25" text-anchor="middle" font-size="14" font-weight="bold">ECサイトでの「商品」の3つの意味</text>
+
+                <rect x="40" y="50" width="200" height="180" fill="#e8f5e9" stroke="#2e7d32" rx="8" />
+                <text x="140" y="75" text-anchor="middle" font-size="12" font-weight="bold">カタログContext</text>
+                <text x="140" y="100" text-anchor="middle" font-size="11">商品 = </text>
+                <text x="140" y="118" text-anchor="middle" font-size="10" fill="#555">画像</text>
+                <text x="140" y="134" text-anchor="middle" font-size="10" fill="#555">説明文</text>
+                <text x="140" y="150" text-anchor="middle" font-size="10" fill="#555">価格</text>
+                <text x="140" y="166" text-anchor="middle" font-size="10" fill="#555">レビュー</text>
+                <text x="140" y="200" text-anchor="middle" font-size="10" fill="#2e7d32">「魅力を伝える」視点</text>
+
+                <rect x="260" y="50" width="200" height="180" fill="#fff3e0" stroke="#f57c00" rx="8" />
+                <text x="360" y="75" text-anchor="middle" font-size="12" font-weight="bold">在庫Context</text>
+                <text x="360" y="100" text-anchor="middle" font-size="11">商品 = </text>
+                <text x="360" y="118" text-anchor="middle" font-size="10" fill="#555">SKU</text>
+                <text x="360" y="134" text-anchor="middle" font-size="10" fill="#555">数量</text>
+                <text x="360" y="150" text-anchor="middle" font-size="10" fill="#555">保管場所</text>
+                <text x="360" y="166" text-anchor="middle" font-size="10" fill="#555">発注点</text>
+                <text x="360" y="200" text-anchor="middle" font-size="10" fill="#f57c00">「数量管理」視点</text>
+
+                <rect x="480" y="50" width="200" height="180" fill="#fce4ec" stroke="#c2185b" rx="8" />
+                <text x="580" y="75" text-anchor="middle" font-size="12" font-weight="bold">配送Context</text>
+                <text x="580" y="100" text-anchor="middle" font-size="11">商品 = </text>
+                <text x="580" y="118" text-anchor="middle" font-size="10" fill="#555">サイズ</text>
+                <text x="580" y="134" text-anchor="middle" font-size="10" fill="#555">重量</text>
+                <text x="580" y="150" text-anchor="middle" font-size="10" fill="#555">配送区分</text>
+                <text x="580" y="166" text-anchor="middle" font-size="10" fill="#555">梱包</text>
+                <text x="580" y="200" text-anchor="middle" font-size="10" fill="#c2185b">「物理移動」視点</text>
+
+                <text x="360" y="265" text-anchor="middle" font-size="11" fill="#444">同じ「商品」だが意味が違う → 別Bounded Context</text>
+              </g>
+            </svg>
+            <figcaption>図6: Bounded Contextの例</figcaption>
+          </figure>
+
+          <h4>Ubiquitous Language（ユビキタス言語）</h4>
+          <p>チーム全員（開発者・PM・ドメインエキスパート）が <strong>同じ言葉を同じ意味で使う</strong>。コードと会話の用語を一致させる。</p>
+
+          <h4>Subdomain（サブドメイン）</h4>
+          <table>
+            <thead>
+              <tr><th>種別</th><th>説明</th><th>戦略</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Core Subdomain</strong></td><td>ビジネスの差別化要素</td><td>自社開発で力を注ぐ</td></tr>
+              <tr><td><strong>Supporting Subdomain</strong></td><td>必要だが差別化要素ではない</td><td>シンプルに自社開発 or アウトソース</td></tr>
+              <tr><td><strong>Generic Subdomain</strong></td><td>業界共通（認証、決済等）</td><td>SaaS / OSS で済ます</td></tr>
+            </tbody>
+          </table>
+
+          <h3>戦術設計（ミクロ） — Context内の構成要素</h3>
+
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="DDD戦術設計の構成要素">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="280" y="20" width="160" height="50" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="360" y="45" text-anchor="middle" font-size="12" font-weight="bold">Aggregate</text>
+                <text x="360" y="62" text-anchor="middle" font-size="10" fill="#666">整合性の境界</text>
+                <line x1="360" y1="70" x2="200" y2="120" stroke="#666" />
+                <line x1="360" y1="70" x2="520" y2="120" stroke="#666" />
+                <rect x="120" y="120" width="160" height="40" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="200" y="145" text-anchor="middle" font-size="11">Entity（IDで識別）</text>
+                <rect x="440" y="120" width="160" height="40" fill="#fce4ec" stroke="#c2185b" rx="6" />
+                <text x="520" y="145" text-anchor="middle" font-size="11">Value Object（値で）</text>
+                <rect x="40" y="200" width="160" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="6" />
+                <text x="120" y="225" text-anchor="middle" font-size="11">Repository</text>
+                <rect x="220" y="200" width="160" height="40" fill="#e8f5e9" stroke="#2e7d32" rx="6" />
+                <text x="300" y="225" text-anchor="middle" font-size="11">Domain Service</text>
+                <rect x="400" y="200" width="160" height="40" fill="#fff8e1" stroke="#f9a825" rx="6" />
+                <text x="480" y="225" text-anchor="middle" font-size="11">Domain Event</text>
+                <rect x="580" y="200" width="100" height="40" fill="#ffebee" stroke="#c62828" rx="6" />
+                <text x="630" y="225" text-anchor="middle" font-size="11">Factory</text>
+              </g>
+            </svg>
+            <figcaption>図7: DDD戦術設計の構成要素</figcaption>
+          </figure>
+
+          <h4>Entity vs Value Object</h4>
+<pre><code class="language-typescript">// Entity — 同一性は「ID」で決まる
+class User {
+  constructor(
+    public readonly id: string,  // ← これが同一性の基準
+    public name: string,
+    public email: Email,         // Value Object
+  ) {}
+
+  // 名前を変えても「同じユーザー」
+  changeName(newName: string) {
+    this.name = newName;
+  }
+}
+
+// Value Object — 同一性は「値」で決まる、不変
+class Email {
+  constructor(public readonly value: string) {
+    if (!/@/.test(value)) throw new Error("Invalid email");
+  }
+
+  equals(other: Email): boolean {
+    return this.value === other.value;  // 値が同じなら同じVO
+  }
+}
+
+class Money {
+  constructor(public readonly amount: number, public readonly currency: string) {}
+
+  add(other: Money): Money {
+    if (this.currency !== other.currency) throw new Error("通貨違い");
+    return new Money(this.amount + other.amount, this.currency);  // 新しいインスタンス
+  }
+}
+</code></pre>
+
+          <h4>Aggregate（集約）</h4>
+<pre><code class="language-typescript">// Aggregate Root: Order
+// Order と OrderItem は強く結びついた整合性の単位
+class Order {
+  private items: OrderItem[] = [];
+
+  constructor(public readonly id: string, public readonly userId: string) {}
+
+  addItem(productId: string, qty: number, price: Money) {
+    if (this.items.length &gt;= 100) throw new Error("100品まで");
+    this.items.push(new OrderItem(productId, qty, price));
+  }
+
+  total(): Money {
+    return this.items.reduce(
+      (sum, i) =&gt; sum.add(i.subtotal()),
+      new Money(0, "JPY"),
+    );
+  }
+}
+
+class OrderItem {
+  constructor(
+    public readonly productId: string,
+    public readonly qty: number,
+    public readonly price: Money,
+  ) {
+    if (qty &lt;= 0) throw new Error("数量&gt;0");
+  }
+  subtotal(): Money {
+    return new Money(this.price.amount * this.qty, this.price.currency);
+  }
+}
+</code></pre>
+
+          <h4>Repository</h4>
+<pre><code class="language-typescript">// Aggregate単位で永続化する
+interface OrderRepository {
+  findById(id: string): Promise&lt;Order | null&gt;;
+  save(order: Order): Promise&lt;void&gt;;
+  findByUser(userId: string): Promise&lt;Order[]&gt;;
+}
+
+// 使う側はAggregateを丸ごと取得・保存
+const order = await orderRepo.findById("ord_123");
+order.addItem("prod_1", 2, new Money(1000, "JPY"));
+await orderRepo.save(order);
+</code></pre>
+
+          <h4>Domain Service</h4>
+          <p>Entity / Value Object に収まらないドメインロジックを置く場所。<strong>「複数のAggregateにまたがる処理」</strong>などに使う。</p>
+<pre><code class="language-typescript">// 「振込」は送信元アカウントと送信先アカウント両方に関係する
+class TransferService {
+  constructor(private accountRepo: AccountRepository) {}
+
+  async transfer(fromId: string, toId: string, amount: Money) {
+    const from = await this.accountRepo.findById(fromId);
+    const to   = await this.accountRepo.findById(toId);
+    from!.withdraw(amount);
+    to!.deposit(amount);
+    await this.accountRepo.save(from!);
+    await this.accountRepo.save(to!);
+  }
+}
+</code></pre>
+
+          <h4>Domain Event</h4>
+          <p>「業務的に意味のある出来事」を表すイベント。Aggregateが発行し、別のContext / Aggregateが反応する。</p>
+<pre><code class="language-typescript">interface DomainEvent {
+  readonly occurredAt: Date;
+  readonly type: string;
+}
+
+class OrderPlaced implements DomainEvent {
+  readonly type = "OrderPlaced";
+  readonly occurredAt = new Date();
+  constructor(public readonly orderId: string, public readonly userId: string) {}
+}
+
+class Order {
+  private events: DomainEvent[] = [];
+  place() {
+    this.events.push(new OrderPlaced(this.id, this.userId));
+  }
+  pullEvents(): DomainEvent[] {
+    const out = this.events;
+    this.events = [];
+    return out;
+  }
+}
+
+// 使う側
+const order = new Order(...);
+order.place();
+const events = order.pullEvents();
+events.forEach(e =&gt; eventBus.publish(e));
+</code></pre>
+
+          <h3>イベントストーミング — 業務フローを可視化する手法</h3>
+          <p>付箋の色を分けて業務フローを時系列に並べる手法。Bounded Context の発見にも使える。</p>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="イベントストーミング例">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="80" width="100" height="40" fill="#fff59d" stroke="#f9a825" rx="3" />
+                <text x="90" y="105" text-anchor="middle" font-size="11">Customer</text>
+                <text x="90" y="135" text-anchor="middle" font-size="9" fill="#666">Actor 黄</text>
+                <line x1="140" y1="100" x2="170" y2="100" stroke="#666" marker-end="url(#a)" />
+                <rect x="170" y="80" width="100" height="40" fill="#90caf9" stroke="#1976d2" rx="3" />
+                <text x="220" y="105" text-anchor="middle" font-size="11">Place Order</text>
+                <text x="220" y="135" text-anchor="middle" font-size="9" fill="#666">Command 青</text>
+                <line x1="270" y1="100" x2="300" y2="100" stroke="#666" marker-end="url(#a)" />
+                <rect x="300" y="80" width="100" height="40" fill="#ffcc80" stroke="#f57c00" rx="3" />
+                <text x="350" y="105" text-anchor="middle" font-size="11">Order Placed</text>
+                <text x="350" y="135" text-anchor="middle" font-size="9" fill="#666">Event 橙</text>
+                <line x1="400" y1="100" x2="430" y2="100" stroke="#666" marker-end="url(#a)" />
+                <rect x="430" y="80" width="100" height="40" fill="#a5d6a7" stroke="#2e7d32" rx="3" />
+                <text x="480" y="105" text-anchor="middle" font-size="11">Order View</text>
+                <text x="480" y="135" text-anchor="middle" font-size="9" fill="#666">Read Model 緑</text>
+                <line x1="530" y1="100" x2="560" y2="100" stroke="#666" marker-end="url(#a)" />
+                <rect x="560" y="80" width="120" height="40" fill="#90caf9" stroke="#1976d2" rx="3" />
+                <text x="620" y="105" text-anchor="middle" font-size="11">Charge Payment</text>
+                <text x="620" y="135" text-anchor="middle" font-size="9" fill="#666">次のCommand</text>
+                <defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#666" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図8: イベントストーミング — Actor → Command → Event → ReadModel の連鎖</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>実プロダクト分析: ariadne (takt-runner)</h2>
+          <p>なおちゃん自作の <code>ariadne</code> は <strong>ヘキサゴナル + Clean Architecture の教科書実装</strong>。フォルダ構造を読み解く。</p>
+<pre><code class="language-bash">src/
+├── core/                    # Domain + UseCase 層（最内）
+│   ├── tasks/
+│   │   ├── schema.ts        # Entity定義
+│   │   ├── lifecycle.ts     # Domain Service（状態遷移）
+│   │   └── store.ts         # 永続化抽象
+│   ├── workflow/
+│   │   ├── engine.ts        # Domain Service（ワークフロー実行）
+│   │   ├── runner.ts
+│   │   └── schema.ts
+│   ├── review/              # Domain
+│   ├── prompts/             # Value Object 寄り
+│   └── checks/              # Domain Service
+│
+├── infra/                   # Infrastructure 層（最外）
+│   ├── providers/           # Outbound Adapter
+│   │   ├── claude.ts        # Claude SDK 呼び出し
+│   │   ├── codex.ts         # Codex SDK 呼び出し
+│   │   ├── shell.ts         # Shell 実行
+│   │   └── provider.ts      # Port（interface）
+│   └── git/
+│       ├── worktree.ts
+│       └── diff.ts
+│
+├── cli/                     # Inbound Adapter（Interface Adapter）
+│   ├── index.ts             # エントリポイント
+│   └── commands/            # 各CLIコマンド
+│       ├── init.ts
+│       ├── run.ts
+│       └── ...
+│
+└── shared/                  # 横断的関心事
+</code></pre>
+          <aside class="callout tip">
+            <strong>注目ポイント:</strong>
+            <ul>
+              <li><code>core/</code> は <code>infra/</code> を import しない（依存方向 = 外→内）</li>
+              <li><code>infra/providers/provider.ts</code> が <strong>Port</strong>（インターフェース）</li>
+              <li><code>claude.ts</code> / <code>codex.ts</code> / <code>shell.ts</code> が <strong>Adapter</strong>（差し替え可能）</li>
+              <li><code>cli/</code> は外部入力を core に橋渡しする <strong>Inbound Adapter</strong></li>
+            </ul>
+            → 「マルチプロバイダー対応」の柔軟性は、ヘキサゴナル設計から来ている。
+          </aside>
+        </section>
+
+        <section>
+          <h2>4つのアーキの比較表</h2>
+          <table>
+            <thead>
+              <tr><th>項目</th><th>レイヤード</th><th>ヘキサゴナル</th><th>Clean Arch</th><th>DDD</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>学習コスト</td><td>低</td><td>中</td><td>中〜高</td><td>高</td></tr>
+              <tr><td>変更容易性</td><td>中</td><td>高</td><td>高</td><td>高</td></tr>
+              <tr><td>テスト容易性</td><td>中</td><td>高</td><td>高</td><td>高</td></tr>
+              <tr><td>過剰設計リスク</td><td>低</td><td>中</td><td>高</td><td>高</td></tr>
+              <tr><td>適性規模</td><td>小〜中</td><td>中</td><td>中〜大</td><td>大（業務複雑）</td></tr>
+              <tr><td>業務複雑性が高い時</td><td>×</td><td>△</td><td>○</td><td>◎</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>演習問題</h2>
+
+          <h3>Q1. 以下のクラスのどこが問題？</h3>
+<pre><code class="language-typescript">class Order {
+  id: string = "";
+  items: OrderItem[] = [];
+  total: number = 0;
+  status: string = "";
+  // getterとsetterだけ
+  getId() { return this.id; }
+  setId(id: string) { this.id = id; }
+  getItems() { return this.items; }
+  setItems(items: OrderItem[]) { this.items = items; }
+}
+</code></pre>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>貧血ドメインモデル</strong>。データを持つだけで業務ルールが不在。getter/setterだけのクラスはほぼ struct と同じ。</p>
+            <p><strong>修正:</strong> 業務ルールを Entity 内に置く。例: <code>order.canCancel()</code>、<code>order.calculateTotal()</code>、<code>order.addItem()</code>（数量・上限チェック付き）など。</p>
+          </details>
+
+          <h3>Q2. 以下の Service コードを Clean Architecture に変えて</h3>
+<pre><code class="language-typescript">class OrderService {
+  async place(input: any) {
+    const result = await mysqlClient.query("INSERT ...", input);
+    await sendgridClient.send(input.email, "Welcome");
+    return result;
+  }
+}
+</code></pre>
+          <details>
+            <summary>解答を見る</summary>
+<pre><code class="language-typescript">// usecase（最内寄り）
+interface OrderRepository { save(order: Order): Promise&lt;void&gt;; }
+interface Mailer { send(to: string, body: string): Promise&lt;void&gt;; }
+
+class PlaceOrderUseCase {
+  constructor(
+    private repo: OrderRepository,
+    private mailer: Mailer,
+  ) {}
+  async execute(input: PlaceOrderInput) {
+    const order = new Order(input);
+    await this.repo.save(order);
+    await this.mailer.send(input.email, "Welcome");
+    return order;
+  }
+}
+
+// adapters（外側）
+class MySQLOrderRepository implements OrderRepository {
+  async save(o: Order) { await mysqlClient.query("INSERT ...", o); }
+}
+class SendGridMailer implements Mailer {
+  async send(to: string, body: string) { await sendgridClient.send(to, body); }
+}
+</code></pre>
+            <p>UseCase は具体クラスを知らない（DI で受け取る）。テストでは MockRepository / MockMailer を渡せる。</p>
+          </details>
+
+          <h3>Q3. 以下は同じ Bounded Context にすべき？</h3>
+          <ul>
+            <li>EC機能（カタログ・注文・在庫）</li>
+            <li>会員機能（登録・退会・プロフィール）</li>
+            <li>分析機能（売上ダッシュボード・コホート分析）</li>
+          </ul>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>分けるべき</strong>。各々のドメイン用語が違う：</p>
+            <ul>
+              <li>EC: 「商品」「注文」「在庫」が中心</li>
+              <li>会員: 「ユーザー」「セッション」「プロファイル」が中心</li>
+              <li>分析: 「KPI」「コホート」「ファネル」が中心</li>
+            </ul>
+            <p>同じ「ユーザー」も意味が違う（EC=購入者 / 会員=登録者 / 分析=セグメント）→ 別Bounded Context。</p>
+          </details>
+        </section>
+
+        <section>
+          <h2>まとめ — Lv2の要点</h2>
+          <ol>
+            <li><strong>4つのアーキは思想の発展形</strong>: レイヤード → ヘキサゴナル → Clean → DDD</li>
+            <li><strong>共通の黄金ルール</strong>: 依存方向は <strong>外 → 内</strong>。Domain が最内</li>
+            <li><strong>レイヤード</strong>: 4層（Presentation/Application/Domain/Infrastructure）。学習コスト低、過剰設計リスクも低</li>
+            <li><strong>ヘキサゴナル</strong>: Port&amp;Adapterで外部接続を隔離。テスト容易性◎</li>
+            <li><strong>Clean Architecture</strong>: 同心円。チーム3人以上+長期保守で真価</li>
+            <li><strong>DDD戦略設計</strong>: Bounded Context, Ubiquitous Language, Subdomain</li>
+            <li><strong>DDD戦術設計</strong>: Entity / VO / Aggregate / Repository / Domain Service / Domain Event</li>
+            <li><strong>貧血ドメインモデルに注意</strong>: ロジックはEntityに置く</li>
+            <li><strong>過剰設計に注意</strong>: 規模に合わせて選ぶ</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>次のステップ</h2>
+          <ul>
+            <li>📘 <strong>Lv3 詳細記事（次回）</strong>: C4モデル / マイクロサービス / イベント駆動 / CQRS+ES を完全解説</li>
+            <li>🛠 <strong>実践</strong>: 自分のアプリのフォルダ構造を Clean Architecture 風に再編してみる</li>
+            <li>📕 <strong>推奨書籍</strong>:
+              <ul>
+                <li>Clean Architecture（Robert C. Martin）</li>
+                <li>実践ドメイン駆動設計（Vaughn Vernon）</li>
+                <li>エリック・エヴァンスのドメイン駆動設計</li>
+              </ul>
+            </li>
+          </ul>
+          <p>シリーズ前回: <a href="2026-05-11-architecture-lv1-fundamentals.html">Lv1 基礎原則完全解説</a><br />シリーズ総覧: <a href="2026-05-10-software-architecture-lv1-5.html">Lv1〜Lv5 全体マップ</a></p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html" target="_blank" rel="noopener">The Clean Architecture - Robert C. Martin</a></li>
+            <li><a href="https://alistair.cockburn.us/hexagonal-architecture/" target="_blank" rel="noopener">Hexagonal Architecture - Alistair Cockburn</a></li>
+            <li><a href="https://martinfowler.com/bliki/AnemicDomainModel.html" target="_blank" rel="noopener">AnemicDomainModel - Martin Fowler</a></li>
+            <li><a href="https://www.domainlanguage.com/ddd/" target="_blank" rel="noopener">Domain Language - Eric Evans</a></li>
+            <li><a href="https://www.eventstorming.com/" target="_blank" rel="noopener">EventStorming - Alberto Brandolini</a></li>
+            <li><a href="https://github.com/coleam00/Archon" target="_blank" rel="noopener">coleam00/Archon - 同領域の競合</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>

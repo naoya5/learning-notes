@@ -16,6 +16,22 @@
     "updated": null
   },
   {
+    "slug": "architecture-lv2-application-structure",
+    "date": "2026-05-11",
+    "title": "アーキテクチャ Lv2 — アプリ構造（レイヤード/ヘキサゴナル/Clean/DDD）",
+    "summary": "レイヤード/ヘキサゴナル/Clean/DDD を Before/After で完全解説（Lv2詳細版）",
+    "description": "アーキテクチャ学習Lv2の詳細版。レイヤード・ヘキサゴナル・Clean Architecture・DDD（戦略+戦術）を Before/After のフォルダ構成+TypeScriptコード+SVG図解で完全解説。ariadne分析付き。",
+    "tags": [
+      "architecture",
+      "clean-architecture",
+      "ddd",
+      "hexagonal",
+      "layered",
+      "typescript"
+    ],
+    "updated": null
+  },
+  {
     "slug": "kv-cache",
     "date": "2026-05-10",
     "title": "KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術",
