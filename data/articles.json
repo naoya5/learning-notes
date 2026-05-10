@@ -32,6 +32,54 @@
     "updated": null
   },
   {
+    "slug": "architecture-lv3-system-design",
+    "date": "2026-05-11",
+    "title": "アーキテクチャ Lv3 — システム全体（C4/マイクロサービス/イベント駆動/CQRS+ES）",
+    "summary": "C4/マイクロサービス/イベント駆動/CQRS+ESを完全解説（Lv3詳細版）",
+    "description": "アーキテクチャ学習Lv3の詳細版。C4モデル4階層、マイクロサービスvsモノリス、イベント駆動アーキテクチャ、CQRS/Event Sourcingを実装コード+SVG図解で完全解説。",
+    "tags": [
+      "architecture",
+      "c4-model",
+      "microservices",
+      "event-driven",
+      "cqrs",
+      "event-sourcing"
+    ],
+    "updated": null
+  },
+  {
+    "slug": "architecture-lv4-distributed-systems",
+    "date": "2026-05-11",
+    "title": "アーキテクチャ Lv4 — 分散・大規模（CAP/Saga/Outbox/DDIA/System Design）",
+    "summary": "CAP/Saga/Outbox/DDIA/System Design Interview完全解説（Lv4詳細版）",
+    "description": "アーキテクチャ学習Lv4の詳細版。CAP定理/PACELC、一貫性モデル、Saga/Outbox/Idempotency/Circuit Breakerの実装、DDIA要点、System Design Interview対策を完全解説。",
+    "tags": [
+      "architecture",
+      "distributed-systems",
+      "cap",
+      "saga",
+      "system-design",
+      "ddia"
+    ],
+    "updated": null
+  },
+  {
+    "slug": "architecture-lv5-ai-agent-harness",
+    "date": "2026-05-11",
+    "title": "アーキテクチャ Lv5 — AI時代（Agent / Harness / RAG / マルチエージェント）",
+    "summary": "AI Agent / Harness Engineering / RAG / マルチエージェント完全解説（Lv5最終回）",
+    "description": "アーキテクチャ学習Lv5の詳細版（最終回）。AI Agent設計、Harness Engineering 7軸、RAGアーキテクチャ、マルチエージェント設計を実装コード+SVG図解で完全解説。ariadne / SkillHub の実プロダクト分析付き。",
+    "tags": [
+      "architecture",
+      "ai-agent",
+      "harness-engineering",
+      "rag",
+      "multi-agent",
+      "llm"
+    ],
+    "updated": null
+  },
+  {
     "slug": "kv-cache",
     "date": "2026-05-10",
     "title": "KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術",

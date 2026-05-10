@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>アーキテクチャ Lv4 — 分散・大規模（CAP/Saga/Outbox/DDIA/System Design） — learning-notes</title>
+    <meta name="description" content="アーキテクチャ学習Lv4の詳細版。CAP定理/PACELC、一貫性モデル、Saga/Outbox/Idempotency/Circuit Breakerの実装、DDIA要点、System Design Interview対策を完全解説。" />
+
+    <meta name="article:slug" content="architecture-lv4-distributed-systems" />
+    <meta name="article:date" content="2026-05-11" />
+    <meta name="article:tags" content="architecture,distributed-systems,cap,saga,system-design,ddia" />
+    <meta name="article:summary" content="CAP/Saga/Outbox/DDIA/System Design Interview完全解説（Lv4詳細版）" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="アーキテクチャ Lv4 — 分散・大規模完全解説" />
+    <meta property="og:description" content="分散システムの主要パターンを実装コード+図解で1から学べる詳細解説。" />
+    <meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-05-11-architecture-lv4-distributed-systems.html" />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css" media="(prefers-color-scheme: light)" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-11">2026-05-11</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=architecture" class="tag">architecture</a>
+            <a href="../index.html?tag=distributed-systems" class="tag">distributed-systems</a>
+            <a href="../index.html?tag=cap" class="tag">cap</a>
+            <a href="../index.html?tag=saga" class="tag">saga</a>
+            <a href="../index.html?tag=system-design" class="tag">system-design</a>
+            <a href="../index.html?tag=ddia" class="tag">ddia</a>
+          </span>
+        </p>
+        <h1>アーキテクチャ Lv4 — 分散・大規模完全解説</h1>
+        <p class="lead">CAP定理 / 一貫性モデル / Saga / Outbox / Idempotency / Circuit Breaker / DDIA要点 / System Design Interview対策を実装コード+SVG図解で1から学べる詳細解説。シリーズ全5回の第4回。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次"><p id="toc-title">目次</p><ul></ul></nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>Lv4の到達点</strong>: 分散システム特有の問題を理解し、適切なパターンを選択できる</li>
+            <li><strong>CAP定理</strong>: C/A/Pの3つから2つしか選べない。実用的にはPACELCで考える</li>
+            <li><strong>主要パターン</strong>: Saga / Outbox / Idempotency / Circuit Breaker / Bulkhead</li>
+            <li><strong>DDIA</strong>（Designing Data-Intensive Applications）はこのレベルの必読書</li>
+            <li><strong>System Design Interview</strong>: GAFA面接の頻出パターン7つを押さえる</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>このシリーズの位置づけ</h2>
+          <p>シリーズ第4回。<a href="2026-05-11-architecture-lv3-system-design.html">Lv3（システム全体）</a>で学んだ複数サービス連携の知識を、<strong>分散システムのハマりどころ</strong>に深掘りする回。</p>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="シリーズ全体マップ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="20" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="80" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv1 ✓</text>
+                <rect x="160" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="220" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv2 ✓</text>
+                <rect x="300" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="360" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv3 ✓</text>
+                <rect x="440" y="60" width="120" height="80" fill="#ffab91" stroke="#bf360c" stroke-width="3" rx="8" />
+                <text x="500" y="90" text-anchor="middle" font-size="13" font-weight="bold">Lv4</text>
+                <text x="500" y="108" text-anchor="middle" font-size="10">分散・大規模</text>
+                <text x="500" y="124" text-anchor="middle" font-size="9" fill="#bf360c">▶ 今ここ</text>
+                <rect x="580" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="640" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv5</text>
+              </g>
+            </svg>
+            <figcaption>図1: シリーズ進捗（4/5）</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>1. CAP定理</h2>
+          <p>2000年に Eric Brewer が提唱。分散システムでは <strong>Consistency / Availability / Partition Tolerance</strong> の3つから <strong>2つしか同時に満たせない</strong>。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 360" role="img" aria-label="CAP定理">
+              <g font-family="ui-sans-serif,sans-serif">
+                <polygon points="360,40 600,300 120,300" fill="none" stroke="#444" stroke-width="3" />
+                <circle cx="360" cy="40" r="50" fill="#ef5350" />
+                <text x="360" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="white">C</text>
+                <text x="360" y="55" text-anchor="middle" font-size="11" fill="white">Consistency</text>
+                <text x="360" y="68" text-anchor="middle" font-size="9" fill="white">一貫性</text>
+                <circle cx="120" cy="300" r="50" fill="#42a5f5" />
+                <text x="120" y="295" text-anchor="middle" font-size="18" font-weight="bold" fill="white">A</text>
+                <text x="120" y="315" text-anchor="middle" font-size="11" fill="white">Availability</text>
+                <text x="120" y="328" text-anchor="middle" font-size="9" fill="white">可用性</text>
+                <circle cx="600" cy="300" r="50" fill="#66bb6a" />
+                <text x="600" y="295" text-anchor="middle" font-size="18" font-weight="bold" fill="white">P</text>
+                <text x="600" y="315" text-anchor="middle" font-size="11" fill="white">Partition</text>
+                <text x="600" y="328" text-anchor="middle" font-size="9" fill="white">分断耐性</text>
+                <text x="240" y="200" text-anchor="middle" font-size="13" fill="#444" font-weight="bold">CP系</text>
+                <text x="240" y="218" text-anchor="middle" font-size="11" fill="#666">MongoDB</text>
+                <text x="240" y="232" text-anchor="middle" font-size="11" fill="#666">HBase / etcd</text>
+                <text x="480" y="200" text-anchor="middle" font-size="13" fill="#444" font-weight="bold">AP系</text>
+                <text x="480" y="218" text-anchor="middle" font-size="11" fill="#666">Cassandra</text>
+                <text x="480" y="232" text-anchor="middle" font-size="11" fill="#666">DynamoDB</text>
+                <text x="360" y="160" text-anchor="middle" font-size="13" fill="#444" font-weight="bold">CA系</text>
+                <text x="360" y="178" text-anchor="middle" font-size="10" fill="#666">単一DB（分散ではない）</text>
+              </g>
+            </svg>
+            <figcaption>図2: CAP定理の3要素</figcaption>
+          </figure>
+
+          <h3>CAPの解釈</h3>
+          <table>
+            <thead>
+              <tr><th>要素</th><th>意味</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>C: Consistency</strong></td><td>全ノードで読み取った値が同じ（最新が見える）</td></tr>
+              <tr><td><strong>A: Availability</strong></td><td>一部ノードが落ちても応答が返る</td></tr>
+              <tr><td><strong>P: Partition Tolerance</strong></td><td>ネットワーク分断（一部ノードが通信不可）でもシステム継続</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout warn">
+            <strong>誤解されがち:</strong> 「3つから2つ選ぶ」と言われるが、現実の分散システムでは <strong>P（分断耐性）は必須</strong>。ネットワーク障害は不可避なので。実質「<strong>分断時にC を取るか A を取るか</strong>」の選択。
+          </aside>
+
+          <h3>PACELC — より実用的な拡張</h3>
+          <p>CAPは不完全。「<strong>正常時</strong>もLatency vs Consistencyのトレードオフがある」を加えたのが PACELC。</p>
+          <ul>
+            <li><strong>P</strong>artition時 → A or C</li>
+            <li><strong>E</strong>lse（正常時）→ <strong>L</strong>atency or <strong>C</strong>onsistency</li>
+          </ul>
+          <table>
+            <thead>
+              <tr><th>分類</th><th>例</th><th>戦略</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PA/EL</td><td>Cassandra / DynamoDB</td><td>常に低遅延・高可用性優先</td></tr>
+              <tr><td>PA/EC</td><td>MongoDB（デフォルト）</td><td>分断時はA、正常時はC</td></tr>
+              <tr><td>PC/EL</td><td>—</td><td>稀</td></tr>
+              <tr><td>PC/EC</td><td>HBase / Spanner</td><td>常に強一貫性</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>2. 一貫性モデル — 強→弱のスペクトル</h2>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="一貫性モデルのスペクトル">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="60" width="640" height="40" fill="url(#consGrad)" stroke="#444" rx="4" />
+                <defs>
+                  <linearGradient id="consGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#c62828" />
+                    <stop offset="100%" stop-color="#2e7d32" />
+                  </linearGradient>
+                </defs>
+                <text x="40" y="50" font-size="11" font-weight="bold" fill="#c62828">強い ←</text>
+                <text x="680" y="50" text-anchor="end" font-size="11" font-weight="bold" fill="#2e7d32">→ 弱い</text>
+                <text x="100" y="85" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Strict</text>
+                <text x="220" y="85" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Linearizable</text>
+                <text x="340" y="85" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Sequential</text>
+                <text x="460" y="85" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Causal</text>
+                <text x="580" y="85" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Eventual</text>
+                <text x="100" y="125" text-anchor="middle" font-size="9" fill="#444">単一DB</text>
+                <text x="220" y="125" text-anchor="middle" font-size="9" fill="#444">etcd / ZooKeeper</text>
+                <text x="340" y="125" text-anchor="middle" font-size="9" fill="#444">RDB Replica</text>
+                <text x="460" y="125" text-anchor="middle" font-size="9" fill="#444">分散DB</text>
+                <text x="580" y="125" text-anchor="middle" font-size="9" fill="#444">DNS / S3</text>
+                <text x="360" y="170" text-anchor="middle" font-size="11" fill="#444">強い ⇄ 性能・可用性 のトレードオフ</text>
+              </g>
+            </svg>
+            <figcaption>図3: 一貫性モデルのスペクトル</figcaption>
+          </figure>
+
+          <h3>各モデルの特徴</h3>
+          <table>
+            <thead>
+              <tr><th>モデル</th><th>説明</th><th>例</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Strict</strong></td><td>全ノード即時一致（理論上のみ）</td><td>単一DB</td></tr>
+              <tr><td><strong>Linearizable</strong></td><td>単一マシンに見える、強整合</td><td>etcd, ZooKeeper, Spanner</td></tr>
+              <tr><td><strong>Sequential</strong></td><td>順序保証だが多少の遅延あり</td><td>一部のRDB Replica</td></tr>
+              <tr><td><strong>Causal</strong></td><td>因果関係のみ保証</td><td>多くの分散DB</td></tr>
+              <tr><td><strong>Eventual</strong></td><td>最終的に一致（中間で不一致あり）</td><td>DNS, S3</td></tr>
+            </tbody>
+          </table>
+
+          <h3>アプリ設計で覚える3つ</h3>
+          <ul>
+            <li><strong>Strong consistency</strong>: 銀行残高、認証、決済</li>
+            <li><strong>Read-your-writes</strong>: SNSの自分の投稿（自分には即見える）</li>
+            <li><strong>Eventual consistency</strong>: いいね数、PV数、検索インデックス</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>3. 主要分散パターン</h2>
+
+          <h3>Saga — 分散トランザクション</h3>
+          <p>複数サービスにまたがる処理を <strong>補償トランザクション</strong> で実現する。</p>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="Saga 補償トランザクション">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="20" width="80" height="40" fill="#e3f2fd" stroke="#1976d2" rx="4" />
+                <text x="80" y="44" text-anchor="middle" font-size="11">Order</text>
+                <line x1="80" y1="60" x2="80" y2="260" stroke="#1976d2" stroke-dasharray="3,3" />
+                <rect x="200" y="20" width="80" height="40" fill="#fff3e0" stroke="#f57c00" rx="4" />
+                <text x="240" y="44" text-anchor="middle" font-size="11">Payment</text>
+                <line x1="240" y1="60" x2="240" y2="260" stroke="#f57c00" stroke-dasharray="3,3" />
+                <rect x="360" y="20" width="80" height="40" fill="#fce4ec" stroke="#c2185b" rx="4" />
+                <text x="400" y="44" text-anchor="middle" font-size="11">Shipping</text>
+                <line x1="400" y1="60" x2="400" y2="260" stroke="#c2185b" stroke-dasharray="3,3" />
+                <rect x="520" y="20" width="80" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="4" />
+                <text x="560" y="44" text-anchor="middle" font-size="11">Inventory</text>
+                <line x1="560" y1="60" x2="560" y2="260" stroke="#7b1fa2" stroke-dasharray="3,3" />
+
+                <line x1="80" y1="90" x2="240" y2="90" stroke="#2e7d32" stroke-width="2" marker-end="url(#a5)" />
+                <text x="160" y="83" text-anchor="middle" font-size="10" fill="#2e7d32">課金</text>
+                <line x1="240" y1="120" x2="80" y2="120" stroke="#2e7d32" stroke-width="2" marker-end="url(#a5)" />
+                <text x="160" y="113" text-anchor="middle" font-size="10" fill="#2e7d32">OK</text>
+                <line x1="80" y1="150" x2="400" y2="150" stroke="#2e7d32" stroke-width="2" marker-end="url(#a5)" />
+                <text x="240" y="143" text-anchor="middle" font-size="10" fill="#2e7d32">配送依頼</text>
+                <line x1="400" y1="180" x2="80" y2="180" stroke="#c62828" stroke-width="2" marker-end="url(#a5)" />
+                <text x="240" y="173" text-anchor="middle" font-size="10" fill="#c62828">NG（在庫切れ）</text>
+                <line x1="80" y1="210" x2="240" y2="210" stroke="#f57c00" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#a5)" />
+                <text x="160" y="203" text-anchor="middle" font-size="10" fill="#f57c00">返金（補償）</text>
+
+                <text x="360" y="265" text-anchor="middle" font-size="10" fill="#666">失敗時は逆順で補償処理を実行</text>
+                <defs><marker id="a5" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図4: Saga — 補償でロールバック</figcaption>
+          </figure>
+
+          <h4>2種類のSaga</h4>
+          <table>
+            <thead>
+              <tr><th>方式</th><th>特徴</th><th>適用</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Choreography</strong></td><td>各サービスがイベントで連携、中央集権なし</td><td>シンプルなフロー</td></tr>
+              <tr><td><strong>Orchestration</strong></td><td>中央の指揮者（Saga Manager）が制御</td><td>複雑なフロー</td></tr>
+            </tbody>
+          </table>
+
+<pre><code class="language-typescript">// Orchestration版 Saga（中央指揮）
+class PlaceOrderSaga {
+  constructor(
+    private payment: PaymentService,
+    private shipping: ShippingService,
+    private inventory: InventoryService,
+  ) {}
+
+  async execute(order: Order) {
+    const paymentId = await this.payment.charge(order);  // Step 1
+    try {
+      await this.inventory.reserve(order);                // Step 2
+      try {
+        await this.shipping.schedule(order);              // Step 3
+      } catch (e) {
+        await this.inventory.release(order);              // 補償2
+        await this.payment.refund(paymentId);             // 補償1
+        throw e;
+      }
+    } catch (e) {
+      await this.payment.refund(paymentId);               // 補償1
+      throw e;
+    }
+  }
+}
+</code></pre>
+
+          <h3>Outbox パターン</h3>
+          <p>「DB更新」と「イベント発行」を <strong>アトミック</strong> にする方法。</p>
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="Outboxパターン">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="40" width="200" height="160" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="8" />
+                <text x="140" y="65" text-anchor="middle" font-size="12" font-weight="bold">DB Transaction</text>
+                <rect x="60" y="80" width="160" height="40" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="140" y="105" text-anchor="middle" font-size="10">UPDATE orders</text>
+                <rect x="60" y="130" width="160" height="40" fill="#fff3e0" stroke="#f57c00" rx="4" />
+                <text x="140" y="155" text-anchor="middle" font-size="10">INSERT outbox</text>
+                <text x="140" y="190" text-anchor="middle" font-size="9" fill="#1976d2">同一TXでアトミック</text>
+
+                <line x1="240" y1="120" x2="320" y2="120" stroke="#666" stroke-width="2" marker-end="url(#a6)" />
+                <text x="280" y="113" text-anchor="middle" font-size="10" fill="#666">poll</text>
+
+                <rect x="320" y="80" width="180" height="80" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="410" y="105" text-anchor="middle" font-size="11" font-weight="bold">Outbox Poller</text>
+                <text x="410" y="125" text-anchor="middle" font-size="9" fill="#666">未送信イベントを取得</text>
+                <text x="410" y="142" text-anchor="middle" font-size="9" fill="#666">Kafkaへpublish</text>
+
+                <line x1="500" y1="120" x2="580" y2="120" stroke="#666" stroke-width="2" marker-end="url(#a6)" />
+                <text x="540" y="113" text-anchor="middle" font-size="10" fill="#666">publish</text>
+
+                <rect x="580" y="80" width="100" height="80" fill="#fce4ec" stroke="#c2185b" rx="6" />
+                <text x="630" y="115" text-anchor="middle" font-size="11" font-weight="bold">Kafka</text>
+                <text x="630" y="135" text-anchor="middle" font-size="9" fill="#666">Subscribers</text>
+
+                <defs><marker id="a6" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図5: Outboxパターン — DB更新 + イベント発行のアトミック化</figcaption>
+          </figure>
+
+<pre><code class="language-sql">-- DB更新とイベント記録を1トランザクションで
+BEGIN;
+UPDATE orders SET status='paid' WHERE id=1;
+INSERT INTO outbox (event_type, payload, created_at)
+  VALUES ('OrderPaid', '{"orderId":1}', NOW());
+COMMIT;
+
+-- 別プロセスが outbox をポーリングして Kafka へ
+SELECT * FROM outbox WHERE published = false ORDER BY created_at LIMIT 100;
+-- → 各レコードを Kafka に publish → published = true 更新
+</code></pre>
+
+          <h3>Idempotency Key — 冪等性</h3>
+          <p>「同じリクエストを何回送っても結果が同じ」を保証する。</p>
+<pre><code class="language-typescript">// Express ミドルウェア
+async function idempotencyMiddleware(req, res, next) {
+  const key = req.headers["idempotency-key"];
+  if (!key) return next();
+
+  const cached = await cache.get(`idempotency:${key}`);
+  if (cached) {
+    return res.status(cached.status).json(cached.body);
+  }
+
+  const originalJson = res.json.bind(res);
+  res.json = (body) =&gt; {
+    cache.set(`idempotency:${key}`, { status: res.statusCode, body }, 24 * 3600);
+    return originalJson(body);
+  };
+  next();
+}
+
+// クライアント側
+fetch("/orders", {
+  method: "POST",
+  headers: { "Idempotency-Key": uuidv4() },
+  body: JSON.stringify({ amount: 1000 }),
+});
+</code></pre>
+
+          <h3>Circuit Breaker — 障害遮断</h3>
+          <p>障害サービスへの呼び出しを <strong>遮断</strong> して連鎖障害を防ぐ。</p>
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="Circuit Breaker状態遷移">
+              <g font-family="ui-sans-serif,sans-serif">
+                <circle cx="120" cy="120" r="50" fill="#c8e6c9" stroke="#2e7d32" stroke-width="2" />
+                <text x="120" y="125" text-anchor="middle" font-size="13" font-weight="bold">Closed</text>
+                <text x="120" y="195" text-anchor="middle" font-size="10" fill="#666">通常通過</text>
+
+                <line x1="170" y1="120" x2="320" y2="120" stroke="#666" stroke-width="2" marker-end="url(#a7)" />
+                <text x="245" y="105" text-anchor="middle" font-size="10" fill="#666">失敗閾値超過</text>
+
+                <circle cx="370" cy="120" r="50" fill="#ffcdd2" stroke="#c62828" stroke-width="2" />
+                <text x="370" y="125" text-anchor="middle" font-size="13" font-weight="bold">Open</text>
+                <text x="370" y="195" text-anchor="middle" font-size="10" fill="#666">即座に拒否</text>
+
+                <path d="M 420 120 Q 545 70 600 120" fill="none" stroke="#666" stroke-width="2" marker-end="url(#a7)" />
+                <text x="510" y="80" text-anchor="middle" font-size="10" fill="#666">timeout経過</text>
+
+                <circle cx="600" cy="120" r="50" fill="#fff3e0" stroke="#f57c00" stroke-width="2" />
+                <text x="600" y="125" text-anchor="middle" font-size="13" font-weight="bold">Half-Open</text>
+                <text x="600" y="195" text-anchor="middle" font-size="10" fill="#666">少数試行</text>
+
+                <path d="M 580 170 Q 350 220 145 170" fill="none" stroke="#2e7d32" stroke-width="2" marker-end="url(#a7)" />
+                <text x="365" y="225" text-anchor="middle" font-size="10" fill="#2e7d32">成功 → 復帰</text>
+
+                <defs><marker id="a7" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図6: Circuit Breaker 状態遷移</figcaption>
+          </figure>
+
+<pre><code class="language-typescript">class CircuitBreaker {
+  private state: "closed" | "open" | "half-open" = "closed";
+  private failures = 0;
+  private lastFailedAt: number = 0;
+
+  constructor(
+    private threshold = 5,
+    private timeoutMs = 30000,
+  ) {}
+
+  async call&lt;T&gt;(fn: () =&gt; Promise&lt;T&gt;): Promise&lt;T&gt; {
+    if (this.state === "open") {
+      if (Date.now() - this.lastFailedAt &gt; this.timeoutMs) {
+        this.state = "half-open";
+      } else {
+        throw new Error("Circuit Breaker OPEN");
+      }
+    }
+
+    try {
+      const result = await fn();
+      if (this.state === "half-open") {
+        this.state = "closed";
+        this.failures = 0;
+      }
+      return result;
+    } catch (e) {
+      this.failures++;
+      this.lastFailedAt = Date.now();
+      if (this.failures &gt;= this.threshold) {
+        this.state = "open";
+      }
+      throw e;
+    }
+  }
+}
+
+// 使う側
+const breaker = new CircuitBreaker(5, 30000);
+const data = await breaker.call(() =&gt; fetch("https://flaky-api.example.com"));
+</code></pre>
+
+          <h3>Bulkhead — 区画化</h3>
+          <p>船の隔壁にちなむ命名。リソースを区画化して、1つの障害が全体に波及しないようにする。</p>
+<pre><code class="language-typescript">// 重要API用と一般API用でHTTP接続プールを分ける
+const importantApiPool = new HttpAgent({ maxSockets: 50 });
+const otherApiPool = new HttpAgent({ maxSockets: 20 });
+
+// 一般APIが詰まっても、重要APIは無傷
+fetch("/critical", { agent: importantApiPool });
+fetch("/analytics", { agent: otherApiPool });
+</code></pre>
+
+          <h3>Rate Limit / Throttling</h3>
+<pre><code class="language-typescript">// Token Bucketアルゴリズム
+class TokenBucket {
+  private tokens: number;
+  private lastRefill: number = Date.now();
+
+  constructor(
+    private capacity: number,
+    private refillPerSec: number,
+  ) {
+    this.tokens = capacity;
+  }
+
+  tryAcquire(): boolean {
+    this.refill();
+    if (this.tokens &gt;= 1) {
+      this.tokens--;
+      return true;
+    }
+    return false;
+  }
+
+  private refill() {
+    const now = Date.now();
+    const elapsed = (now - this.lastRefill) / 1000;
+    this.tokens = Math.min(this.capacity, this.tokens + elapsed * this.refillPerSec);
+    this.lastRefill = now;
+  }
+}
+</code></pre>
+        </section>
+
+        <section>
+          <h2>4. Designing Data-Intensive Applications（DDIA）— 神本</h2>
+          <p>Martin Kleppmann の名著（2017）。「分散システムを学ぶ最良の本」と言われる。読破には30〜50時間。</p>
+
+          <h3>Part 1: 単一マシンのデータシステム</h3>
+          <ul>
+            <li><strong>データモデル</strong>: リレーショナル / ドキュメント / グラフ</li>
+            <li><strong>ストレージエンジン</strong>: B-tree（読み最適） vs LSM-tree（書き最適）</li>
+            <li><strong>エンコーディング</strong>: JSON / XML / Protobuf / Avro / Thrift</li>
+          </ul>
+
+          <h3>Part 2: 分散データ</h3>
+          <ul>
+            <li><strong>Replication</strong>: Single-leader / Multi-leader / Leaderless</li>
+            <li><strong>Partitioning</strong>: ハッシュ / レンジ / 動的リバランス</li>
+            <li><strong>Transactions</strong>: ACID / 分離レベル</li>
+            <li><strong>Distributed Consensus</strong>: Paxos / Raft</li>
+          </ul>
+
+          <h3>Part 3: 派生データ</h3>
+          <ul>
+            <li><strong>Batch処理</strong>: Hadoop / MapReduce</li>
+            <li><strong>Stream処理</strong>: Kafka / Flink</li>
+            <li><strong>Lambda Architecture</strong>: Batch + Stream の併用</li>
+          </ul>
+
+          <aside class="callout tip">
+            <strong>DDIAの読み方:</strong>
+            <ul>
+              <li>一気に読まない（30〜50時間かかる）</li>
+              <li>章単位で実装と紐づける</li>
+              <li>「自分のシステムに当てはめると？」を毎章考える</li>
+              <li>難解な章（Consensusなど）は2〜3周読み返す</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <h2>5. System Design Interview — GAFA面接対策</h2>
+          <p>GAFA / 大手テック企業の面接で頻出のパターン。</p>
+
+          <h3>典型問題集</h3>
+          <table>
+            <thead>
+              <tr><th>問題</th><th>キーポイント</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>URL短縮（bit.ly）</strong></td><td>ハッシュ生成、衝突対策、キャッシュ</td></tr>
+              <tr><td><strong>Twitter</strong></td><td>Fanout-on-Write vs on-Read、タイムライン生成</td></tr>
+              <tr><td><strong>Netflix</strong></td><td>CDN、ビデオエンコード、レコメンド</td></tr>
+              <tr><td><strong>WhatsApp</strong></td><td>WebSocket、E2E暗号化、メッセージキュー</td></tr>
+              <tr><td><strong>Uber</strong></td><td>地理空間Index（QuadTree/H3）、マッチング</td></tr>
+              <tr><td><strong>Dropbox</strong></td><td>Chunking、デデュプリケーション</td></tr>
+              <tr><td><strong>Yelp / Google Maps</strong></td><td>Geohash、近傍検索</td></tr>
+            </tbody>
+          </table>
+
+          <h3>回答フレームワーク（7ステップ）</h3>
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="System Design 回答フレーム">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="20" width="120" height="40" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="100" y="45" text-anchor="middle" font-size="11">1. 要件確認</text>
+                <line x1="160" y1="40" x2="200" y2="40" stroke="#444" marker-end="url(#a8)" />
+                <rect x="200" y="20" width="120" height="40" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="260" y="45" text-anchor="middle" font-size="11">2. 規模見積</text>
+                <line x1="320" y1="40" x2="360" y2="40" stroke="#444" marker-end="url(#a8)" />
+                <rect x="360" y="20" width="120" height="40" fill="#fce4ec" stroke="#c2185b" rx="6" />
+                <text x="420" y="45" text-anchor="middle" font-size="11">3. APIデザイン</text>
+                <line x1="480" y1="40" x2="520" y2="40" stroke="#444" marker-end="url(#a8)" />
+                <rect x="520" y="20" width="120" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="6" />
+                <text x="580" y="45" text-anchor="middle" font-size="11">4. データモデル</text>
+
+                <line x1="580" y1="60" x2="580" y2="100" stroke="#444" marker-end="url(#a8)" />
+                <rect x="520" y="100" width="120" height="40" fill="#e8f5e9" stroke="#2e7d32" rx="6" />
+                <text x="580" y="125" text-anchor="middle" font-size="11">5. アーキ図</text>
+                <line x1="520" y1="120" x2="480" y2="120" stroke="#444" marker-end="url(#a8)" />
+                <rect x="360" y="100" width="120" height="40" fill="#fff8e1" stroke="#f9a825" rx="6" />
+                <text x="420" y="125" text-anchor="middle" font-size="11">6. ボトルネック議論</text>
+                <line x1="360" y1="120" x2="320" y2="120" stroke="#444" marker-end="url(#a8)" />
+                <rect x="200" y="100" width="120" height="40" fill="#ffebee" stroke="#c62828" rx="6" />
+                <text x="260" y="125" text-anchor="middle" font-size="11">7. スケール戦略</text>
+
+                <text x="360" y="200" text-anchor="middle" font-size="11" fill="#444" font-weight="bold">45-60分の面接でこの順に進める</text>
+                <defs><marker id="a8" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図7: System Design Interview の7ステップ</figcaption>
+          </figure>
+
+          <h3>各ステップで聞くべきこと</h3>
+          <table>
+            <thead>
+              <tr><th>Step</th><th>確認事項</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1. 要件確認</td><td>機能要件、非機能要件（QPS / レイテンシ / 可用性）</td></tr>
+              <tr><td>2. 規模見積</td><td>ユーザー数 × 1日のリクエスト数 × ピーク係数</td></tr>
+              <tr><td>3. APIデザイン</td><td>主要エンドポイントとパラメータ</td></tr>
+              <tr><td>4. データモデル</td><td>テーブル/ドキュメントスキーマ、関係</td></tr>
+              <tr><td>5. アーキ図</td><td>Web/API/DB/Cache/Worker/Queue の構成</td></tr>
+              <tr><td>6. ボトルネック</td><td>どこがネック？なぜ？</td></tr>
+              <tr><td>7. スケール戦略</td><td>水平分割、キャッシュ、CDN、レプリカ</td></tr>
+            </tbody>
+          </table>
+
+          <h3>頻出の規模見積（数字暗記）</h3>
+          <ul>
+            <li>1日 = 86,400秒 ≈ 10万秒</li>
+            <li>1MB = 10^6 byte / 1GB = 10^9 / 1TB = 10^12</li>
+            <li>SSD読み 0.15ms / メモリ読み 0.1μs / ネットワークラウンドトリップ 0.5ms（同AZ）</li>
+            <li>1QPS で1日 ≈ 10万リクエスト</li>
+            <li>HDD seek 10ms、SSD seek 0.1ms</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>演習問題</h2>
+
+          <h3>Q1. CAP の選択</h3>
+          <p>以下のシステム、CP系とAP系どちらを選ぶ？</p>
+          <ol>
+            <li>銀行の口座残高DB</li>
+            <li>SNSのいいね数カウンター</li>
+            <li>ECサイトの商品在庫数</li>
+            <li>Webサイトのアクセスログ</li>
+          </ol>
+          <details>
+            <summary>解答を見る</summary>
+            <ol>
+              <li><strong>CP</strong> — 一貫性最重要、不一致でダブル引き出しは絶対NG</li>
+              <li><strong>AP</strong> — 多少カウントずれてもOK、表示できることが重要</li>
+              <li><strong>CP</strong> — 在庫切れ商品を「在庫あり」と見せたら大問題</li>
+              <li><strong>AP</strong> — ログは多少欠けても可、収集できることが重要</li>
+            </ol>
+          </details>
+
+          <h3>Q2. Saga の補償順</h3>
+          <p>「課金 → 在庫引当 → 配送依頼」の順で実行し、配送依頼で失敗した場合の補償順は？</p>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>逆順</strong>で補償:</p>
+            <ol>
+              <li>在庫引当を解除（reverse step 2）</li>
+              <li>課金を返金（reverse step 1）</li>
+            </ol>
+            <p>各ステップに対応する補償処理を必ず用意する（forward + compensate のペア）。</p>
+          </details>
+
+          <h3>Q3. 規模見積</h3>
+          <p>DAU 1000万、各ユーザーが1日10件の投稿を平均的に行うSNS。1秒あたりの書き込みQPSは？</p>
+          <details>
+            <summary>解答を見る</summary>
+            <p>1日の書き込み数 = 1000万 × 10 = 1億件<br />1日 ≈ 10万秒<br />平均QPS = 1億 / 10万 = <strong>1000 QPS</strong><br />ピーク時はその3〜5倍 = <strong>3000〜5000 QPS</strong> を想定</p>
+          </details>
+        </section>
+
+        <section>
+          <h2>まとめ — Lv4の要点</h2>
+          <ol>
+            <li><strong>CAP定理</strong> — 分散ではP必須、CとAのトレードオフ</li>
+            <li><strong>PACELC</strong> — 正常時のLatency vs Consistencyも考慮</li>
+            <li><strong>一貫性モデル</strong> — Strict ⇄ Eventual のスペクトル、用途で選ぶ</li>
+            <li><strong>Saga</strong> — 分散トランザクションを補償で実現</li>
+            <li><strong>Outbox</strong> — DB更新とイベント発行のアトミック化</li>
+            <li><strong>Idempotency Key</strong> — 同じリクエストの重複実行防止</li>
+            <li><strong>Circuit Breaker</strong> — 障害遮断で連鎖障害防止</li>
+            <li><strong>Bulkhead</strong> — リソース区画化</li>
+            <li><strong>DDIA</strong> — このレベルの必読書</li>
+            <li><strong>System Design Interview</strong> — 7ステップ + 規模見積</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>次のステップ</h2>
+          <ul>
+            <li>📘 <strong>Lv5 詳細記事（最終回）</strong>: AI Agent / Harness Engineering / RAG / マルチエージェント</li>
+            <li>🛠 <strong>実践</strong>: 自分のシステムでCircuit BreakerかIdempotency Keyを1つ実装</li>
+            <li>📕 <strong>推奨書籍</strong>:
+              <ul>
+                <li><strong>Designing Data-Intensive Applications（神本）</strong></li>
+                <li>System Design Interview Vol.1 &amp; 2（Alex Xu）</li>
+                <li>Site Reliability Engineering（Google）</li>
+              </ul>
+            </li>
+          </ul>
+          <p>シリーズ前回: <a href="2026-05-11-architecture-lv3-system-design.html">Lv3 システム全体完全解説</a></p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://en.wikipedia.org/wiki/CAP_theorem" target="_blank" rel="noopener">CAP theorem - Wikipedia</a></li>
+            <li><a href="https://dataintensive.net/" target="_blank" rel="noopener">Designing Data-Intensive Applications - Martin Kleppmann</a></li>
+            <li><a href="https://microservices.io/patterns/data/saga.html" target="_blank" rel="noopener">Saga Pattern - microservices.io</a></li>
+            <li><a href="https://microservices.io/patterns/data/transactional-outbox.html" target="_blank" rel="noopener">Outbox Pattern</a></li>
+            <li><a href="https://martinfowler.com/bliki/CircuitBreaker.html" target="_blank" rel="noopener">Circuit Breaker - Martin Fowler</a></li>
+            <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">system-design-primer (GitHub)</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>

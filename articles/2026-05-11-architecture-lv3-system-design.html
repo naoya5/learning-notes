@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>アーキテクチャ Lv3 — システム全体（C4/マイクロサービス/イベント駆動/CQRS+ES） — learning-notes</title>
+    <meta name="description" content="アーキテクチャ学習Lv3の詳細版。C4モデル4階層、マイクロサービスvsモノリス、イベント駆動アーキテクチャ、CQRS/Event Sourcingを実装コード+SVG図解で完全解説。" />
+
+    <meta name="article:slug" content="architecture-lv3-system-design" />
+    <meta name="article:date" content="2026-05-11" />
+    <meta name="article:tags" content="architecture,c4-model,microservices,event-driven,cqrs,event-sourcing" />
+    <meta name="article:summary" content="C4/マイクロサービス/イベント駆動/CQRS+ESを完全解説（Lv3詳細版）" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="アーキテクチャ Lv3 — システム全体完全解説" />
+    <meta property="og:description" content="C4モデル/マイクロサービス/イベント駆動/CQRS+ESを1から学べる詳細解説。" />
+    <meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-05-11-architecture-lv3-system-design.html" />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css" media="(prefers-color-scheme: light)" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-11">2026-05-11</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=architecture" class="tag">architecture</a>
+            <a href="../index.html?tag=c4-model" class="tag">c4-model</a>
+            <a href="../index.html?tag=microservices" class="tag">microservices</a>
+            <a href="../index.html?tag=event-driven" class="tag">event-driven</a>
+            <a href="../index.html?tag=cqrs" class="tag">cqrs</a>
+            <a href="../index.html?tag=event-sourcing" class="tag">event-sourcing</a>
+          </span>
+        </p>
+        <h1>アーキテクチャ Lv3 — システム全体完全解説</h1>
+        <p class="lead">C4モデル / マイクロサービス vs モノリス / イベント駆動アーキテクチャ / CQRS+Event Sourcing を実装コード+SVG図解で1から学べる詳細解説。シリーズ全5回の第3回。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次"><p id="toc-title">目次</p><ul></ul></nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>Lv3の到達点</strong>: 複数サービス・複数コンポーネントが連携するシステム全体を「図と言葉」で表現できる</li>
+            <li><strong>C4モデル</strong> = 解像度を変えて4枚の図を描く（Context / Container / Component / Code）</li>
+            <li><strong>マイクロサービスは銀の弾ではない</strong>: "Monolith First"。30人未満のチームで導入は過剰</li>
+            <li><strong>イベント駆動</strong> = サービス間を Pub/Sub で疎結合化。障害が分離され可用性UP</li>
+            <li><strong>CQRS+ES</strong> = 監査要件・複雑な読み書き分離が必要な場合のみ採用。学習コスト高</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>このシリーズの位置づけ</h2>
+          <p>シリーズ第3回。<a href="2026-05-11-architecture-lv2-application-structure.html">Lv2（アプリ構造）</a>で1アプリ内の構造を学んだ次は、<strong>複数サービスをまたぐシステム全体</strong>の設計。チーム開発に入る前に必修。</p>
+          <figure>
+            <svg viewBox="0 0 720 200" role="img" aria-label="シリーズ全体マップ">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="20" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="80" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv1 ✓</text>
+                <rect x="160" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="220" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv2 ✓</text>
+                <rect x="300" y="60" width="120" height="80" fill="#ce93d8" stroke="#4a148c" stroke-width="3" rx="8" />
+                <text x="360" y="90" text-anchor="middle" font-size="13" font-weight="bold">Lv3</text>
+                <text x="360" y="108" text-anchor="middle" font-size="10">システム全体</text>
+                <text x="360" y="124" text-anchor="middle" font-size="9" fill="#4a148c">▶ 今ここ</text>
+                <rect x="440" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="500" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv4</text>
+                <rect x="580" y="60" width="120" height="80" fill="#e0e0e0" stroke="#999" rx="8" />
+                <text x="640" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#666">Lv5</text>
+              </g>
+            </svg>
+            <figcaption>図1: シリーズ進捗（3/5）</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>1. C4モデル — アーキテクチャ表現の標準</h2>
+          <p>Simon Brown が提唱した、<strong>解像度を変えて4枚の図でシステムを表現する</strong>標準手法。UMLよりずっと軽量で実用的。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="C4モデル4階層">
+              <g font-family="ui-sans-serif,sans-serif">
+                <g transform="translate(40,30)">
+                  <rect width="140" height="260" fill="#e3f2fd" stroke="#1976d2" rx="8" />
+                  <text x="70" y="30" text-anchor="middle" font-size="14" font-weight="bold">Lv1</text>
+                  <text x="70" y="50" text-anchor="middle" font-size="12">System Context</text>
+                  <line x1="20" y1="65" x2="120" y2="65" stroke="#1976d2" />
+                  <circle cx="40" cy="100" r="10" fill="#fff" stroke="#1976d2" />
+                  <text x="40" y="125" text-anchor="middle" font-size="9">User</text>
+                  <rect x="60" y="90" width="60" height="30" fill="#fff" stroke="#1976d2" />
+                  <text x="90" y="109" text-anchor="middle" font-size="9">System</text>
+                  <rect x="20" y="150" width="100" height="20" fill="#fff" stroke="#1976d2" />
+                  <text x="70" y="165" text-anchor="middle" font-size="8">External API</text>
+                  <text x="70" y="200" text-anchor="middle" font-size="9" fill="#666">「世界との関係」</text>
+                  <text x="70" y="218" text-anchor="middle" font-size="8" fill="#666">経営層・新人向け</text>
+                </g>
+
+                <g transform="translate(200,30)">
+                  <rect width="140" height="260" fill="#fff3e0" stroke="#f57c00" rx="8" />
+                  <text x="70" y="30" text-anchor="middle" font-size="14" font-weight="bold">Lv2</text>
+                  <text x="70" y="50" text-anchor="middle" font-size="12">Container</text>
+                  <line x1="20" y1="65" x2="120" y2="65" stroke="#f57c00" />
+                  <rect x="20" y="80" width="40" height="25" fill="#fff" stroke="#f57c00" />
+                  <text x="40" y="97" text-anchor="middle" font-size="8">Web</text>
+                  <rect x="80" y="80" width="40" height="25" fill="#fff" stroke="#f57c00" />
+                  <text x="100" y="97" text-anchor="middle" font-size="8">API</text>
+                  <rect x="20" y="115" width="40" height="25" fill="#fff" stroke="#f57c00" />
+                  <text x="40" y="132" text-anchor="middle" font-size="8">DB</text>
+                  <rect x="80" y="115" width="40" height="25" fill="#fff" stroke="#f57c00" />
+                  <text x="100" y="132" text-anchor="middle" font-size="8">Cache</text>
+                  <rect x="20" y="150" width="100" height="25" fill="#fff" stroke="#f57c00" />
+                  <text x="70" y="167" text-anchor="middle" font-size="8">Worker</text>
+                  <text x="70" y="200" text-anchor="middle" font-size="9" fill="#666">「サーバー単位」</text>
+                  <text x="70" y="218" text-anchor="middle" font-size="8" fill="#666">アーキテクト向け</text>
+                </g>
+
+                <g transform="translate(360,30)">
+                  <rect width="140" height="260" fill="#fce4ec" stroke="#c2185b" rx="8" />
+                  <text x="70" y="30" text-anchor="middle" font-size="14" font-weight="bold">Lv3</text>
+                  <text x="70" y="50" text-anchor="middle" font-size="12">Component</text>
+                  <line x1="20" y1="65" x2="120" y2="65" stroke="#c2185b" />
+                  <rect x="15" y="80" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="40" y="93" text-anchor="middle" font-size="7">Auth</text>
+                  <rect x="75" y="80" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="100" y="93" text-anchor="middle" font-size="7">Order</text>
+                  <rect x="15" y="105" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="40" y="118" text-anchor="middle" font-size="7">User</text>
+                  <rect x="75" y="105" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="100" y="118" text-anchor="middle" font-size="7">Payment</text>
+                  <rect x="15" y="130" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="40" y="143" text-anchor="middle" font-size="7">Notify</text>
+                  <rect x="75" y="130" width="50" height="20" fill="#fff" stroke="#c2185b" />
+                  <text x="100" y="143" text-anchor="middle" font-size="7">Search</text>
+                  <text x="70" y="200" text-anchor="middle" font-size="9" fill="#666">「主要モジュール」</text>
+                  <text x="70" y="218" text-anchor="middle" font-size="8" fill="#666">開発リーダー向け</text>
+                </g>
+
+                <g transform="translate(520,30)">
+                  <rect width="140" height="260" fill="#f3e5f5" stroke="#7b1fa2" rx="8" />
+                  <text x="70" y="30" text-anchor="middle" font-size="14" font-weight="bold">Lv4</text>
+                  <text x="70" y="50" text-anchor="middle" font-size="12">Code</text>
+                  <line x1="20" y1="65" x2="120" y2="65" stroke="#7b1fa2" />
+                  <text x="70" y="90" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace">class A {}</text>
+                  <text x="70" y="108" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace">class B {}</text>
+                  <text x="70" y="126" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace">A → B</text>
+                  <text x="70" y="144" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace">interface C</text>
+                  <text x="70" y="162" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace">B impl C</text>
+                  <text x="70" y="200" text-anchor="middle" font-size="9" fill="#666">「クラス・関数」</text>
+                  <text x="70" y="218" text-anchor="middle" font-size="8" fill="#666">実装者向け</text>
+                </g>
+              </g>
+            </svg>
+            <figcaption>図2: C4モデル 4階層（解像度を変えて描く）</figcaption>
+          </figure>
+
+          <h3>各レベルの使い分け</h3>
+          <table>
+            <thead>
+              <tr><th>レベル</th><th>対象読者</th><th>含む情報</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Lv1 Context</strong></td><td>経営層・新規参加者</td><td>システム1個 + 外部の人/システムとの関係</td></tr>
+              <tr><td><strong>Lv2 Container</strong></td><td>アーキテクト・運用</td><td>Web/API/DB/Cache/Workerなどデプロイ単位</td></tr>
+              <tr><td><strong>Lv3 Component</strong></td><td>開発リーダー</td><td>Container内の主要モジュール</td></tr>
+              <tr><td><strong>Lv4 Code</strong></td><td>実装者</td><td>クラス・関数（自動生成推奨）</td></tr>
+            </tbody>
+          </table>
+
+          <h3>使いどころ</h3>
+          <aside class="callout tip">
+            <strong>Tip:</strong>
+            <ul>
+              <li>新メンバーオンボーディング → <strong>Lv1から見せる</strong>（全体像をつかむ）</li>
+              <li>設計レビュー → <strong>Lv2/Lv3で議論</strong>（具体的な構造を検討）</li>
+              <li>コード変更時 → <strong>Lv4はコードから自動生成</strong>（手書きしない）</li>
+            </ul>
+          </aside>
+
+          <h3>記法ツール</h3>
+          <ul>
+            <li><strong>Structurizr</strong>: C4公式ツール、コードでDSLを書いて図を生成</li>
+            <li><strong>Mermaid</strong>: GitHub/Markdownでよく使われる、軽量</li>
+            <li><strong>draw.io</strong>: GUI派向け</li>
+            <li><strong>PlantUML</strong>: UML派向け</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>2. マイクロサービス vs モノリス</h2>
+          <p>2010年代にバズったマイクロサービス。<strong>"銀の弾ではない"</strong>。組織規模・業務複雑性によって正解が変わる。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="モノリスとマイクロサービスの比較">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="25" text-anchor="middle" font-size="14" font-weight="bold">モノリス</text>
+                <rect x="40" y="40" width="280" height="200" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="8" />
+                <text x="180" y="65" text-anchor="middle" font-size="11" fill="#666">1つのアプリ / 1つのDB</text>
+                <rect x="80" y="80" width="200" height="40" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="180" y="104" text-anchor="middle" font-size="11">User / Order / Product / Payment</text>
+                <rect x="80" y="135" width="200" height="40" fill="#fff" stroke="#1976d2" rx="4" />
+                <text x="180" y="159" text-anchor="middle" font-size="11">Single PostgreSQL</text>
+                <text x="180" y="200" text-anchor="middle" font-size="11" fill="#1976d2" font-weight="bold">特徴</text>
+                <text x="180" y="216" text-anchor="middle" font-size="9" fill="#444">デプロイ簡単 / トランザクション容易</text>
+                <text x="180" y="230" text-anchor="middle" font-size="9" fill="#444">スケール困難 / 巨大化リスク</text>
+
+                <text x="540" y="25" text-anchor="middle" font-size="14" font-weight="bold">マイクロサービス</text>
+                <rect x="400" y="40" width="280" height="200" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="8" />
+                <text x="540" y="65" text-anchor="middle" font-size="11" fill="#666">複数の独立サービス / 各々DB</text>
+                <rect x="420" y="80" width="60" height="40" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="450" y="104" text-anchor="middle" font-size="9">User</text>
+                <rect x="490" y="80" width="60" height="40" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="520" y="104" text-anchor="middle" font-size="9">Order</text>
+                <rect x="560" y="80" width="60" height="40" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="590" y="104" text-anchor="middle" font-size="9">Product</text>
+                <rect x="630" y="80" width="40" height="40" fill="#fff" stroke="#f57c00" rx="4" />
+                <text x="650" y="104" text-anchor="middle" font-size="9">Pay</text>
+                <rect x="420" y="135" width="60" height="40" fill="#ffe0b2" stroke="#f57c00" rx="4" />
+                <text x="450" y="160" text-anchor="middle" font-size="8">DB1</text>
+                <rect x="490" y="135" width="60" height="40" fill="#ffe0b2" stroke="#f57c00" rx="4" />
+                <text x="520" y="160" text-anchor="middle" font-size="8">DB2</text>
+                <rect x="560" y="135" width="60" height="40" fill="#ffe0b2" stroke="#f57c00" rx="4" />
+                <text x="590" y="160" text-anchor="middle" font-size="8">DB3</text>
+                <rect x="630" y="135" width="40" height="40" fill="#ffe0b2" stroke="#f57c00" rx="4" />
+                <text x="650" y="160" text-anchor="middle" font-size="8">DB4</text>
+                <text x="540" y="200" text-anchor="middle" font-size="11" fill="#f57c00" font-weight="bold">特徴</text>
+                <text x="540" y="216" text-anchor="middle" font-size="9" fill="#444">独立スケール / 言語自由 / 障害分離</text>
+                <text x="540" y="230" text-anchor="middle" font-size="9" fill="#444">通信複雑 / 分散トランザクション困難</text>
+              </g>
+            </svg>
+            <figcaption>図3: モノリスとマイクロサービスの構造比較</figcaption>
+          </figure>
+
+          <h3>詳細比較表</h3>
+          <table>
+            <thead>
+              <tr><th>項目</th><th>モノリス</th><th>マイクロサービス</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>初期開発速度</td><td>速い</td><td>遅い（基盤整備）</td></tr>
+              <tr><td>デプロイ</td><td>一括</td><td>サービス単位（独立）</td></tr>
+              <tr><td>スケール</td><td>全体（コスト悪）</td><td>サービス単位（コスト◎）</td></tr>
+              <tr><td>チーム構成</td><td>全員1コード</td><td>サービスごと小チーム</td></tr>
+              <tr><td>言語選択</td><td>1言語固定</td><td>サービス毎に自由</td></tr>
+              <tr><td>運用負荷</td><td>低い</td><td>高い（K8s / 監視 / Tracing）</td></tr>
+              <tr><td>トランザクション</td><td>ACID簡単</td><td>分散TX困難（Saga必要）</td></tr>
+              <tr><td>適性</td><td>立ち上げ期 / 〜10人</td><td>30人以上 / 業務複雑</td></tr>
+            </tbody>
+          </table>
+
+          <h3>"Monolith First" — Martin Fowler の教え</h3>
+          <aside class="callout warn">
+            <strong>注意:</strong> 最初からマイクロサービスにする失敗パターンが頻発。
+            <ul>
+              <li>境界の引き方は <strong>実装してわかる</strong>（机上では決まらない）</li>
+              <li>小規模では運用コストが利益を上回る</li>
+              <li>サービス分割の失敗コストが高い（後から統合困難）</li>
+            </ul>
+            <strong>正解:</strong> モノリスで始めて、ボトルネックが明確になったら段階的に切り出す。
+          </aside>
+
+          <h3>移行判断フローチャート</h3>
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="マイクロサービス移行判断">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="280" y="30" width="160" height="40" fill="#fff" stroke="#444" rx="6" />
+                <text x="360" y="55" text-anchor="middle" font-size="11">チーム規模 30+?</text>
+                <line x1="360" y1="70" x2="200" y2="110" stroke="#666" />
+                <text x="270" y="92" text-anchor="middle" font-size="10" fill="#666">No</text>
+                <line x1="360" y1="70" x2="520" y2="110" stroke="#666" />
+                <text x="450" y="92" text-anchor="middle" font-size="10" fill="#666">Yes</text>
+                <rect x="120" y="110" width="160" height="40" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="200" y="135" text-anchor="middle" font-size="11">モノリス維持</text>
+                <rect x="440" y="110" width="160" height="40" fill="#fff" stroke="#444" rx="6" />
+                <text x="520" y="135" text-anchor="middle" font-size="11">ボトルネック明確?</text>
+                <line x1="520" y1="150" x2="360" y2="200" stroke="#666" />
+                <text x="430" y="180" text-anchor="middle" font-size="10" fill="#666">No</text>
+                <line x1="520" y1="150" x2="600" y2="200" stroke="#666" />
+                <text x="570" y="180" text-anchor="middle" font-size="10" fill="#666">Yes</text>
+                <rect x="280" y="200" width="160" height="40" fill="#e3f2fd" stroke="#1976d2" rx="6" />
+                <text x="360" y="225" text-anchor="middle" font-size="11">モノリス維持</text>
+                <rect x="520" y="200" width="160" height="40" fill="#fff" stroke="#444" rx="6" />
+                <text x="600" y="225" text-anchor="middle" font-size="11">境界明確?</text>
+                <line x1="600" y1="240" x2="520" y2="280" stroke="#666" />
+                <text x="540" y="265" text-anchor="middle" font-size="10" fill="#666">No</text>
+                <line x1="600" y1="240" x2="680" y2="280" stroke="#666" />
+                <text x="650" y="265" text-anchor="middle" font-size="10" fill="#666">Yes</text>
+                <rect x="440" y="280" width="160" height="30" fill="#fff3e0" stroke="#f57c00" rx="6" />
+                <text x="520" y="300" text-anchor="middle" font-size="10">BC整理から開始</text>
+                <rect x="600" y="280" width="100" height="30" fill="#c8e6c9" stroke="#2e7d32" rx="6" />
+                <text x="650" y="300" text-anchor="middle" font-size="10">分割実施</text>
+              </g>
+            </svg>
+            <figcaption>図4: マイクロサービス移行判断フロー</figcaption>
+          </figure>
+
+          <h3>サービス間通信の選択肢</h3>
+          <table>
+            <thead>
+              <tr><th>方式</th><th>特徴</th><th>適用</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>REST</strong></td><td>シンプル、HTTP標準</td><td>外部公開API</td></tr>
+              <tr><td><strong>gRPC</strong></td><td>高速、型安全</td><td>内部サービス間</td></tr>
+              <tr><td><strong>GraphQL</strong></td><td>柔軟なクエリ</td><td>BFF / 集約API</td></tr>
+              <tr><td><strong>イベント（Kafka等）</strong></td><td>非同期、疎結合</td><td>長時間処理 / 通知</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>3. イベント駆動アーキテクチャ</h2>
+          <p>サービス間通信を <strong>イベント</strong> で疎結合化する手法。Pub/Sub パターンの応用。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-label="イベント駆動シーケンス">
+              <g font-family="ui-sans-serif,sans-serif">
+                <rect x="40" y="20" width="120" height="40" fill="#e3f2fd" stroke="#1976d2" rx="4" />
+                <text x="100" y="44" text-anchor="middle" font-size="12">Order Service</text>
+                <line x1="100" y1="60" x2="100" y2="290" stroke="#1976d2" stroke-dasharray="4,2" />
+
+                <rect x="220" y="20" width="120" height="40" fill="#fff3e0" stroke="#f57c00" rx="4" />
+                <text x="280" y="44" text-anchor="middle" font-size="12">Event Bus</text>
+                <text x="280" y="58" text-anchor="middle" font-size="9" fill="#666">(Kafka)</text>
+                <line x1="280" y1="60" x2="280" y2="290" stroke="#f57c00" stroke-dasharray="4,2" />
+
+                <rect x="400" y="20" width="100" height="40" fill="#fce4ec" stroke="#c2185b" rx="4" />
+                <text x="450" y="44" text-anchor="middle" font-size="12">Inventory</text>
+                <line x1="450" y1="60" x2="450" y2="290" stroke="#c2185b" stroke-dasharray="4,2" />
+
+                <rect x="520" y="20" width="100" height="40" fill="#f3e5f5" stroke="#7b1fa2" rx="4" />
+                <text x="570" y="44" text-anchor="middle" font-size="12">Mail</text>
+                <line x1="570" y1="60" x2="570" y2="290" stroke="#7b1fa2" stroke-dasharray="4,2" />
+
+                <rect x="640" y="20" width="60" height="40" fill="#e8f5e9" stroke="#2e7d32" rx="4" />
+                <text x="670" y="44" text-anchor="middle" font-size="12">Stats</text>
+                <line x1="670" y1="60" x2="670" y2="290" stroke="#2e7d32" stroke-dasharray="4,2" />
+
+                <line x1="100" y1="100" x2="280" y2="100" stroke="#1976d2" stroke-width="2" marker-end="url(#a3)" />
+                <text x="190" y="93" text-anchor="middle" font-size="11" fill="#1976d2">OrderPlaced</text>
+
+                <line x1="280" y1="140" x2="450" y2="140" stroke="#f57c00" stroke-width="2" marker-end="url(#a3)" />
+                <text x="365" y="133" text-anchor="middle" font-size="10" fill="#f57c00">push</text>
+
+                <line x1="280" y1="180" x2="570" y2="180" stroke="#f57c00" stroke-width="2" marker-end="url(#a3)" />
+                <text x="425" y="173" text-anchor="middle" font-size="10" fill="#f57c00">push</text>
+
+                <line x1="280" y1="220" x2="670" y2="220" stroke="#f57c00" stroke-width="2" marker-end="url(#a3)" />
+                <text x="475" y="213" text-anchor="middle" font-size="10" fill="#f57c00">push</text>
+
+                <text x="360" y="280" text-anchor="middle" font-size="11" fill="#666">1イベント → 複数Subscriberが独立処理</text>
+
+                <defs><marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図5: イベント駆動 — Pub/Subで疎結合化</figcaption>
+          </figure>
+
+          <h3>同期通信 vs 非同期通信</h3>
+          <table>
+            <thead>
+              <tr><th>軸</th><th>同期（API）</th><th>非同期（イベント）</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>応答性</td><td>即座に結果</td><td>結果は別経路</td></tr>
+              <tr><td>結合度</td><td>強（依存先必須）</td><td>弱（疎結合）</td></tr>
+              <tr><td>障害伝播</td><td>連鎖（Cascading Failure）</td><td>分離</td></tr>
+              <tr><td>整合性</td><td>強整合性</td><td>結果整合性</td></tr>
+              <tr><td>適用</td><td>認証 / 決済</td><td>通知 / ログ / 分析</td></tr>
+            </tbody>
+          </table>
+
+          <h3>イベント発行 → 購読のコード例</h3>
+<pre><code class="language-typescript">// イベント定義
+interface DomainEvent { type: string; occurredAt: Date; }
+
+class OrderPlaced implements DomainEvent {
+  type = "OrderPlaced";
+  occurredAt = new Date();
+  constructor(
+    public orderId: string,
+    public userId: string,
+    public total: number,
+  ) {}
+}
+
+// イベント発行
+class OrderService {
+  constructor(private bus: EventBus) {}
+
+  async place(input: PlaceOrderInput) {
+    const order = new Order(input);
+    await orderRepo.save(order);
+    await this.bus.publish(new OrderPlaced(order.id, order.userId, order.total));
+    return order;
+  }
+}
+
+// 購読側 — Inventory
+bus.subscribe("OrderPlaced", async (e: OrderPlaced) =&gt; {
+  await inventoryService.reserveItems(e.orderId);
+});
+
+// 購読側 — Mail
+bus.subscribe("OrderPlaced", async (e: OrderPlaced) =&gt; {
+  await mailService.sendConfirmation(e.userId, e.orderId);
+});
+
+// 購読側 — Stats
+bus.subscribe("OrderPlaced", async (e: OrderPlaced) =&gt; {
+  await statsRepo.increment("orders.placed", 1, { userId: e.userId });
+});
+</code></pre>
+
+          <h3>主要技術スタック</h3>
+          <table>
+            <thead>
+              <tr><th>ツール</th><th>強み</th><th>向き</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Apache Kafka</strong></td><td>大規模、順序保証、永続化</td><td>大量イベント・ログ集約</td></tr>
+              <tr><td><strong>RabbitMQ</strong></td><td>軽量、柔軟、機能豊富</td><td>業務イベント</td></tr>
+              <tr><td><strong>AWS SNS/SQS</strong></td><td>マネージド、スケール容易</td><td>クラウドネイティブ</td></tr>
+              <tr><td><strong>Redis Streams</strong></td><td>シンプル、低レイテンシ</td><td>軽量用途</td></tr>
+              <tr><td><strong>NATS</strong></td><td>軽量、リアルタイム性</td><td>マイクロサービス間</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>4. CQRS（Command Query Responsibility Segregation）</h2>
+          <p>「<strong>書き込み（Command）</strong>と<strong>読み取り（Query）</strong>のモデルを分離する」設計パターン。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 280" role="img" aria-label="CQRS構造">
+              <g font-family="ui-sans-serif,sans-serif">
+                <circle cx="360" cy="40" r="25" fill="#90caf9" />
+                <text x="360" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="white">User</text>
+
+                <line x1="345" y1="65" x2="200" y2="115" stroke="#c62828" stroke-width="2" marker-end="url(#a4)" />
+                <text x="240" y="90" font-size="11" fill="#c62828">write</text>
+                <rect x="80" y="115" width="200" height="50" fill="#ffebee" stroke="#c62828" rx="6" />
+                <text x="180" y="140" text-anchor="middle" font-size="12" font-weight="bold">Command Side</text>
+                <text x="180" y="158" text-anchor="middle" font-size="10" fill="#666">正規化DB / Aggregate / Domain</text>
+                <line x1="180" y1="165" x2="180" y2="200" stroke="#c62828" stroke-dasharray="3,3" />
+                <rect x="100" y="200" width="160" height="40" fill="#fff" stroke="#c62828" rx="4" />
+                <text x="180" y="225" text-anchor="middle" font-size="11">Write DB（PostgreSQL）</text>
+
+                <line x1="375" y1="65" x2="520" y2="115" stroke="#2e7d32" stroke-width="2" marker-end="url(#a4)" />
+                <text x="480" y="90" font-size="11" fill="#2e7d32">read</text>
+                <rect x="440" y="115" width="200" height="50" fill="#e8f5e9" stroke="#2e7d32" rx="6" />
+                <text x="540" y="140" text-anchor="middle" font-size="12" font-weight="bold">Query Side</text>
+                <text x="540" y="158" text-anchor="middle" font-size="10" fill="#666">非正規化 / 読み取り最適化</text>
+                <line x1="540" y1="165" x2="540" y2="200" stroke="#2e7d32" stroke-dasharray="3,3" />
+                <rect x="460" y="200" width="160" height="40" fill="#fff" stroke="#2e7d32" rx="4" />
+                <text x="540" y="225" text-anchor="middle" font-size="11">Read DB（Elasticsearch/Cache）</text>
+
+                <line x1="280" y1="220" x2="460" y2="220" stroke="#f57c00" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#a4)" />
+                <text x="370" y="213" text-anchor="middle" font-size="10" fill="#f57c00">非同期同期</text>
+
+                <defs><marker id="a4" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444" /></marker></defs>
+              </g>
+            </svg>
+            <figcaption>図6: CQRS — 書き込みと読み取りでDBを分ける</figcaption>
+          </figure>
+
+          <h3>利点と欠点</h3>
+          <table>
+            <thead>
+              <tr><th>利点</th><th>欠点</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>書き込み・読み取りを別々に最適化</td><td>システム複雑性UP</td></tr>
+              <tr><td>スケール戦略を分離可能</td><td>整合性管理が必要（結果整合性）</td></tr>
+              <tr><td>複雑な読み取り処理が簡単に</td><td>同期遅延の考慮</td></tr>
+              <tr><td>セキュリティ境界を分けやすい</td><td>運用工数増</td></tr>
+            </tbody>
+          </table>
+
+          <h3>コード例</h3>
+<pre><code class="language-typescript">// Command Side
+class CreateOrderCommand {
+  constructor(public userId: string, public items: Item[]) {}
+}
+
+class CreateOrderHandler {
+  async execute(cmd: CreateOrderCommand) {
+    const order = new Order(cmd.userId, cmd.items);
+    await orderRepo.save(order);
+    await eventBus.publish(new OrderCreated(order));
+  }
+}
+
+// Query Side（非正規化された読み取り専用モデル）
+interface OrderListItem {
+  orderId: string;
+  userName: string;        // User テーブルとJOIN済
+  total: number;
+  itemCount: number;
+  status: string;
+  createdAt: Date;
+}
+
+class OrderQueryService {
+  // SQLは ElasticSearch等で最適化済み
+  async listForUser(userId: string): Promise&lt;OrderListItem[]&gt; {
+    return await readDb.query(`
+      SELECT * FROM order_list_view WHERE user_id = $1 ORDER BY created_at DESC
+    `, [userId]);
+  }
+}
+
+// Read Modelの更新（非同期）
+eventBus.subscribe("OrderCreated", async (e) =&gt; {
+  await readDb.query(`
+    INSERT INTO order_list_view (order_id, user_name, total, ...) VALUES (...)
+  `);
+});
+</code></pre>
+        </section>
+
+        <section>
+          <h2>5. Event Sourcing（ES）</h2>
+          <p>「<strong>状態を保存しない。状態変化のイベント全部を保存</strong>」する手法。CQRS と組み合わせることが多い。</p>
+
+          <figure>
+            <svg viewBox="0 0 720 240" role="img" aria-label="従来DBとEvent Sourcingの違い">
+              <g font-family="ui-sans-serif,sans-serif">
+                <text x="180" y="25" text-anchor="middle" font-size="13" font-weight="bold">従来（状態保存）</text>
+                <rect x="40" y="40" width="280" height="160" fill="#e3f2fd" stroke="#1976d2" rx="8" />
+                <text x="60" y="75" font-family="ui-monospace,monospace" font-size="11">account: {</text>
+                <text x="80" y="95" font-family="ui-monospace,monospace" font-size="11">id: "acc_1",</text>
+                <text x="80" y="115" font-family="ui-monospace,monospace" font-size="11">balance: 5000  ← 現在の値だけ</text>
+                <text x="60" y="135" font-family="ui-monospace,monospace" font-size="11">}</text>
+                <text x="180" y="180" text-anchor="middle" font-size="10" fill="#1976d2">UPDATEで上書き → 履歴が消える</text>
+
+                <text x="540" y="25" text-anchor="middle" font-size="13" font-weight="bold">Event Sourcing</text>
+                <rect x="400" y="40" width="280" height="160" fill="#fff3e0" stroke="#f57c00" rx="8" />
+                <text x="420" y="65" font-family="ui-monospace,monospace" font-size="11">events: [</text>
+                <text x="440" y="83" font-family="ui-monospace,monospace" font-size="10">Deposited(10000)</text>
+                <text x="440" y="100" font-family="ui-monospace,monospace" font-size="10">Withdrawn(3000)</text>
+                <text x="440" y="117" font-family="ui-monospace,monospace" font-size="10">Withdrawn(2000)</text>
+                <text x="440" y="135" font-family="ui-monospace,monospace" font-size="10">Deposited(1000)</text>
+                <text x="420" y="155" font-family="ui-monospace,monospace" font-size="11">]</text>
+                <text x="540" y="180" text-anchor="middle" font-size="10" fill="#f57c00">全イベント保存 → 再生で状態復元</text>
+              </g>
+            </svg>
+            <figcaption>図7: 従来DBとEvent Sourcingの違い</figcaption>
+          </figure>
+
+          <h3>コード例</h3>
+<pre><code class="language-typescript">// イベント
+type AccountEvent =
+  | { type: "Deposited"; amount: number; at: Date }
+  | { type: "Withdrawn"; amount: number; at: Date };
+
+// Aggregate（イベントから状態を再生）
+class Account {
+  private balance = 0;
+  private uncommitted: AccountEvent[] = [];
+
+  // 過去のイベントから状態復元
+  static replay(events: AccountEvent[]): Account {
+    const a = new Account();
+    for (const e of events) a.apply(e);
+    return a;
+  }
+
+  deposit(amount: number) {
+    this.apply({ type: "Deposited", amount, at: new Date() });
+  }
+  withdraw(amount: number) {
+    if (this.balance &lt; amount) throw new Error("残高不足");
+    this.apply({ type: "Withdrawn", amount, at: new Date() });
+  }
+
+  private apply(e: AccountEvent) {
+    if (e.type === "Deposited") this.balance += e.amount;
+    if (e.type === "Withdrawn") this.balance -= e.amount;
+    this.uncommitted.push(e);
+  }
+
+  getBalance() { return this.balance; }
+  pullEvents() {
+    const evs = this.uncommitted;
+    this.uncommitted = [];
+    return evs;
+  }
+}
+
+// Event Store
+class EventStore {
+  async append(streamId: string, events: AccountEvent[]) {
+    for (const e of events) {
+      await db.query("INSERT INTO events (stream_id, type, payload, occurred_at) VALUES ($1, $2, $3, $4)",
+        [streamId, e.type, JSON.stringify(e), e.at]);
+    }
+  }
+  async load(streamId: string): Promise&lt;AccountEvent[]&gt; {
+    const rows = await db.query("SELECT * FROM events WHERE stream_id = $1 ORDER BY occurred_at", [streamId]);
+    return rows.map(r =&gt; ({ ...JSON.parse(r.payload), at: r.occurred_at }));
+  }
+}
+
+// 使う側
+const events = await store.load("acc_1");
+const account = Account.replay(events);
+account.withdraw(500);
+await store.append("acc_1", account.pullEvents());
+</code></pre>
+
+          <h3>利点と欠点</h3>
+          <table>
+            <thead>
+              <tr><th>✅ 利点</th><th>❌ 欠点</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>完全な監査ログ（全変更履歴）</td><td>クエリが複雑（再生が必要）</td></tr>
+              <tr><td>過去の任意時点の状態復元可能</td><td>学習コスト高</td></tr>
+              <tr><td>バグ修正後の再計算可能</td><td>スキーマ進化が困難（バージョニング必要）</td></tr>
+              <tr><td>強力なデバッグ可能性</td><td>イベント数膨張対策（スナップショット）必要</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout warn">
+            <strong>導入判断:</strong>
+            <ul>
+              <li>監査要件が厳しい（金融、医療） → ✅ Yes</li>
+              <li>過去の任意時点の状態が必要（投資商品の口座履歴） → ✅ Yes</li>
+              <li>シンプルなCRUDで十分 → ❌ No（過剰）</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <h2>演習問題</h2>
+
+          <h3>Q1. C4のどのレベルで描く？</h3>
+          <p>以下のシチュエーションで、C4のどのレベルの図を見せる？</p>
+          <ol>
+            <li>新人エンジニアの初日オンボーディング</li>
+            <li>運用チームへのデプロイ構成説明</li>
+            <li>同僚開発者へのコード変更レビュー</li>
+            <li>経営層への新システム提案</li>
+          </ol>
+          <details>
+            <summary>解答を見る</summary>
+            <ol>
+              <li><strong>Lv1 Context</strong> — 全体像を最初に見せる</li>
+              <li><strong>Lv2 Container</strong> — Web/API/DBの構成が分かる</li>
+              <li><strong>Lv3 Component</strong> or <strong>Lv4 Code</strong> — 該当モジュール</li>
+              <li><strong>Lv1 Context</strong> — 経営層は技術詳細不要</li>
+            </ol>
+          </details>
+
+          <h3>Q2. マイクロサービス導入すべき？</h3>
+          <p>10人のスタートアップで、Web/iOS/Androidの3クライアント、月間DAU 5万人。どう判断する？</p>
+          <details>
+            <summary>解答を見る</summary>
+            <p><strong>モノリスで開始すべき</strong>。理由:</p>
+            <ul>
+              <li>10人 = マイクロサービスの運用負荷を吸収できない</li>
+              <li>5万DAUはモノリスで余裕</li>
+              <li>初期は仕様変動が激しく、サービス境界を間違えやすい</li>
+            </ul>
+            <p>将来チーム30人 + ボトルネック明確になったら、Order/Payment等から切り出す。</p>
+          </details>
+
+          <h3>Q3. 同期 vs 非同期？</h3>
+          <p>以下のフローを設計するとき、各ステップは同期/非同期どっちが適切？</p>
+          <ol>
+            <li>ログイン認証</li>
+            <li>注文確定後のメール送信</li>
+            <li>クレカ決済</li>
+            <li>商品購入後のレコメンド学習データ収集</li>
+            <li>在庫引当</li>
+          </ol>
+          <details>
+            <summary>解答を見る</summary>
+            <ol>
+              <li>同期 — 即座に結果が必要</li>
+              <li>非同期 — 1秒遅れてもOK、メール失敗で注文自体を失敗させたくない</li>
+              <li>同期 — 決済結果を待ってから注文確定</li>
+              <li>非同期 — ユーザー体験に影響しない、後でバッチでもOK</li>
+              <li>同期 — 注文成立に必要、即座にロックすべき</li>
+            </ol>
+          </details>
+        </section>
+
+        <section>
+          <h2>まとめ — Lv3の要点</h2>
+          <ol>
+            <li><strong>C4モデル</strong> — Context/Container/Component/Code の4階層で図を描き分ける</li>
+            <li><strong>Monolith First</strong> — マイクロサービス導入は <strong>30人以上 + ボトルネック明確</strong> が条件</li>
+            <li><strong>イベント駆動</strong> — 通知/ログ/分析など非同期で良い処理に最適</li>
+            <li><strong>同期 vs 非同期</strong> — リアルタイム必要なら同期、結果待たないなら非同期</li>
+            <li><strong>CQRS</strong> — 書き込み/読み取りを分離。複雑な読み取りに有効</li>
+            <li><strong>Event Sourcing</strong> — 全変更を保存。監査要件が厳しい時のみ</li>
+            <li><strong>過剰設計に注意</strong> — シンプルなCRUDで足りるなら CQRS/ES は要らない</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>次のステップ</h2>
+          <ul>
+            <li>📘 <strong>Lv4 詳細記事（次回）</strong>: CAP / Saga / Outbox / DDIA / System Design Interview</li>
+            <li>🛠 <strong>実践</strong>: 自分のシステムをC4モデルで描いてみる（Lv1のContextから）</li>
+            <li>📕 <strong>推奨書籍</strong>:
+              <ul>
+                <li>Building Microservices（Sam Newman）</li>
+                <li>Software Architecture: The Hard Parts（Neal Ford et al）</li>
+                <li>Patterns of Enterprise Application Architecture（Martin Fowler）</li>
+              </ul>
+            </li>
+          </ul>
+          <p>シリーズ前回: <a href="2026-05-11-architecture-lv2-application-structure.html">Lv2 アプリ構造完全解説</a></p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://c4model.com/" target="_blank" rel="noopener">C4 model - Simon Brown</a></li>
+            <li><a href="https://martinfowler.com/articles/microservices.html" target="_blank" rel="noopener">Microservices - Martin Fowler</a></li>
+            <li><a href="https://martinfowler.com/bliki/MonolithFirst.html" target="_blank" rel="noopener">MonolithFirst - Martin Fowler</a></li>
+            <li><a href="https://martinfowler.com/bliki/CQRS.html" target="_blank" rel="noopener">CQRS - Martin Fowler</a></li>
+            <li><a href="https://martinfowler.com/eaaDev/EventSourcing.html" target="_blank" rel="noopener">Event Sourcing - Martin Fowler</a></li>
+            <li><a href="https://kafka.apache.org/" target="_blank" rel="noopener">Apache Kafka</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>
