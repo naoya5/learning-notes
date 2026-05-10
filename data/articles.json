@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "slug": "kv-cache",
+    "date": "2026-05-10",
+    "title": "KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術",
+    "summary": "LLM推論を支えるKVキャッシュの仕組みと最適化技術（PagedAttention・量子化・エビクション・GQA/MLA）を図解多めで整理する。",
+    "description": "Transformer推論で必須のKVキャッシュの基本から、メモリ帯域ボトルネックの正体、PagedAttention・量子化・エビクション・GQA/MLAといった最適化技術までを中級〜上級向けに、図解多めで整理する。",
+    "tags": [
+      "llm",
+      "transformer",
+      "inference",
+      "kv-cache",
+      "optimization"
+    ],
+    "updated": null
+  }
+]

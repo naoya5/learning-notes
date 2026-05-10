@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術 — learning-notes</title>
+    <meta
+      name="description"
+      content="Transformer推論で必須のKVキャッシュの基本から、メモリ帯域ボトルネックの正体、PagedAttention・量子化・エビクション・GQA/MLAといった最適化技術までを中級〜上級向けに、図解多めで整理する。"
+    />
+
+    <!-- 構造化メタ（update-index.py が読む） -->
+    <meta name="article:slug" content="kv-cache" />
+    <meta name="article:date" content="2026-05-10" />
+    <meta name="article:tags" content="llm,transformer,inference,kv-cache,optimization" />
+    <meta
+      name="article:summary"
+      content="LLM推論を支えるKVキャッシュの仕組みと最適化技術（PagedAttention・量子化・エビクション・GQA/MLA）を図解多めで整理する。"
+    />
+
+    <!-- OGP -->
+    <meta property="og:type" content="article" />
+    <meta
+      property="og:title"
+      content="KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術"
+    />
+    <meta
+      property="og:description"
+      content="Transformer推論で必須のKVキャッシュの基本から、メモリ帯域ボトルネックの正体、PagedAttention・量子化・エビクション・GQA/MLAといった最適化技術までを中級〜上級向けに、図解多めで整理する。"
+    />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-05-10-kv-cache.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-10">2026-05-10</time>
+          <span class="dot">·</span>
+          <span class="tags">
+            <a href="../index.html?tag=llm" class="tag">llm</a>
+            <a href="../index.html?tag=transformer" class="tag">transformer</a>
+            <a href="../index.html?tag=inference" class="tag">inference</a>
+            <a href="../index.html?tag=kv-cache" class="tag">kv-cache</a>
+            <a href="../index.html?tag=optimization" class="tag">optimization</a>
+          </span>
+        </p>
+        <h1>KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術</h1>
+        <p class="lead">
+          LLM推論を支えるKVキャッシュの仕組みと、PagedAttention・量子化・エビクション・GQA/MLAなど主要な最適化技術を、図解多めで中級〜上級向けに整理する。
+        </p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li>
+              KVキャッシュは「過去トークンの Key/Value を保存して再計算を避ける」仕組みで、デコード時の計算量を <code>O(n²)</code> から <code>O(n)</code> に落とす代償としてメモリと帯域を消費する。
+            </li>
+            <li>
+              デコードは演算強度（arithmetic intensity）が低く、attention は<strong>メモリ帯域ボトルネック</strong>になる。GPU の FLOPs ではなく HBM 帯域がスループットの天井を決める。
+            </li>
+            <li>
+              最適化は4軸ある — <strong>メモリ管理</strong>（PagedAttention）、<strong>ビット数削減</strong>（KIVI / NVFP4 などの量子化）、<strong>トークン数削減</strong>（StreamingLLM / H2O / SnapKV のエビクション）、<strong>アーキテクチャ変更</strong>（MQA / GQA / MLA）。
+            </li>
+            <li>
+              vLLM の PagedAttention は KVキャッシュ浪費を 60〜80% から 4% 未満に削減し、HF Transformers 比で最大 24× のスループットを実現した。
+            </li>
+            <li>
+              長文・大バッチで詰まったらまず GQA + PagedAttention + 8〜4bit 量子化、が 2026 年現在の定石。
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>俯瞰：KVキャッシュ最適化の全体マップ</h2>
+          <p>
+            細部に入る前に、この記事で扱う 4 軸の最適化技術を 1 枚で見渡しておく。あとで個別を読むときに「自分はいま地図のどこにいるか」を意識しやすくなる。
+          </p>
+
+          <figure>
+            <pre class="mermaid">
+mindmap
+  root((KVキャッシュ最適化))
+    軸1: メモリ管理
+      PagedAttention<br/>(vLLM)
+      ブロック共有<br/>(プロンプト共有)
+      Continuous batching
+    軸2: ビット数削減
+      KIVI<br/>(2bit, plug-and-play)
+      Coupled Quantization<br/>(1bit/channel)
+      NVFP4 / FP8<br/>(HW native)
+    軸3: トークン数削減
+      StreamingLLM<br/>(sink + sliding)
+      H2O<br/>(heavy hitters)
+      SnapKV<br/>(prefill圧縮)
+    軸4: アーキテクチャ
+      MQA<br/>(全ヘッド共有)
+      GQA<br/>(グループ共有)
+      MLA<br/>(latent圧縮)
+            </pre>
+            <figcaption>図1: KVキャッシュ最適化の4軸マインドマップ。記事はこの軸に沿って進む。</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>なぜ KV キャッシュが必要か</h2>
+          <p>
+            自己回帰的な Transformer デコードは、新しいトークンを 1 個生成するたびに「これまで出力した全トークンに対する self-attention」を計算する必要がある。素朴に書けば <code>t</code> 番目のトークンを生成するために <code>t</code> 個の Key と Value を毎回作り直すので、シーケンス全体では <code>O(n²)</code> のオーダー。1000 トークン生成するなら 1000 回 attention をスクラッチから組み直すことになり、現実的な速度では動かない。
+          </p>
+          <p>
+            ここで重要な観察は <strong>「過去トークンの Key/Value テンソルは入力が変わらない限り変化しない」</strong> こと。生成した瞬間にその位置の <code>K</code>, <code>V</code> は確定し、以降のステップで再利用できる。これらをまとめて GPU の HBM に置いておくのが KVキャッシュで、これにより:
+          </p>
+          <ul>
+            <li>
+              プロンプト処理（prefill）: <code>n</code> 個のトークンに対して 1 回だけまとめて attention を計算し、<code>K</code>, <code>V</code> をキャッシュに格納。compute bound でハードウェアを飽和させやすい。
+            </li>
+            <li>
+              生成（decode）: 1 トークンずつ、<code>q</code> は新しく作るが <code>K</code>, <code>V</code> はキャッシュから読み出すだけ。計算量は <code>O(n)</code> に落ちる。
+            </li>
+          </ul>
+
+          <figure>
+            <svg viewBox="0 0 600 240" role="img" aria-label="KVキャッシュ無しと有りの計算量比較">
+              <style>
+                .axis { stroke: currentColor; stroke-width: 1; }
+                .grid { stroke: currentColor; stroke-width: 1; opacity: 0.12; }
+                .label { font: 13px sans-serif; fill: currentColor; }
+                .tick  { font: 11px sans-serif; fill: currentColor; opacity: 0.7; }
+              </style>
+              <!-- grid -->
+              <line class="grid" x1="60" y1="60"  x2="540" y2="60"/>
+              <line class="grid" x1="60" y1="100" x2="540" y2="100"/>
+              <line class="grid" x1="60" y1="140" x2="540" y2="140"/>
+              <line class="grid" x1="60" y1="180" x2="540" y2="180"/>
+
+              <line class="axis" x1="60" y1="200" x2="560" y2="200" />
+              <line class="axis" x1="60" y1="20"  x2="60"  y2="200" />
+
+              <text class="tick" x="50"  y="204" text-anchor="end">0</text>
+              <text class="tick" x="50"  y="100" text-anchor="end">FLOPs</text>
+              <text class="label" x="310" y="232" text-anchor="middle">トークン位置 t（生成が進むほど右）</text>
+
+              <!-- naive O(n^2): 二次関数風 -->
+              <path d="M60,200 Q200,195 280,150 T540,30"
+                    fill="none" stroke="#b3471a" stroke-width="3" />
+              <text class="label" x="540" y="22" text-anchor="end" fill="#b3471a">キャッシュ無し O(n²) — 重くなる一方</text>
+
+              <!-- with KV cache O(n): 線形 -->
+              <line x1="60" y1="200" x2="540" y2="155"
+                    stroke="#5a8a3f" stroke-width="3" />
+              <text class="label" x="540" y="148" text-anchor="end" fill="#5a8a3f">KVキャッシュ O(n) — ほぼ一定</text>
+            </svg>
+            <figcaption>図2: トークン位置に対する 1 ステップあたりの FLOPs。KVキャッシュは 2 次から線形に落とす。</figcaption>
+          </figure>
+
+          <p>処理フローで見るとこうなる:</p>
+
+          <figure>
+            <pre class="mermaid">
+flowchart LR
+  P[プロンプト<br/>n tokens] -->|prefill| K0[(KVキャッシュ<br/>n tokens分)]
+  K0 --> D1{decode step 1}
+  D1 -->|q only| K1[(KV: n+1)]
+  K1 --> D2{decode step 2}
+  D2 -->|q only| K2[(KV: n+2)]
+  K2 --> D3[…]
+  D3 --> Kn[(KV: n+m)]
+
+  classDef cache fill:#ece6d8,stroke:#b3471a,color:#1f1d1a
+  class K0,K1,K2,Kn cache
+            </pre>
+            <figcaption>図3: prefill で一括投入、decode は 1 トークンずつ。キャッシュは右に伸び続ける。</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>KVキャッシュのメモリ消費</h2>
+          <p>
+            KVキャッシュ 1 トークン分のサイズはレイヤごと・ヘッドごとに <code>K</code> と <code>V</code> の 2 本ずつなので、ざっくり次の式で見積もれる:
+          </p>
+          <pre><code class="language-text">cache_bytes_per_token = 2 (K, V)
+                        × num_layers
+                        × num_kv_heads
+                        × head_dim
+                        × bytes_per_element</code></pre>
+          <p>
+            たとえば Llama-3 70B 相当（80 層、8 KV ヘッド、head_dim=128、fp16）だと、1 トークンで <code>2 × 80 × 8 × 128 × 2 ≈ 320 KB</code>。8K トークンの会話なら 2.5 GB、128K トークンの長文なら 40 GB ものキャッシュが要る。<strong>モデル本体より KV のほうが GPU メモリを食う</strong>シナリオが普通に発生する。
+          </p>
+
+          <figure>
+            <svg viewBox="0 0 600 220" role="img" aria-label="コンテキスト長とKVキャッシュサイズの関係">
+              <style>
+                .ax { stroke: currentColor; stroke-width: 1; }
+                .grid2 { stroke: currentColor; stroke-width: 1; opacity: 0.1; }
+                .lbl { font: 12px sans-serif; fill: currentColor; }
+                .ttl { font: 13px sans-serif; fill: currentColor; }
+              </style>
+              <line class="ax" x1="60" y1="180" x2="560" y2="180"/>
+              <line class="ax" x1="60" y1="20"  x2="60"  y2="180"/>
+
+              <line class="grid2" x1="60" y1="60"  x2="560" y2="60"/>
+              <line class="grid2" x1="60" y1="100" x2="560" y2="100"/>
+              <line class="grid2" x1="60" y1="140" x2="560" y2="140"/>
+
+              <text class="lbl" x="55" y="184" text-anchor="end">0</text>
+              <text class="lbl" x="55" y="142" text-anchor="end">10GB</text>
+              <text class="lbl" x="55" y="102" text-anchor="end">20GB</text>
+              <text class="lbl" x="55" y="62" text-anchor="end">40GB</text>
+
+              <text class="lbl" x="120" y="200" text-anchor="middle">8K</text>
+              <text class="lbl" x="220" y="200" text-anchor="middle">16K</text>
+              <text class="lbl" x="320" y="200" text-anchor="middle">32K</text>
+              <text class="lbl" x="420" y="200" text-anchor="middle">64K</text>
+              <text class="lbl" x="520" y="200" text-anchor="middle">128K</text>
+
+              <!-- bars: KV cache size at each context length (Llama-3 70B fp16) -->
+              <!-- 8K: 2.5GB, 16K:5GB, 32K:10GB, 64K:20GB, 128K:40GB -->
+              <rect x="100" y="170" width="40" height="10" fill="#b3471a"/>
+              <rect x="200" y="160" width="40" height="20" fill="#b3471a"/>
+              <rect x="300" y="140" width="40" height="40" fill="#b3471a"/>
+              <rect x="400" y="100" width="40" height="80" fill="#b3471a"/>
+              <rect x="500" y="20"  width="40" height="160" fill="#b3471a"/>
+
+              <text class="ttl" x="310" y="14" text-anchor="middle">Llama-3 70B (GQA, fp16) のKVキャッシュサイズ</text>
+              <text class="lbl" x="310" y="220" text-anchor="middle">コンテキスト長</text>
+            </svg>
+            <figcaption>図4: コンテキスト長に対しキャッシュは線形増加。128K では 40GB を超え、80GB H100 単体では収まらなくなる。</figcaption>
+          </figure>
+
+          <p>
+            さらに厄介なのは、リクエストごとに最大長分を事前確保する素朴な実装だと、外部断片化と内部断片化（割当はしたが使ってない部分）で 60〜80% が無駄になることが報告されている。これが PagedAttention 登場の動機になった。
+          </p>
+        </section>
+
+        <section>
+          <h2>メモリ帯域ボトルネックという真の問題</h2>
+          <p>
+            decode フェーズで意識すべきは、容量だけでなく<strong>帯域</strong>。1 トークン生成するたびに <code>K</code>, <code>V</code> 全体を HBM から読み出して内積を取る必要があり、出てくる FLOPs はその割に少ない。Roofline モデルでいうと演算強度（FLOPs/byte）が極めて低く、GPU の演算ユニットがほぼ遊ぶ。
+          </p>
+          <aside class="callout note">
+            <strong>Note:</strong> H100 SXM の HBM3 帯域は約 3.35 TB/s。Llama-3 70B を 8K コンテキストで decode すると、1 トークンあたり数 GB を読み込むことになり、1 ステップ時間は実質「KV を舐め切る時間」で決まる。FLOPs を倍にしても decode は速くならない。
+          </aside>
+
+          <figure>
+            <svg viewBox="0 0 600 220" role="img" aria-label="prefillとdecodeのRooflineイメージ">
+              <style>
+                .ax3 { stroke: currentColor; stroke-width: 1; }
+                .roof { stroke: #1f1d1a; opacity: 0.5; stroke-width: 1.5; fill: none; }
+                .lbl3 { font: 12px sans-serif; fill: currentColor; }
+                .ttl3 { font: 13px sans-serif; fill: currentColor; }
+              </style>
+              <line class="ax3" x1="60" y1="180" x2="560" y2="180"/>
+              <line class="ax3" x1="60" y1="20"  x2="60"  y2="180"/>
+
+              <text class="lbl3" x="55"  y="22" text-anchor="end">FLOPs/s</text>
+              <text class="lbl3" x="310" y="210" text-anchor="middle">演算強度 FLOPs/byte（log）</text>
+
+              <!-- roofline: bandwidth slope then compute ceiling -->
+              <path class="roof" d="M60,180 L300,40 L560,40"/>
+
+              <!-- decode point: low intensity -->
+              <circle cx="120" cy="150" r="6" fill="#b3471a"/>
+              <text class="lbl3" x="135" y="148" fill="#b3471a">decode（帯域bound）</text>
+
+              <!-- prefill point: high intensity -->
+              <circle cx="450" cy="48" r="6" fill="#5a8a3f"/>
+              <text class="lbl3" x="445" y="40" fill="#5a8a3f" text-anchor="end">prefill（演算bound）</text>
+
+              <text class="lbl3" x="180" y="100" opacity="0.6">↑ HBM 帯域の天井</text>
+              <text class="lbl3" x="450" y="32" opacity="0.6">↑ FLOPs の天井</text>
+            </svg>
+            <figcaption>図5: Roofline で見た prefill と decode。decode は左の帯域律速側にいるので、KVを「軽く・速く」読めるかが直接効く。</figcaption>
+          </figure>
+
+          <p>
+            この観点から言うと、KVキャッシュ最適化の効果は <strong>「いかに帯域消費を減らすか」</strong> でほぼ決まる。容量削減と帯域削減は連動するが、量子化のように容量を削っても演算負荷を上げるだけのものは、decode 限界帯域より演算余力が大きい状況でしか効かない。設計選択を見るときは「これはどっちを削っているのか」を意識するとよい。
+          </p>
+        </section>
+
+        <section>
+          <h2>軸1: メモリ管理 — PagedAttention</h2>
+          <p>
+            <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">PagedAttention (SOSP 2023)</a>
+            は OS のページング機構を attention に持ち込んだ。リクエストごとに連続メモリを確保するのではなく、固定サイズの <em>ブロック</em>（例: 16 トークン分）を仮想↔物理にマップし、必要に応じて非連続な物理ブロックに散らばらせる。
+          </p>
+
+          <figure>
+            <svg viewBox="0 0 600 260" role="img" aria-label="連続割当 vs PagedAttention のメモリレイアウト">
+              <style>
+                .blk-used  { fill: #5a8a3f; opacity: 0.85; }
+                .blk-waste { fill: #d97706; opacity: 0.55; }
+                .blk-free  { fill: currentColor; opacity: 0.08; }
+                .blk-edge  { fill: none; stroke: currentColor; opacity: 0.3; }
+                .ttx { font: 12px sans-serif; fill: currentColor; }
+                .ttxh { font: 13px sans-serif; fill: currentColor; font-weight: 600; }
+              </style>
+
+              <!-- top: contiguous allocation -->
+              <text class="ttxh" x="20" y="30">連続割当（素朴）: 最大長で予約、断片化＆未使用領域が発生</text>
+              <g transform="translate(20,40)">
+                <!-- request A: reserved 8 blocks, used 3 -->
+                <text class="ttx" x="0" y="22">req A</text>
+                <g transform="translate(60,10)">
+                  <rect class="blk-used"  x="0"   y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="24"  y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="48"  y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="72"  y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="96"  y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="120" y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="144" y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="168" y="0" width="22" height="22"/>
+                </g>
+                <!-- gap (external frag) -->
+                <g transform="translate(260,10)">
+                  <rect class="blk-free" x="0"  y="0" width="22" height="22"/>
+                  <rect class="blk-free" x="24" y="0" width="22" height="22"/>
+                </g>
+                <!-- request B: reserved 6, used 4 -->
+                <text class="ttx" x="320" y="22">req B</text>
+                <g transform="translate(360,10)">
+                  <rect class="blk-used"  x="0"   y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="24"  y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="48"  y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="72"  y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="96"  y="0" width="22" height="22"/>
+                  <rect class="blk-waste" x="120" y="0" width="22" height="22"/>
+                </g>
+              </g>
+
+              <!-- bottom: paged -->
+              <text class="ttxh" x="20" y="120">PagedAttention: 物理ブロックは非連続でOK、最終ブロック以外は満タンで使い切れる</text>
+              <g transform="translate(20,140)">
+                <!-- physical pool with shuffled allocation -->
+                <text class="ttx" x="0" y="22">物理</text>
+                <g transform="translate(60,10)">
+                  <!-- legend: A blocks (green), B blocks (orange-tinged), free -->
+                  <rect class="blk-used"  x="0"   y="0" width="22" height="22"/>
+                  <rect class="blk-free"  x="24"  y="0" width="22" height="22"/>
+                  <rect fill="#b3471a" opacity="0.85" x="48"  y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="72"  y="0" width="22" height="22"/>
+                  <rect fill="#b3471a" opacity="0.85" x="96"  y="0" width="22" height="22"/>
+                  <rect class="blk-free"  x="120" y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="144" y="0" width="22" height="22"/>
+                  <rect fill="#b3471a" opacity="0.85" x="168" y="0" width="22" height="22"/>
+                  <rect fill="#b3471a" opacity="0.85" x="192" y="0" width="22" height="22"/>
+                  <rect class="blk-free"  x="216" y="0" width="22" height="22"/>
+                  <rect class="blk-used"  x="240" y="0" width="22" height="22"/>
+                  <rect class="blk-free"  x="264" y="0" width="22" height="22"/>
+                </g>
+                <!-- block table A -->
+                <text class="ttx" x="0"   y="60">表 A→</text>
+                <g transform="translate(60,55)" stroke="#5a8a3f" fill="none" stroke-width="1.5">
+                  <path d="M11,-25 C40,0 60,5 71,5"/>
+                  <path d="M11,-25 C90,5 145,5 155,5"/>
+                  <path d="M11,-25 C190,10 235,10 251,5"/>
+                </g>
+                <text class="ttx" x="0"   y="90">表 B→</text>
+                <g transform="translate(60,85)" stroke="#b3471a" fill="none" stroke-width="1.5">
+                  <path d="M11,-55 C40,-15 50,-25 59,-25"/>
+                  <path d="M11,-55 C80,-15 95,-30 107,-25"/>
+                  <path d="M11,-55 C150,-15 175,-30 179,-25"/>
+                  <path d="M11,-55 C170,-10 195,-25 203,-25"/>
+                </g>
+              </g>
+            </svg>
+            <figcaption>図6: 連続割当（上）は最大長予約で 60〜80% が無駄。PagedAttention（下）はブロック表で非連続を吸収し、断片化を 4% 未満まで圧縮する。</figcaption>
+          </figure>
+
+          <ul>
+            <li>外部断片化（隙間が使えない）が消える</li>
+            <li>内部断片化はブロック粒度に閉じる（最後のブロックだけ無駄）</li>
+            <li>
+              プロンプトを共有する複数リクエスト（system prompt を持つチャットなど）でブロックを共有でき、メモリ使用量がさらに減る
+            </li>
+            <li>結果として GPU 当たりの並列リクエスト数が増え、スループットが伸びる</li>
+          </ul>
+          <p>
+            vLLM の実測では KVキャッシュの浪費が 4% 未満、Hugging Face Transformers 比で最大 24× のスループット改善が報告された。実装は CUDA カーネルとブロックテーブルが噛み合った非自明なエンジニアリングだが、概念としては「カーネルが論理ブロック番号 → 物理アドレスを引いて attention する」だけ。
+          </p>
+          <pre><code class="language-python"># vLLM での KVキャッシュ管理イメージ（疑似コード）
+# 各シーケンスは「論理ブロック → 物理ブロック」の表だけ持つ
+seq_a.block_table = [P3, P7, P12]   # 連続じゃなくてOK
+seq_b.block_table = [P3, P7, P9]    # 先頭2ブロックを seq_a と共有
+
+# attention カーネルはこのテーブルを引いて非連続HBMから K,V を読む
+out = paged_attention(q, block_table=seq.block_table,
+                      block_size=16, num_blocks_used=k)</code></pre>
+        </section>
+
+        <section>
+          <h2>軸2: ビット数削減 — KVキャッシュ量子化</h2>
+          <p>
+            KVキャッシュの中身を fp16 から int8 / int4 / NF4 / 1bit に圧縮するアプローチ。容量も帯域も同じだけ減るので、decode が帯域ボトルネックの状況に直接効く。難点はキャッシュは「読まれる側」なので量子化誤差が attention 出力に直接乗ること。
+          </p>
+
+          <figure>
+            <svg viewBox="0 0 600 200" role="img" aria-label="量子化bit数とメモリ削減率">
+              <style>
+                .qbar  { fill: #b3471a; opacity: 0.85; }
+                .qbar2 { fill: #5a8a3f; opacity: 0.85; }
+                .qlbl  { font: 12px sans-serif; fill: currentColor; }
+                .qttl  { font: 13px sans-serif; fill: currentColor; font-weight: 600; }
+              </style>
+              <text class="qttl" x="300" y="20" text-anchor="middle">1トークンあたりのKVバイト数（fp16=100%）</text>
+
+              <!-- bars -->
+              <g transform="translate(80,40)">
+                <text class="qlbl" x="-10" y="20" text-anchor="end">fp16</text>
+                <rect class="qbar" x="0" y="6" width="320" height="18"/>
+                <text class="qlbl" x="330" y="20">100% (基準)</text>
+
+                <text class="qlbl" x="-10" y="50" text-anchor="end">fp8</text>
+                <rect class="qbar" x="0" y="36" width="160" height="18"/>
+                <text class="qlbl" x="170" y="50">50%</text>
+
+                <text class="qlbl" x="-10" y="80" text-anchor="end">int4</text>
+                <rect class="qbar2" x="0" y="66" width="80" height="18"/>
+                <text class="qlbl" x="90" y="80">25%</text>
+
+                <text class="qlbl" x="-10" y="110" text-anchor="end">int2 (KIVI)</text>
+                <rect class="qbar2" x="0" y="96" width="40" height="18"/>
+                <text class="qlbl" x="50" y="110">12.5%</text>
+
+                <text class="qlbl" x="-10" y="140" text-anchor="end">1bit (CQ)</text>
+                <rect class="qbar2" x="0" y="126" width="20" height="18"/>
+                <text class="qlbl" x="30" y="140">6.25%（実験的）</text>
+              </g>
+            </svg>
+            <figcaption>図7: 量子化bit数とKVバイト数の比。fp16 → int4 で 1/4、KIVI の 2bit で 1/8 まで縮む。容量と帯域が同時に下がる。</figcaption>
+          </figure>
+
+          <h3>KIVI（2bit, plug-and-play）</h3>
+          <p>
+            <a href="https://arxiv.org/html/2508.06297v1" target="_blank" rel="noopener">KIVI</a>
+            の鍵となる観察は <strong>Key と Value で外れ値の分布が違う</strong> こと。Key にはチャネル方向に強い外れ値があり、Value にはトークン方向に分散がある。そこで:
+          </p>
+          <ul>
+            <li>Key: <strong>per-channel</strong> に量子化（チャネルごとに scale/zero）</li>
+            <li>Value: <strong>per-token</strong> に量子化</li>
+          </ul>
+          <p>
+            これだけで 2bit でも品質をほぼ保持し、ピークメモリ 2.6×、バッチサイズ 4× 増、スループット 2.35〜3.47× を報告。fine-tuning 不要で既存モデルにそのまま乗る点が普及を後押しした。
+          </p>
+
+          <h3>Coupled Quantization（1bit）</h3>
+          <p>
+            <a href="https://neurips.cc/virtual/2024/poster/93558" target="_blank" rel="noopener">Coupled Quantization (NeurIPS 2024)</a>
+            は複数チャネルをまとめて量子化することで、チャネル間の相互依存を活用。1bit/channel まで落としても品質を保てると主張している。
+          </p>
+
+          <h3>NVFP4 / FP8 ハードウェア量子化</h3>
+          <p>
+            Hopper / Blackwell 世代の GPU は FP8、FP4 系のテンソル演算をハードウェアでサポートする。
+            <a href="https://developer.nvidia.com/blog/optimizing-inference-for-long-context-and-large-batch-sizes-with-nvfp4-kv-cache/" target="_blank" rel="noopener">NVFP4 KVキャッシュ</a>
+            は FP8 比で約 50% メモリ削減、長文・大バッチでのコンテキスト長を実用域に押し上げる。研究レベルの工夫より、まずこの「ハードウェアが速い形式に揃える」が現場の第一手。
+          </p>
+
+          <aside class="callout warn">
+            <strong>注意:</strong> 量子化は <em>prefill</em> よりも <em>decode</em> に効く。prefill は元から compute bound なので、量子化で帯域を減らしても演算側がボトルネックのまま。短プロンプト・長生成で効果が大きい。
+          </aside>
+        </section>
+
+        <section>
+          <h2>軸3: トークン数削減 — エビクション</h2>
+          <p>
+            「全トークンを覚える必要があるのか？」という根本的な問い。長文ほどキャッシュは線形に増えるが、attention の重みは特定のトークンに偏ることが多い。重要トークンだけ残して他を捨てるのがエビクション系。
+          </p>
+
+          <figure>
+            <svg viewBox="0 0 620 230" role="img" aria-label="エビクション3種の保持パターン">
+              <style>
+                .keep   { fill: #5a8a3f; }
+                .drop   { fill: currentColor; opacity: 0.18; }
+                .sink   { fill: #b3471a; }
+                .heavy  { fill: #d97706; }
+                .clbl   { font: 12px sans-serif; fill: currentColor; }
+                .cttl   { font: 13px sans-serif; font-weight: 600; fill: currentColor; }
+              </style>
+
+              <!-- StreamingLLM -->
+              <text class="cttl" x="20" y="22">StreamingLLM: 先頭(sink) + 直近のスライディングウィンドウ</text>
+              <g transform="translate(20,30)">
+                <!-- 24 tokens -->
+                <rect class="sink" x="0"   y="0" width="14" height="18"/>
+                <rect class="sink" x="16"  y="0" width="14" height="18"/>
+                <rect class="drop" x="32"  y="0" width="14" height="18"/>
+                <rect class="drop" x="48"  y="0" width="14" height="18"/>
+                <rect class="drop" x="64"  y="0" width="14" height="18"/>
+                <rect class="drop" x="80"  y="0" width="14" height="18"/>
+                <rect class="drop" x="96"  y="0" width="14" height="18"/>
+                <rect class="drop" x="112" y="0" width="14" height="18"/>
+                <rect class="drop" x="128" y="0" width="14" height="18"/>
+                <rect class="drop" x="144" y="0" width="14" height="18"/>
+                <rect class="drop" x="160" y="0" width="14" height="18"/>
+                <rect class="drop" x="176" y="0" width="14" height="18"/>
+                <rect class="drop" x="192" y="0" width="14" height="18"/>
+                <rect class="drop" x="208" y="0" width="14" height="18"/>
+                <rect class="drop" x="224" y="0" width="14" height="18"/>
+                <rect class="drop" x="240" y="0" width="14" height="18"/>
+                <rect class="drop" x="256" y="0" width="14" height="18"/>
+                <rect class="drop" x="272" y="0" width="14" height="18"/>
+                <rect class="keep" x="288" y="0" width="14" height="18"/>
+                <rect class="keep" x="304" y="0" width="14" height="18"/>
+                <rect class="keep" x="320" y="0" width="14" height="18"/>
+                <rect class="keep" x="336" y="0" width="14" height="18"/>
+                <rect class="keep" x="352" y="0" width="14" height="18"/>
+                <rect class="keep" x="368" y="0" width="14" height="18"/>
+              </g>
+
+              <!-- H2O -->
+              <text class="cttl" x="20" y="92">H2O: 累積 attention の Heavy Hitter + 直近</text>
+              <g transform="translate(20,100)">
+                <rect class="drop"  x="0"   y="0" width="14" height="18"/>
+                <rect class="heavy" x="16"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="32"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="48"  y="0" width="14" height="18"/>
+                <rect class="heavy" x="64"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="80"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="96"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="112" y="0" width="14" height="18"/>
+                <rect class="heavy" x="128" y="0" width="14" height="18"/>
+                <rect class="drop"  x="144" y="0" width="14" height="18"/>
+                <rect class="heavy" x="160" y="0" width="14" height="18"/>
+                <rect class="drop"  x="176" y="0" width="14" height="18"/>
+                <rect class="drop"  x="192" y="0" width="14" height="18"/>
+                <rect class="drop"  x="208" y="0" width="14" height="18"/>
+                <rect class="drop"  x="224" y="0" width="14" height="18"/>
+                <rect class="heavy" x="240" y="0" width="14" height="18"/>
+                <rect class="drop"  x="256" y="0" width="14" height="18"/>
+                <rect class="drop"  x="272" y="0" width="14" height="18"/>
+                <rect class="drop"  x="288" y="0" width="14" height="18"/>
+                <rect class="drop"  x="304" y="0" width="14" height="18"/>
+                <rect class="keep"  x="320" y="0" width="14" height="18"/>
+                <rect class="keep"  x="336" y="0" width="14" height="18"/>
+                <rect class="keep"  x="352" y="0" width="14" height="18"/>
+                <rect class="keep"  x="368" y="0" width="14" height="18"/>
+              </g>
+
+              <!-- SnapKV -->
+              <text class="cttl" x="20" y="162">SnapKV: 末尾観測窓から重要クラスタを推定して prefill 圧縮</text>
+              <g transform="translate(20,170)">
+                <rect class="drop"  x="0"   y="0" width="14" height="18"/>
+                <rect class="drop"  x="16"  y="0" width="14" height="18"/>
+                <rect class="heavy" x="32"  y="0" width="14" height="18"/>
+                <rect class="heavy" x="48"  y="0" width="14" height="18"/>
+                <rect class="heavy" x="64"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="80"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="96"  y="0" width="14" height="18"/>
+                <rect class="drop"  x="112" y="0" width="14" height="18"/>
+                <rect class="drop"  x="128" y="0" width="14" height="18"/>
+                <rect class="heavy" x="144" y="0" width="14" height="18"/>
+                <rect class="heavy" x="160" y="0" width="14" height="18"/>
+                <rect class="drop"  x="176" y="0" width="14" height="18"/>
+                <rect class="drop"  x="192" y="0" width="14" height="18"/>
+                <rect class="drop"  x="208" y="0" width="14" height="18"/>
+                <rect class="drop"  x="224" y="0" width="14" height="18"/>
+                <rect class="heavy" x="240" y="0" width="14" height="18"/>
+                <rect class="heavy" x="256" y="0" width="14" height="18"/>
+                <rect class="heavy" x="272" y="0" width="14" height="18"/>
+                <rect class="drop"  x="288" y="0" width="14" height="18"/>
+                <rect class="drop"  x="304" y="0" width="14" height="18"/>
+                <rect class="keep"  x="320" y="0" width="14" height="18"/>
+                <rect class="keep"  x="336" y="0" width="14" height="18"/>
+                <rect class="keep"  x="352" y="0" width="14" height="18"/>
+                <rect class="keep"  x="368" y="0" width="14" height="18"/>
+                <text class="clbl" x="394" y="14">← 観測窓</text>
+              </g>
+
+              <!-- legend -->
+              <g transform="translate(440,30)">
+                <rect class="sink" x="0" y="0" width="12" height="12"/>
+                <text class="clbl" x="18" y="11">attention sink</text>
+                <rect class="heavy" x="0" y="20" width="12" height="12"/>
+                <text class="clbl" x="18" y="31">heavy hitter</text>
+                <rect class="keep" x="0" y="40" width="12" height="12"/>
+                <text class="clbl" x="18" y="51">直近window</text>
+                <rect class="drop" x="0" y="60" width="12" height="12"/>
+                <text class="clbl" x="18" y="71">破棄</text>
+              </g>
+            </svg>
+            <figcaption>図8: 3種のエビクション戦略。色付き＝保持、薄灰＝破棄。狙う「残し方」が違う。</figcaption>
+          </figure>
+
+          <h3>StreamingLLM</h3>
+          <p>
+            <strong>先頭のいくつか（attention sinks）+ 直近 N トークン</strong>のスライディングウィンドウだけ保持する。実装が単純で常に一定サイズのキャッシュで回せ、ほぼ無限長の生成を可能にする。重要トークンを捨てるリスクはあるが、対話のように直近重視のワークロードでは強い。
+          </p>
+
+          <h3>H2O（Heavy Hitter Oracle）</h3>
+          <p>
+            attention スコアの累積が大きいトークン（heavy hitters）が出力品質に支配的に効くという観察に基づき、累積スコアで上位 k 件と直近 m 件を残す。NeurIPS 2023 で提案された王道。
+          </p>
+
+          <h3>SnapKV</h3>
+          <p>
+            prefill 段階で長プロンプトを圧縮することに特化。プロンプト末尾の小さな観測ウィンドウから「今後どこに attention が向きそうか」を推定し、ヘッドごとに重要なクラスタを残す。長文プロンプト + 短応答で特に効く。
+          </p>
+
+          <aside class="callout warn">
+            <strong>注意:</strong> 2025 年に出た
+            <a href="https://arxiv.org/pdf/2510.00231" target="_blank" rel="noopener">"The Pitfalls of KV Cache Compression"</a>
+            は、エビクション系がベンチマークでは強くても実運用では推論の連鎖を破壊する場面があると警鐘を鳴らしている。reasoning タスクで使う際は要評価。
+          </aside>
+        </section>
+
+        <section>
+          <h2>軸4: アーキテクチャ変更 — MQA / GQA / MLA</h2>
+          <p>
+            学習時点で KVキャッシュが小さくなるようヘッド構造を変える系。後付けではなく事前学習段階の決定。
+          </p>
+
+          <figure>
+            <svg viewBox="0 0 660 240" role="img" aria-label="MHA / MQA / GQA / MLA のヘッド構造比較">
+              <style>
+                .qh   { fill: #5a8a3f; }
+                .kvh  { fill: #b3471a; }
+                .mlah { fill: #6a4ea8; }
+                .arr  { stroke: currentColor; opacity: 0.45; stroke-width: 1; fill: none; }
+                .hlbl { font: 11px sans-serif; fill: currentColor; }
+                .htt  { font: 12px sans-serif; font-weight: 600; fill: currentColor; }
+              </style>
+
+              <!-- MHA -->
+              <g transform="translate(10,20)">
+                <text class="htt" x="60" y="0" text-anchor="middle">MHA</text>
+                <text class="hlbl" x="60" y="14" text-anchor="middle">8Q : 8KV</text>
+                <!-- Q row -->
+                <rect class="qh" x="0"   y="30" width="14" height="18"/>
+                <rect class="qh" x="16"  y="30" width="14" height="18"/>
+                <rect class="qh" x="32"  y="30" width="14" height="18"/>
+                <rect class="qh" x="48"  y="30" width="14" height="18"/>
+                <rect class="qh" x="64"  y="30" width="14" height="18"/>
+                <rect class="qh" x="80"  y="30" width="14" height="18"/>
+                <rect class="qh" x="96"  y="30" width="14" height="18"/>
+                <rect class="qh" x="112" y="30" width="14" height="18"/>
+                <!-- KV row -->
+                <rect class="kvh" x="0"   y="80" width="14" height="18"/>
+                <rect class="kvh" x="16"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="32"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="48"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="64"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="80"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="96"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="112" y="80" width="14" height="18"/>
+                <!-- arrows 1:1 -->
+                <line class="arr" x1="7"   y1="50" x2="7"   y2="78"/>
+                <line class="arr" x1="23"  y1="50" x2="23"  y2="78"/>
+                <line class="arr" x1="39"  y1="50" x2="39"  y2="78"/>
+                <line class="arr" x1="55"  y1="50" x2="55"  y2="78"/>
+                <line class="arr" x1="71"  y1="50" x2="71"  y2="78"/>
+                <line class="arr" x1="87"  y1="50" x2="87"  y2="78"/>
+                <line class="arr" x1="103" y1="50" x2="103" y2="78"/>
+                <line class="arr" x1="119" y1="50" x2="119" y2="78"/>
+
+                <text class="hlbl" x="60" y="125" text-anchor="middle">cache: 100%（基準）</text>
+              </g>
+
+              <!-- GQA -->
+              <g transform="translate(180,20)">
+                <text class="htt" x="60" y="0" text-anchor="middle">GQA</text>
+                <text class="hlbl" x="60" y="14" text-anchor="middle">8Q : 2KV (4ずつ共有)</text>
+                <rect class="qh" x="0"   y="30" width="14" height="18"/>
+                <rect class="qh" x="16"  y="30" width="14" height="18"/>
+                <rect class="qh" x="32"  y="30" width="14" height="18"/>
+                <rect class="qh" x="48"  y="30" width="14" height="18"/>
+                <rect class="qh" x="64"  y="30" width="14" height="18"/>
+                <rect class="qh" x="80"  y="30" width="14" height="18"/>
+                <rect class="qh" x="96"  y="30" width="14" height="18"/>
+                <rect class="qh" x="112" y="30" width="14" height="18"/>
+                <rect class="kvh" x="24"  y="80" width="14" height="18"/>
+                <rect class="kvh" x="88"  y="80" width="14" height="18"/>
+                <line class="arr" x1="7"   y1="50" x2="31"  y2="78"/>
+                <line class="arr" x1="23"  y1="50" x2="31"  y2="78"/>
+                <line class="arr" x1="39"  y1="50" x2="31"  y2="78"/>
+                <line class="arr" x1="55"  y1="50" x2="31"  y2="78"/>
+                <line class="arr" x1="71"  y1="50" x2="95"  y2="78"/>
+                <line class="arr" x1="87"  y1="50" x2="95"  y2="78"/>
+                <line class="arr" x1="103" y1="50" x2="95"  y2="78"/>
+                <line class="arr" x1="119" y1="50" x2="95"  y2="78"/>
+                <text class="hlbl" x="60" y="125" text-anchor="middle">cache: 25%</text>
+              </g>
+
+              <!-- MQA -->
+              <g transform="translate(350,20)">
+                <text class="htt" x="60" y="0" text-anchor="middle">MQA</text>
+                <text class="hlbl" x="60" y="14" text-anchor="middle">8Q : 1KV</text>
+                <rect class="qh" x="0"   y="30" width="14" height="18"/>
+                <rect class="qh" x="16"  y="30" width="14" height="18"/>
+                <rect class="qh" x="32"  y="30" width="14" height="18"/>
+                <rect class="qh" x="48"  y="30" width="14" height="18"/>
+                <rect class="qh" x="64"  y="30" width="14" height="18"/>
+                <rect class="qh" x="80"  y="30" width="14" height="18"/>
+                <rect class="qh" x="96"  y="30" width="14" height="18"/>
+                <rect class="qh" x="112" y="30" width="14" height="18"/>
+                <rect class="kvh" x="56" y="80" width="14" height="18"/>
+                <line class="arr" x1="7"   y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="23"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="39"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="55"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="71"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="87"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="103" y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="119" y1="50" x2="63"  y2="78"/>
+                <text class="hlbl" x="60" y="125" text-anchor="middle">cache: 12.5%</text>
+              </g>
+
+              <!-- MLA -->
+              <g transform="translate(520,20)">
+                <text class="htt" x="60" y="0" text-anchor="middle">MLA</text>
+                <text class="hlbl" x="60" y="14" text-anchor="middle">8Q : low-rank latent</text>
+                <rect class="qh" x="0"   y="30" width="14" height="18"/>
+                <rect class="qh" x="16"  y="30" width="14" height="18"/>
+                <rect class="qh" x="32"  y="30" width="14" height="18"/>
+                <rect class="qh" x="48"  y="30" width="14" height="18"/>
+                <rect class="qh" x="64"  y="30" width="14" height="18"/>
+                <rect class="qh" x="80"  y="30" width="14" height="18"/>
+                <rect class="qh" x="96"  y="30" width="14" height="18"/>
+                <rect class="qh" x="112" y="30" width="14" height="18"/>
+                <rect class="mlah" x="40" y="80" width="46" height="18"/>
+                <text class="hlbl" x="63" y="93" text-anchor="middle" fill="white">latent</text>
+                <line class="arr" x1="7"   y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="23"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="39"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="55"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="71"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="87"  y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="103" y1="50" x2="63"  y2="78"/>
+                <line class="arr" x1="119" y1="50" x2="63"  y2="78"/>
+                <text class="hlbl" x="60" y="125" text-anchor="middle">cache: ≪12.5%（圧縮）</text>
+              </g>
+
+              <!-- legend -->
+              <g transform="translate(20,180)">
+                <rect class="qh" x="0" y="0" width="12" height="12"/>
+                <text class="hlbl" x="18" y="10">Q ヘッド</text>
+                <rect class="kvh" x="80" y="0" width="12" height="12"/>
+                <text class="hlbl" x="98" y="10">KV ヘッド</text>
+                <rect class="mlah" x="180" y="0" width="12" height="12"/>
+                <text class="hlbl" x="198" y="10">latent (MLA)</text>
+              </g>
+            </svg>
+            <figcaption>図9: ヘッド構造の進化。GQA は MHA に対し KV を 1/4、MQA は 1/8、MLA はさらに低次元 latent に圧縮する。</figcaption>
+          </figure>
+
+          <ul>
+            <li>
+              <strong>MHA (Multi-Head Attention)</strong>: 各クエリヘッドに対応する KV ヘッドを別個に持つ素朴形。最大のキャッシュ。
+            </li>
+            <li>
+              <strong>MQA (Multi-Query Attention)</strong>: 全クエリヘッドで KV を共有（1 セット）。キャッシュ最小だが品質劣化。
+            </li>
+            <li>
+              <strong>GQA (Grouped-Query Attention)</strong>: クエリヘッドをグループ化し、グループごとに 1 セットの KV。MQA と MHA の中間で、Llama-2/3 など多数のモデルが採用。
+            </li>
+            <li>
+              <strong>MLA (Multi-head Latent Attention, DeepSeek)</strong>: KV を低次元 latent に圧縮した上でキャッシュ。展開時に上射影。GQA より積極的にキャッシュを圧縮し、長文性能を保つ。
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>運用上の意思決定マップ</h2>
+          <p>
+            それぞれの軸はだいたい独立に併用できる。実運用での当て方をフローチャートにすると:
+          </p>
+
+          <figure>
+            <pre class="mermaid">
+flowchart TD
+  S([症状を観察]) --> Q1{ボトルネックは？}
+  Q1 -->|並列リクエストが頭打ち| A1[PagedAttention 系<br/>vLLM / SGLang]
+  Q1 -->|decode が帯域bound| Q2{コンテキスト長は？}
+  Q1 -->|プロンプトが超長文| A3[SnapKV で prefill 圧縮]
+  Q1 -->|無限長対話| A4[StreamingLLM<br/>+ 外部メモリ/RAG]
+
+  Q2 -->|短〜中| A2a[FP8/NVFP4]
+  Q2 -->|長| A2b[KIVI 4-2bit<br/>+ FP8]
+
+  A1 --> X{まだ詰まる?}
+  A2a --> X
+  A2b --> X
+  A3 --> X
+  A4 --> X
+
+  X -->|Yes| Y[GQA / MLA モデルへ<br/>切り替え]
+  X -->|No| Z([運用継続])
+
+  classDef option fill:#ece6d8,stroke:#b3471a,color:#1f1d1a
+  class A1,A2a,A2b,A3,A4,Y option
+            </pre>
+            <figcaption>図10: 症状からの選択フロー。組み合わせ可だが「まずどれを試すか」の優先順を示す。</figcaption>
+          </figure>
+
+          <ul>
+            <li>
+              <strong>大量の同時リクエスト × 共有プロンプト</strong>: PagedAttention（vLLM / SGLang）。これは入れない理由がない。
+            </li>
+            <li>
+              <strong>decode が帯域で詰まる</strong>: まず FP8/NVFP4 へ。さらに余力があれば KIVI 系の 4〜2bit。
+            </li>
+            <li>
+              <strong>超長文プロンプト</strong>: SnapKV で prefill 段階を圧縮。効かないなら GQA/MLA のモデルへ切り替え。
+            </li>
+            <li>
+              <strong>無限長対話・ストリーミング</strong>: StreamingLLM 形のスライディング。ただし長期記憶は別レイヤ（RAG / メモリモジュール）で持つ。
+            </li>
+            <li>
+              <strong>reasoning 系タスク</strong>: エビクションは慎重に。chain-of-thought を切り落とすと品質が落ちる。
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>まとめ</h2>
+          <ul>
+            <li>
+              KVキャッシュは Transformer 推論の前提インフラで、「容量」より「帯域」がボトルネックになる。
+            </li>
+            <li>
+              最適化は<strong>メモリ管理 / ビット数 / トークン数 / アーキテクチャ</strong>の 4 軸に整理して考えると見通しが良い。
+            </li>
+            <li>
+              現場の標準装備は GQA + PagedAttention + 8/4bit 量子化。研究最前線は 1〜2bit 量子化、KVTC のような変換符号化、エビクションの reasoning ロバスト化。
+            </li>
+            <li>
+              次に追うとよいトピック: PagedAttention v2、Mamba/SSM 系の KVキャッシュ不要アーキテクチャ、Speculative Decoding と KVキャッシュ共有の交差点。
+            </li>
+          </ul>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li>
+              <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener"
+                >Kwon et al., "Efficient Memory Management for Large Language Model Serving with PagedAttention", SOSP 2023</a
+              >
+            </li>
+            <li>
+              <a href="https://www.runpod.io/articles/guides/vllm-pagedattention-continuous-batching" target="_blank" rel="noopener"
+                >vLLM Explained: PagedAttention, Continuous Batching, and Deploying High-Throughput LLM Inference in Production (Runpod)</a
+              >
+            </li>
+            <li>
+              <a href="https://introl.com/blog/kv-cache-optimization-memory-efficiency-production-llms-guide" target="_blank" rel="noopener"
+                >KV Cache Optimization: Memory Efficiency for Production LLMs (Introl Blog)</a
+              >
+            </li>
+            <li>
+              <a href="https://arxiv.org/abs/2508.06297" target="_blank" rel="noopener"
+                >"KV Cache Compression for Inference Efficiency in LLMs: A Review" (arXiv:2508.06297)</a
+              >
+            </li>
+            <li>
+              <a href="https://www.marktechpost.com/2026/04/29/top-10-kv-cache-compression-techniques-for-llm-inference-reducing-memory-overhead-across-eviction-quantization-and-low-rank-methods/" target="_blank" rel="noopener"
+                >Top 10 KV Cache Compression Techniques for LLM Inference (MarkTechPost, 2026-04)</a
+              >
+            </li>
+            <li>
+              <a href="https://neurips.cc/virtual/2024/poster/93558" target="_blank" rel="noopener"
+                >"KV Cache is 1 Bit Per Channel: Efficient LLM Inference with Coupled Quantization", NeurIPS 2024</a
+              >
+            </li>
+            <li>
+              <a href="https://developer.nvidia.com/blog/optimizing-inference-for-long-context-and-large-batch-sizes-with-nvfp4-kv-cache/" target="_blank" rel="noopener"
+                >Optimizing Inference for Long Context and Large Batch Sizes with NVFP4 KV Cache (NVIDIA Technical Blog)</a
+              >
+            </li>
+            <li>
+              <a href="https://jax-ml.github.io/scaling-book/inference/" target="_blank" rel="noopener"
+                >"All About Transformer Inference" — How To Scale Your Model</a
+              >
+            </li>
+            <li>
+              <a href="https://arxiv.org/pdf/2510.00231" target="_blank" rel="noopener"
+                >"The Pitfalls of KV Cache Compression" (arXiv:2510.00231)</a
+              >
+            </li>
+            <li>
+              <a href="https://github.com/NVIDIA/kvpress" target="_blank" rel="noopener"
+                >NVIDIA/kvpress — LLM KV cache compression made easy (GitHub)</a
+              >
+            </li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+
+    <!-- Mermaid (この記事固有の図解レンダリング) -->
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: dark ? "dark" : "default",
+        themeVariables: {
+          fontFamily: "'Inter','Noto Sans JP',system-ui,sans-serif",
+          fontSize: "14px",
+        },
+        flowchart: { htmlLabels: true, curve: "basis" },
+      });
+    </script>
+  </body>
+</html>

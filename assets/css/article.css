@@ -150,6 +150,20 @@
   color: inherit;
 }
 
+/* Mermaid（pre.mermaid の中で SVG にレンダリングされる） */
+.article-body pre.mermaid {
+  background: transparent;
+  border: none;
+  padding: var(--space-3) 0;
+  text-align: center;
+  overflow-x: auto;
+  font-family: var(--font-sans);
+}
+.article-body pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Blockquote */
 .article-body blockquote {
   border-left: 3px solid var(--border);
