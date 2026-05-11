@@ -1,7 +1,10 @@
 // learning-notes — article.js
-// 1. <h2>/<h3> から TOC を自動生成
+// 1. <h2>/<h3> から TOC を自動生成 + 見出し anchor link 付与
 // 2. highlight.js を起動
 // 3. メタタグ article:tags からタグチップを描画
+// 4. .code-wrap の copy ボタン
+// 5. dialog.lightbox で figure.zoomable をクリック拡大
+// 6. .theme-toggle で OS追従 + localStorage 永続なダークモード
 
 (function () {
   "use strict";
@@ -49,11 +52,22 @@
         id = slugify(h.textContent) || `h-${i}`;
         h.id = id;
       }
+      // 見出しに anchor link を埋め込む（CSS .anchor-h で hover 表示）
+      if (!h.classList.contains("anchor-h") && !h.querySelector(".anchor")) {
+        h.classList.add("anchor-h");
+        const anchor = document.createElement("a");
+        anchor.className = "anchor";
+        anchor.href = `#${id}`;
+        anchor.setAttribute("aria-label", "セクションへのリンク");
+        anchor.textContent = "#";
+        h.insertBefore(anchor, h.firstChild);
+      }
       const li = document.createElement("li");
       if (h.tagName === "H3") li.className = "toc-h3";
       const a = document.createElement("a");
       a.href = `#${id}`;
-      a.textContent = h.textContent;
+      // anchor span を除いたテキストのみ
+      a.textContent = h.textContent.replace(/^#\s*/, "");
       li.appendChild(a);
       ul.appendChild(li);
     });
@@ -111,9 +125,78 @@
       .forEach((el) => window.hljs.highlightElement(el));
   }
 
+  // ---- copy ボタン（.code-wrap > .copy-btn）----
+  function bindCopyButtons() {
+    document.querySelectorAll(".code-wrap").forEach((wrap) => {
+      if (wrap.querySelector(".copy-btn")) return;
+      const code = wrap.querySelector("code");
+      if (!code) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "copy-btn";
+      btn.textContent = "copy";
+      btn.setAttribute("aria-label", "コードをコピー");
+      wrap.appendChild(btn);
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(code.innerText);
+          btn.textContent = "✓ copied";
+          btn.dataset.state = "ok";
+          setTimeout(() => {
+            btn.textContent = "copy";
+            delete btn.dataset.state;
+          }, 1400);
+        } catch (e) {
+          btn.textContent = "✗ failed";
+          setTimeout(() => (btn.textContent = "copy"), 1400);
+        }
+      });
+    });
+  }
+
+  // ---- ダークモードトグル（OS追従 + localStorage 永続）----
+  function bindThemeToggle() {
+    const tog = document.querySelector(".theme-toggle");
+    if (!tog) return;
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark" || saved === "light") {
+      document.documentElement.style.colorScheme = saved;
+    }
+    tog.addEventListener("click", () => {
+      const cur =
+        getComputedStyle(document.documentElement).colorScheme || "light";
+      const next = cur.includes("dark") ? "light" : "dark";
+      document.documentElement.style.colorScheme = next;
+      localStorage.setItem("theme", next);
+    });
+  }
+
+  // ---- Lightbox（figure.zoomable をクリックで dialog.lightbox に表示）----
+  function bindLightbox() {
+    const dlg = document.querySelector("dialog.lightbox");
+    if (!dlg) return;
+    const lbBody = dlg.querySelector(".lb-body");
+    if (!lbBody) return;
+    document.querySelectorAll("figure.zoomable").forEach((fig) => {
+      fig.addEventListener("click", (e) => {
+        if (e.target.closest("a")) return;
+        lbBody.innerHTML = fig.innerHTML;
+        dlg.showModal();
+      });
+    });
+    const closeBtn = dlg.querySelector("button.close");
+    if (closeBtn) closeBtn.addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg) dlg.close();
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     buildToc();
     renderTags();
     highlight();
+    bindCopyButtons();
+    bindThemeToggle();
+    bindLightbox();
   });
 })();

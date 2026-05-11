@@ -248,6 +248,196 @@
   font-size: var(--fs-sm);
 }
 
+/* ============================================================
+   Sample A 由来の共通要素
+   ============================================================ */
+
+/* セクション章番号: §01, §02, ... を <h2> 前に */
+.article-body { counter-reset: chapter; }
+.article-body section:not([data-section]) { counter-increment: chapter; }
+.article-body section:not([data-section]) > h2::before {
+  content: "§ " counter(chapter, decimal-leading-zero) "  ";
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  font-size: 0.78em;
+  letter-spacing: 0.05em;
+}
+
+/* 見出しの anchor link（hover で # 表示） */
+.article-body h2.anchor-h,
+.article-body h3.anchor-h { position: relative; }
+.article-body .anchor-h > .anchor {
+  position: absolute;
+  left: -1.2em;
+  opacity: 0;
+  text-decoration: none;
+  color: var(--accent);
+  transition: opacity 0.15s;
+  font-weight: 400;
+}
+.article-body .anchor-h:hover > .anchor,
+.article-body .anchor-h:focus-within > .anchor { opacity: 0.6; }
+.article-body .anchor-h > .anchor:hover { opacity: 1; }
+
+/* TL;DR 強調ボックス */
+.article-body [data-section="tldr"] {
+  background: var(--bg-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--space-4) var(--space-5);
+}
+.article-body [data-section="tldr"] h2 {
+  margin-top: 0;
+  font-size: var(--fs-xl);
+}
+.article-body [data-section="tldr"] h2::before { content: none; }
+
+/* sidenote: 補足注釈（広い画面では右に張り出し） */
+.article-body .sidenote {
+  font-size: var(--fs-xs);
+  color: var(--fg-soft);
+  line-height: 1.6;
+  border-left: 2px solid var(--border);
+  padding-left: var(--space-3);
+  margin: var(--space-3) 0;
+}
+@media (min-width: 1100px) {
+  .article-body .sidenote {
+    float: right;
+    width: 200px;
+    margin: 0 -240px var(--space-3) var(--space-4);
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: var(--space-2) 0 0 0;
+  }
+}
+
+/* details.disclosure: 深掘り・補足の折りたたみ */
+.article-body details.disclosure {
+  margin: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) 0;
+}
+.article-body details.disclosure > summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.article-body details.disclosure > summary::-webkit-details-marker { display: none; }
+.article-body details.disclosure > summary::before {
+  content: "›";
+  transition: transform 0.18s;
+  font-size: 1.2em;
+  color: var(--muted);
+}
+.article-body details.disclosure[open] > summary::before { transform: rotate(90deg); }
+.article-body details.disclosure[open] > *:not(summary) { margin-top: var(--space-3); }
+
+/* code-wrap: コードブロックを <div class="code-wrap"> で包むと copy ボタンが現れる */
+.article-body .code-wrap { position: relative; }
+.article-body .code-wrap > .copy-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--bg-soft);
+  color: var(--fg-soft);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s, color 0.18s;
+}
+.article-body .code-wrap:hover > .copy-btn,
+.article-body .code-wrap:focus-within > .copy-btn { opacity: 1; }
+.article-body .code-wrap > .copy-btn:hover { color: var(--accent); }
+.article-body .code-wrap > .copy-btn[data-state="ok"] { color: #5a8a3f; opacity: 1; }
+
+/* figure.zoomable + dialog.lightbox: 図解クリックで拡大 */
+.article-body figure.zoomable { cursor: zoom-in; }
+.article-body figure.zoomable:hover svg,
+.article-body figure.zoomable:hover img {
+  outline: 1px solid var(--accent);
+  outline-offset: 6px;
+}
+
+dialog.lightbox {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+dialog.lightbox::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+}
+dialog.lightbox .lb-body {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow: auto;
+}
+dialog.lightbox .lb-body svg,
+dialog.lightbox .lb-body img {
+  max-width: 100%;
+  height: auto;
+}
+dialog.lightbox button.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* theme-toggle: OS追従 + localStorage 永続 */
+.theme-toggle {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: var(--fs-xs);
+  color: var(--fg-soft);
+  cursor: pointer;
+  z-index: 20;
+  font-family: var(--font-sans);
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* prefers-reduced-motion 対応 */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html { scroll-behavior: smooth; }
+
 /* Wide viewport: TOC as left sidebar */
 @media (min-width: 1100px) {
   .article {
