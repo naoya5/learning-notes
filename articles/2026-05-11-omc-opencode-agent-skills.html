@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>Agent Skills を読み解く — OMC と OpenCode、50本のSKILL.mdからプロンプト設計を学ぶ — learning-notes</title>
+    <meta name="description" content="oh-my-claudecode (Claude Code向け) と oh-my-opencode / oh-my-openagent (OpenCode向け) のスキル全50本を解剖。frontmatter作法、トリガー設計、ガード文、サブエージェント委譲、出力契約、自作SKILL.mdの雛形と設計チェックリストまで一望する。" />
+
+    <meta name="article:slug" content="omc-opencode-agent-skills" />
+    <meta name="article:date" content="2026-05-11" />
+    <meta name="article:tags" content="claude-code,agent-skills,prompt-engineering,oh-my-claudecode,opencode,skill-design" />
+    <meta name="article:summary" content="OMC・OpenCode系50本のSKILL.mdを解剖。description設計、ガード文、サブエージェント委譲、自作テンプレまで網羅。" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Agent Skills を読み解く — OMC と OpenCode、50本のSKILL.mdからプロンプト設計を学ぶ" />
+    <meta property="og:description" content="oh-my-claudecode と oh-my-opencode / oh-my-openagent のスキル全50本を解剖し、自作SKILL.mdの雛形と設計チェックリストまで一望する学習ノート。" />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-05-11-omc-opencode-agent-skills.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <button class="theme-toggle" type="button" aria-label="テーマ切り替え">
+      ◐ theme
+    </button>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-05-11">2026-05-11</time>
+        </p>
+        <h1>Agent Skills を読み解く — OMC と OpenCode、50本のSKILL.mdからプロンプト設計を学ぶ</h1>
+        <p class="lead">
+          oh-my-claudecode（Claude Code向け）と oh-my-opencode / oh-my-openagent（OpenCode向け）の3プロジェクトに同梱されたスキル50本のSKILL.md全文を読み込み、自動起動の仕組み・プロンプトの定型句・サブエージェント委譲・出力契約のパターンを抽出。最終章は自作SKILL.mdの雛形と設計チェックリスト。
+        </p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>3プロジェクト</strong>: <code>oh-my-claudecode</code> (38スキル) / <code>oh-my-opencode</code> (4 builtin + 4 commands) / <code>oh-my-openagent</code> (4 skills + 4 commands)。Claude Code または OpenCode に「マルチエージェント・オーケストレーション層」を被せる。</li>
+            <li><strong>frontmatter は <code>name</code> + <code>description</code> が標準。</strong> OMC は <code>level</code> <code>argument-hint</code> <code>pipeline</code> <code>handoff</code> 等で frontmatter を小さなワークフロー DSL に拡張している。</li>
+            <li><strong>description は自動起動の唯一の指標。</strong> <code>Use when …</code> + <code>Trigger phrases include "…"</code> + 必要なら <code>MUST USE for ANY …</code> でドメインを占有する。</li>
+            <li><strong>本文は XML タグで意図を分割</strong> (<code>&lt;Purpose&gt;</code> <code>&lt;Use_When&gt;</code> <code>&lt;Do_Not_Use_When&gt;</code> <code>&lt;Why_This_Exists&gt;</code>)。長いスキルは <code>STEP 0: REGISTER TODO LIST</code> で自己拘束する。</li>
+            <li><strong>頻出キーワード</strong>: <code>MUST</code>=67、<code>NEVER</code>=29、<code>CRITICAL</code>=39、<code>evidence</code>=89、<code>subagent</code>=70、<code>permalink</code>=33。ガード文・証拠主義・並列化が3本柱。</li>
+            <li><strong>自作の判断は Skillify Quality Gate の3問</strong>: 「ググって5分で出るか」「自リポ固有か」「発見に本物の労力がかかったか」。3問とも YES のときだけ作る。</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>はじめに — なぜ50本のスキルを読み解くのか</h2>
+          <p>
+            Claude Code（Anthropic 公式 CLI）と OpenCode（OSS エージェント CLI）には、エージェントの能力を「スキル（SKILL.md）」というファイルで拡張する仕組みがある。Anthropic が <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Agent Skills</a> という共通フォーマットを公開していて、CLI ごとに方言はあるが基本は揃っている。
+          </p>
+          <p>
+            このフォーマットの上に、より重武装な「オーケストレーション層」を被せたコミュニティ製のメタディストリビューションが2系統ある。
+          </p>
+          <ul>
+            <li><strong>oh-my-claudecode (OMC)</strong> — Claude Code 向け。38本のスキル + tmux 並列実行 + 自己進化 + マルチモデル協調まで詰め込んだ重武装系。</li>
+            <li><strong>oh-my-opencode / oh-my-openagent</strong> — OpenCode 向け。前者は後者のフォーク。日常運転に効く builtin skill を厳選 + 敵対多エージェント計画のような派手なスキルも持つ。</li>
+          </ul>
+          <p>
+            この記事はこの3つのリポジトリの <strong>50本のSKILL.mdを全文ダウンロードして読み解いた</strong> 学習ノート。目標は「自分用にスキルを書くための材料集」。
+          </p>
+
+          <aside class="callout note">
+            <strong>Note:</strong> 本文はクリーンに整理してあるが、調査の生データ（一覧表）は Obsidian 側の <code>リサーチ/oh-my-claudecode-and-oh-my-opencode-skills.md</code> にもある。
+          </aside>
+        </section>
+
+        <section>
+          <h2>3つのプロジェクトの関係</h2>
+          <p>
+            まず関係性を整理する。「Oh My Open Code」「My Open Agent」というキーワードでヒットするのはこの3つで、いずれも CLI に <strong>マルチエージェント・オーケストレーション層</strong> を被せるツール群。
+          </p>
+
+          <figure class="zoomable">
+            <svg viewBox="0 0 720 280" role="img" aria-label="3プロジェクトの関係">
+              <defs>
+                <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+              <rect x="40" y="40" width="200" height="200" rx="10" fill="currentColor" opacity="0.08"/>
+              <text x="140" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">Claude Code</text>
+              <rect x="60" y="100" width="160" height="60" rx="6" fill="currentColor" opacity="0.18"/>
+              <text x="140" y="130" text-anchor="middle" font-size="13" fill="currentColor">oh-my-claudecode</text>
+              <text x="140" y="148" text-anchor="middle" font-size="11" fill="currentColor">(Yeachan-Heo, 38 skills)</text>
+              <text x="140" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">CLI: Claude Code</text>
+
+              <rect x="280" y="40" width="400" height="200" rx="10" fill="currentColor" opacity="0.08"/>
+              <text x="480" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">OpenCode</text>
+              <rect x="300" y="100" width="170" height="60" rx="6" fill="currentColor" opacity="0.18"/>
+              <text x="385" y="130" text-anchor="middle" font-size="13" fill="currentColor">oh-my-openagent</text>
+              <text x="385" y="148" text-anchor="middle" font-size="11" fill="currentColor">(code-yeongyu, 元祖)</text>
+              <rect x="500" y="100" width="170" height="60" rx="6" fill="currentColor" opacity="0.18"/>
+              <text x="585" y="130" text-anchor="middle" font-size="13" fill="currentColor">oh-my-opencode</text>
+              <text x="585" y="148" text-anchor="middle" font-size="11" fill="currentColor">(opensoft, fork)</text>
+              <line x1="470" y1="130" x2="500" y2="130" stroke="currentColor" stroke-width="2" marker-end="url(#arr)"/>
+              <text x="485" y="120" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">fork</text>
+              <text x="480" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">CLI: OpenCode</text>
+            </svg>
+            <figcaption>図1: 3プロジェクトの関係。Claude Code 系の OMC と、OpenCode 系の2つ（fork 関係）。</figcaption>
+          </figure>
+
+          <h3>プロジェクト一覧</h3>
+          <table>
+            <thead>
+              <tr><th>プロジェクト</th><th>対象</th><th>規模</th><th>リポジトリ</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>oh-my-claudecode</code> (OMC)</td>
+                <td>Claude Code</td>
+                <td>38 skills</td>
+                <td><a href="https://github.com/Yeachan-Heo/oh-my-claudecode" target="_blank" rel="noopener">Yeachan-Heo/oh-my-claudecode</a></td>
+              </tr>
+              <tr>
+                <td><code>oh-my-openagent</code></td>
+                <td>OpenCode</td>
+                <td>4 skills + 4 commands</td>
+                <td><a href="https://github.com/code-yeongyu/oh-my-openagent" target="_blank" rel="noopener">code-yeongyu/oh-my-openagent</a></td>
+              </tr>
+              <tr>
+                <td><code>oh-my-opencode</code></td>
+                <td>OpenCode</td>
+                <td>4 builtin skills + 4 commands</td>
+                <td><a href="https://github.com/opensoft/oh-my-opencode" target="_blank" rel="noopener">opensoft/oh-my-opencode</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>各プロジェクトのスキル一覧</h2>
+
+          <h3>oh-my-claudecode（38スキル、Claude Code 向け）</h3>
+          <p>
+            <code>skills/&lt;name&gt;/SKILL.md</code> として同梱。Claude Code の plugin marketplace か <code>npm i -g oh-my-claude-sisyphus</code> で導入する。プロジェクトスコープは <code>.omc/skills/</code>、ユーザースコープは <code>~/.omc/skills/</code>。
+          </p>
+
+          <h4>セットアップ・運用系</h4>
+          <table>
+            <tbody>
+              <tr><td><code>setup</code></td><td>install/update のルーター</td></tr>
+              <tr><td><code>omc-setup</code></td><td>plugin / npm / local-dev で導入・更新</td></tr>
+              <tr><td><code>omc-doctor</code></td><td>インストール不調の診断と自動修復</td></tr>
+              <tr><td><code>omc-reference</code></td><td>エージェント・ツール・チーム・skills レジストリの自動参照書</td></tr>
+              <tr><td><code>mcp-setup</code></td><td>主要 MCP サーバ群の自動構成</td></tr>
+              <tr><td><code>configure-notifications</code></td><td>Telegram / Discord / Slack 通知を自然言語で設定</td></tr>
+              <tr><td><code>hud</code></td><td>HUD 表示の設定</td></tr>
+              <tr><td><code>cancel</code></td><td>autopilot / ralph / ultrawork / ultraqa / swarm / pipeline / team を中断</td></tr>
+              <tr><td><code>release</code></td><td>リリース手順を読み取り <code>.omc/RELEASE_RULE.md</code> にキャッシュ</td></tr>
+              <tr><td><code>project-session-manager</code></td><td>issue / PR / feature ごとの worktree + tmux 管理</td></tr>
+            </tbody>
+          </table>
+
+          <h4>自律実行・並列実行系（OMCの中核）</h4>
+          <table>
+            <tbody>
+              <tr><td><code>autopilot</code></td><td>アイデアから動くコードまで完全自動実行</td></tr>
+              <tr><td><code>ralph</code></td><td>自己参照ループ。検証レビューア付きでタスク完遂まで繰り返す</td></tr>
+              <tr><td><code>ralplan</code></td><td>曖昧要求を事前に合意形成するコンセンサスプランニング</td></tr>
+              <tr><td><code>ultrawork</code></td><td>高スループット並列実行エンジン</td></tr>
+              <tr><td><code>ultraqa</code></td><td>テスト→検証→修正をゴール到達まで回す QA サイクル</td></tr>
+              <tr><td><code>team</code></td><td>Claude Code ネイティブ teams を使った N エージェント協調</td></tr>
+              <tr><td><code>omc-teams</code></td><td>tmux ペインで claude / codex / gemini ワーカーを並列実行</td></tr>
+              <tr><td><code>self-improve</code></td><td>トーナメント選抜による自律進化的コード改善エンジン</td></tr>
+              <tr><td><code>sciomc</code></td><td>並列 scientist エージェントを AUTO モードで束ねた網羅分析</td></tr>
+            </tbody>
+          </table>
+
+          <h4>調査・計画・対話系</h4>
+          <table>
+            <tbody>
+              <tr><td><code>plan</code></td><td>インタビュー付き戦略プランニング</td></tr>
+              <tr><td><code>deep-interview</code></td><td>数学的曖昧性ゲートを通る Socratic 深堀り対話</td></tr>
+              <tr><td><code>deep-dive</code></td><td>trace（因果調査）→ deep-interview（要件結晶化）の2段パイプライン</td></tr>
+              <tr><td><code>trace</code></td><td>競合する tracer 仮説を built-in team で並列に走らせる証拠駆動調査</td></tr>
+              <tr><td><code>autoresearch</code></td><td>評価器契約付きの単一ミッション改善ループ</td></tr>
+              <tr><td><code>external-context</code></td><td>並列 document-specialist による外部 Web 調査</td></tr>
+              <tr><td><code>ccg</code></td><td>Claude + Codex + Gemini の三モデル協調</td></tr>
+              <tr><td><code>ask</code></td><td>Claude / Codex / Gemini をプロセス先行でルーティング</td></tr>
+              <tr><td><code>debug</code></td><td>OMC セッションやリポ状態をログ・トレース・state から診断</td></tr>
+            </tbody>
+          </table>
+
+          <h4>知識・記憶・成果物系</h4>
+          <table>
+            <tbody>
+              <tr><td><code>wiki</code></td><td>セッションをまたいで蓄積する LLM Wiki (Karpathy 型)</td></tr>
+              <tr><td><code>remember</code></td><td>プロジェクト記憶 / notepad / 永続ドキュメントへの振り分け判断</td></tr>
+              <tr><td><code>learner</code></td><td>会話からスキルを抽出して学習化</td></tr>
+              <tr><td><code>skillify</code></td><td>反復ワークフローを再利用可能な OMC スキル下書きに変換</td></tr>
+              <tr><td><code>skill</code></td><td>ローカルスキルの管理 (list / add / remove / search / edit)</td></tr>
+              <tr><td><code>writer-memory</code></td><td>キャラ・関係・シーン・テーマを管理するライター向け記憶系</td></tr>
+              <tr><td><code>deepinit</code></td><td>階層化 AGENTS.md による深層コードベース初期化</td></tr>
+            </tbody>
+          </table>
+
+          <h4>検証・QA系</h4>
+          <table>
+            <tbody>
+              <tr><td><code>verify</code></td><td>完了宣言前に変更が本当に動くか検証</td></tr>
+              <tr><td><code>visual-verdict</code></td><td>スクショ vs リファレンスの構造化ビジュアル QA 判定</td></tr>
+              <tr><td><code>ai-slop-cleaner</code></td><td>削除ファースト・ワークフローで AI 由来のスロップを掃除</td></tr>
+            </tbody>
+          </table>
+
+          <h3>oh-my-opencode（OpenCode 向け、opensoft フォーク）</h3>
+          <p>
+            forkで追加・整理された <strong>builtin skills</strong> は <code>src/features/builtin-skills/</code> 配下。スラッシュコマンドは <code>.opencode/command/</code>。
+          </p>
+          <table>
+            <thead><tr><th>種類</th><th>名前</th><th>役割</th></tr></thead>
+            <tbody>
+              <tr><td>Skill</td><td><code>agent-browser</code></td><td>Web テスト・フォーム入力・スクショ・データ抽出のブラウザ自動化</td></tr>
+              <tr><td>Skill</td><td><code>dev-browser</code></td><td>ページ状態を持続させるブラウザ自動化</td></tr>
+              <tr><td>Skill</td><td><code>frontend-ui-ux</code></td><td>デザインモックなしでも見栄えする UI/UX を作る</td></tr>
+              <tr><td>Skill</td><td><code>git-master</code></td><td>あらゆる git 操作の必須スキル。atomic commit、rebase / squash、blame / bisect</td></tr>
+              <tr><td>Command</td><td><code>/get-unpublished-changes</code></td><td>HEAD と最新公開 npm バージョンの未リリース変更を列挙</td></tr>
+              <tr><td>Command</td><td><code>/publish</code></td><td>GitHub Actions 経由で npm 公開</td></tr>
+              <tr><td>Command</td><td><code>/remove-deadcode</code></td><td>ultrawork + LSP 検証 + atomic commit でデッドコード除去</td></tr>
+              <tr><td>Command</td><td><code>/omomomo</code></td><td>Easter egg コマンド</td></tr>
+            </tbody>
+          </table>
+
+          <h3>oh-my-openagent（fork 元の本家）</h3>
+          <p>
+            <code>oh-my-opencode</code> のコマンド4つはここから来ている。加えて <code>.opencode/skills/</code> に独自スキルが4つ。
+          </p>
+          <table>
+            <tbody>
+              <tr><td><code>github-triage</code></td><td>Read-only GitHub triage。1 item = 1 background task、<code>/tmp/{datetime}/</code> に証拠付きレポート。GitHub では一切アクションしない</td></tr>
+              <tr><td><code>hyperplan</code></td><td>5体の敵対カテゴリ（unspecified-low / -high / deep / ultrabrain / artistry）を team-mode でぶつけ合う adversarial プランニング</td></tr>
+              <tr><td><code>pre-publish-review</code></td><td>"Nuclear-grade" 16 エージェントのプレリリースゲート。10 ultrabrain + 5 review-work + 1 oracle</td></tr>
+              <tr><td><code>work-with-pr</code></td><td>worktree → 実装 → atomic commit → PR → CI/review/承認ループ → マージ → worktree クリーンアップ</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout tip">
+            <strong>Tip:</strong> OMC は規模が突出していて、自律実行系 (<code>autopilot</code> / <code>ralph</code> / <code>ultrawork</code> / <code>team</code>) と三モデル協調 (<code>ccg</code>) と自己改善 (<code>self-improve</code>) が他のリポにはない強み。OpenCode 系は逆に「日常運転に効く4本」を厳選している。
+          </aside>
+        </section>
+
+        <section>
+          <h2>SKILL.md の解剖図</h2>
+          <p>
+            ここからは 50 本全部の SKILL.md から抽出した <strong>共通の作りのパターン</strong>。「自分用にスキルを書く」ための材料集。
+          </p>
+
+          <h3>frontmatter のキー集計</h3>
+          <p>50 ファイル全部からキーを集計（出現数）。</p>
+          <table>
+            <thead><tr><th>キー</th><th>出現</th><th>役割</th></tr></thead>
+            <tbody>
+              <tr><td><code>description</code></td><td>50 / 50</td><td><strong>必須</strong>。スキル自動マッチに使う本文。Anthropic Agent Skills の標準キー</td></tr>
+              <tr><td><code>name</code></td><td>46 / 50</td><td>スキル ID。kebab-case 推奨</td></tr>
+              <tr><td><code>level</code></td><td>30 / 50</td><td>OMC 独自。<code>1</code>=軽量、<code>4</code>=自律実行系</td></tr>
+              <tr><td><code>argument-hint</code></td><td>18 / 50</td><td>OMC 独自。スラッシュコマンドの引数テンプレ</td></tr>
+              <tr><td><code>aliases</code></td><td>4 / 50</td><td>OMC 独自。スキルの別名</td></tr>
+              <tr><td><code>pipeline</code></td><td>3 / 50</td><td>OMC 独自。次に呼ぶスキルの連鎖</td></tr>
+              <tr><td><code>handoff</code></td><td>3 / 50</td><td>OMC 独自。次のスキルに渡すファイルパス</td></tr>
+              <tr><td><code>handoff-policy</code></td><td>2 / 50</td><td>OMC 独自。<code>approval-required</code> で人間承認をゲート</td></tr>
+              <tr><td><code>triggers</code></td><td>3 / 50</td><td>学習スキルが使う配列</td></tr>
+              <tr><td><code>agent</code></td><td>1 / 50</td><td>OMC 独自。委譲先 built-in agent</td></tr>
+              <tr><td><code>user-invocable</code></td><td>1 / 50</td><td><code>false</code> で <code>/skill list</code> から隠す（裏方スキル用）</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout note">
+            <strong>教訓:</strong> Anthropic 公式 Agent Skills だけ意識するなら <code>name</code> + <code>description</code> でいい。OMC はオーケストレーション機能を frontmatter に押し込んでいて、スキル自体が小さなワークフロー DSL になっている。<strong>自作するなら標準2キーで始め、必要が出てから足す。</strong>
+          </aside>
+
+          <h3>description の書き方（自動起動のキモ）</h3>
+          <p>
+            <code>description</code> は LLM がスキル選択を判断する <strong>唯一の指標</strong>。長さ・密度・トリガー語の入れ方で精度が変わる。実例3種：
+          </p>
+
+          <h4>(a) 主語＋動詞のみ — 最小</h4>
+          <div class="code-wrap">
+<pre><code class="language-yaml">description: Strategic planning with optional interview workflow
+</code></pre>
+          </div>
+          <p>短いと自動起動に乗りにくい。ユーザーが明示的に呼ぶ前提のスキル向け。</p>
+
+          <h4>(b) "Use when …" 句で文脈を埋め込む — 標準</h4>
+          <div class="code-wrap">
+<pre><code class="language-yaml">description: Browser automation with persistent page state. Use when users ask to
+  navigate websites, fill forms, take screenshots, extract web data, test web apps,
+  or automate browser workflows. Trigger phrases include "go to [url]", "click on",
+  "fill out the form", "take a screenshot", "scrape", "automate", "test the website",
+  "log into", or any browser interaction request.
+</code></pre>
+          </div>
+          <p>
+            <code>Use when …</code> で意図、<code>Trigger phrases include "…"</code> で具体的な発話例を列挙。<strong>自動起動の精度を上げる王道</strong>。
+          </p>
+
+          <h4>(c) MUST USE / STRONGLY RECOMMENDED で押し込む — 強制</h4>
+          <div class="code-wrap">
+<pre><code class="language-yaml">description: "MUST USE for ANY git operations. Atomic commits, rebase/squash,
+  history search (blame, bisect, log -S). STRONGLY RECOMMENDED: Use with
+  delegate_task(category='quick', load_skills=['git-master'], ...) to save context.
+  Triggers: 'commit', 'rebase', 'squash', 'who wrote', 'when was X added',
+  'find the commit that'."
+</code></pre>
+          </div>
+          <p>
+            <code>MUST USE</code> を頭に書くと、競合する他スキルを押しのけて起動しやすくなる。<code>git-master</code> のようにドメインを「占有」したいスキル向け。
+          </p>
+
+          <h3>本文の典型構造</h3>
+          <p>50本ぜんぶの最初の見出しを集計したら、上位パターンは：</p>
+          <table>
+            <thead><tr><th>見出し</th><th>出現</th></tr></thead>
+            <tbody>
+              <tr><td>Usage</td><td>8</td></tr>
+              <tr><td>Overview</td><td>4</td></tr>
+              <tr><td>Goal</td><td>4</td></tr>
+              <tr><td>Routing</td><td>3</td></tr>
+              <tr><td>When to use / When not to use</td><td>各2</td></tr>
+              <tr><td>Setup / Commands / Parameters / Workflow / Phase 1</td><td>各2</td></tr>
+              <tr><td>STEP 0: REGISTER TODO LIST</td><td>2</td></tr>
+            </tbody>
+          </table>
+          <p>
+            派生して、<code>deep-interview</code> のような重量級スキルでは <strong>XML 風タグ</strong> で意図を分割しているのが特徴的：
+          </p>
+
+          <div class="code-wrap">
+<pre><code class="language-markdown">&lt;Purpose&gt;
+Deep Interview implements Ouroboros-inspired Socratic questioning ...
+&lt;/Purpose&gt;
+
+&lt;Use_When&gt;
+- User has a vague idea and wants thorough requirements gathering
+- User says "deep interview", "interview me", "ask me everything"
+...
+&lt;/Use_When&gt;
+
+&lt;Do_Not_Use_When&gt;
+- User has a detailed, specific request with file paths -- execute directly
+- User wants to explore options or brainstorm -- use `omc-plan` skill instead
+...
+&lt;/Do_Not_Use_When&gt;
+
+&lt;Why_This_Exists&gt;
+AI can build anything. The hard part is knowing what to build. ...
+&lt;/Why_This_Exists&gt;
+</code></pre>
+          </div>
+
+          <p>
+            XML タグは Anthropic の prompt engineering ガイドの推奨そのもの。<strong>「いつ使うか」「いつ使ってはいけないか」「なぜ存在するか」を本文先頭で明示</strong> するのは、自動起動と誤起動防止の両方に効く。
+          </p>
+
+          <h3>STEP 0: REGISTER TODO LIST パターン</h3>
+          <p>
+            opencode-cmd 系（<code>publish</code> / <code>remove-deadcode</code>）は本文の最初に必ずこれが来る：
+          </p>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## STEP 0: REGISTER TODO LIST (MANDATORY FIRST ACTION)
+
+**Before doing ANYTHING else**, create a detailed todo list using TodoWrite:
+
+TodoWrite([
+  {"id": "scan", "content": "PHASE 1: ..."},
+  {"id": "verify", "content": "PHASE 2: ..."},
+  ...
+])
+</code></pre>
+          </div>
+          <p>
+            意図：スキルが LLM に「忘れずに最後まで完走する」自己拘束をかける。長いワークフローを実行させたいときの定石。その後は <code>PHASE 1:</code> <code>PHASE 2:</code> と連番で続く。
+          </p>
+        </section>
+
+        <section>
+          <h2>プロンプト技法カタログ</h2>
+
+          <h3>ガード文（MUST / NEVER / CRITICAL）</h3>
+          <p>
+            50 ファイル中に <code>MUST</code>=67、<code>NEVER</code>=29、<code>CRITICAL</code>=39 の出現。<strong>頻出度が高いほど、その仕事の失敗コストが大きい</strong> ことを暗示している。
+          </p>
+
+          <h4>実例: false-positive を一切許さないガード（remove-deadcode）</h4>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## CRITICAL RULES
+
+1. **LSP is law.** Never guess. Always verify with `LspFindReferences` before
+   removing ANYTHING.
+2. **One removal = one commit.** Every dead code removal gets its own atomic commit.
+3. **Test after every removal.** Run `bun test` after each. If it fails, REVERT and skip.
+4. **Leaf-first order.** Remove deepest unused symbols first.
+5. **Never remove entry points.** `src/index.ts`, test files, config files,
+   and files in `packages/` are off-limits unless explicitly targeted.
+</code></pre>
+          </div>
+
+          <h4>実例: 偽陽性ガード（False Positive Guards）</h4>
+          <div class="code-wrap">
+<pre><code class="language-markdown">**NEVER mark as dead code if:**
+- Symbol is in `src/index.ts` (package entry point)
+- Symbol is referenced in test files (tests are valid consumers)
+- Symbol has `@public` or `@api` JSDoc tags
+- Symbol is in a file listed in `package.json` exports
+...
+</code></pre>
+          </div>
+
+          <aside class="callout tip">
+            <strong>教訓:</strong> ガードは「やってはいけないこと」を <strong>箇条書きで具体的に列挙</strong> する。LLM は曖昧な禁止より具体例の禁止のほうが守る。
+          </aside>
+
+          <h3>サブエージェント委譲（delegate_task / task）</h3>
+          <p>50 ファイル中に <code>subagent</code>=70、<code>delegate</code>=22。並列化はスキルの主要装備。</p>
+
+          <h4>OpenAgent / OpenCode のサブタスク呼び出し</h4>
+          <div class="code-wrap">
+<pre><code class="language-typescript">task(
+  category="quick",
+  run_in_background=true,
+  load_skills=[],
+  prompt=SUBAGENT_PROMPT
+)
+</code></pre>
+          </div>
+
+          <h4>Claude Code 互換の delegate_task</h4>
+          <div class="code-wrap">
+<pre><code class="language-typescript">delegate_task(subagent_type="explore", run_in_background=true,
+  prompt="Find ALL exported functions, classes, types ...")
+</code></pre>
+          </div>
+
+          <h4>サブエージェントの絶対ルール（github-triage より）</h4>
+          <div class="code-wrap">
+<pre><code class="language-markdown">**ABSOLUTE RULES for Subagents:**
+- **ONLY ANALYZE** - Never take action on GitHub (no comments, merges, closes)
+- **READ-ONLY** - Use tools only for reading code/GitHub data
+- **WRITE REPORT ONLY** - Output goes to `{REPORT_DIR}/{issue|pr}-{number}.md` via Write tool
+- **EVIDENCE REQUIRED** - Every claim must have GitHub permalink as proof
+</code></pre>
+          </div>
+
+          <aside class="callout tip">
+            <strong>教訓:</strong> サブエージェントは「権限の薄いコピー」として動かす。<code>load_skills=[]</code> で文脈を切り、<code>run_in_background=true</code> で並列化。<strong>親エージェントは集約だけする</strong>。
+          </aside>
+
+          <h3>出力契約（artifact path）</h3>
+          <p>
+            <code>evidence</code>=89、<code>permalink</code>=33、<code>/tmp/</code>=6 の出現。スキルが <strong>どこにファイルを書くか</strong> を最初から決め打ちしているのが特徴。
+          </p>
+          <table>
+            <thead><tr><th>用途</th><th>パス例</th><th>出典</th></tr></thead>
+            <tbody>
+              <tr><td>実行ログ・トレース</td><td><code>/tmp/{datetime}/{issue|pr}-{number}.md</code></td><td>github-triage</td></tr>
+              <tr><td>プラン成果物</td><td><code>.omc/plans/ralplan-*.md</code></td><td>omc-plan</td></tr>
+              <tr><td>インタビュー仕様</td><td><code>.omc/specs/deep-interview-{slug}.md</code></td><td>deep-interview</td></tr>
+              <tr><td>リリースルール</td><td><code>.omc/RELEASE_RULE.md</code></td><td>release</td></tr>
+            </tbody>
+          </table>
+
+          <h3>evidence rule（証拠主義）</h3>
+          <p>特に <code>github-triage</code> / <code>pre-publish-review</code> が徹底している：</p>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## Evidence Rule (MANDATORY)
+
+### Rules
+- **No permalink = no claim.** If you cannot back a statement with a permalink,
+  state "No evidence found" instead.
+- Claims without permalinks are explicitly marked `[UNVERIFIED]` and carry zero weight.
+- Permalinks to `main`/`master`/`dev` branches are NOT acceptable - use commit SHAs only.
+
+### How to generate permalinks
+1. Find the relevant file and line(s) via Grep/Read.
+2. Get the current commit SHA: `git rev-parse HEAD`
+3. Construct: `https://github.com/{REPO}/blob/{SHA}/{filepath}#L{line}`
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>教訓:</strong> スキルに「証拠を伴わない主張は無効」と書くだけで、LLM のハルシネーションが <strong>目に見えて減る</strong>。Branch ではなく SHA を要求するのも巧い（時間が経っても URL が壊れない）。
+          </aside>
+
+          <h3>progressive disclosure（段階的開示）</h3>
+          <p>サブディレクトリで本文を軽くするテク。<code>dev-browser</code> が代表例：</p>
+          <div class="code-wrap">
+<pre><code class="language-bash">src/features/builtin-skills/dev-browser/
+├── SKILL.md                       ← 短い概要 + 使い方の入り口
+└── references/
+    ├── installation.md            ← 必要時に Read で読み込む
+    └── scraping.md                ← 同上
+</code></pre>
+          </div>
+
+          <p>OMC の <code>self-improve</code> はもっと派手：</p>
+          <div class="code-wrap">
+<pre><code class="language-bash">skills/self-improve/
+├── SKILL.md
+├── data_contracts.md
+├── si-benchmark-builder.md
+├── si-goal-clarifier.md
+├── si-researcher.md
+├── scripts/
+└── templates/
+</code></pre>
+          </div>
+
+          <aside class="callout tip">
+            <strong>教訓:</strong> SKILL.md は「<strong>LLM が最初に読む 1 ページ</strong>」として軽く保ち、詳細手順や I/O 契約は <code>references/</code> <code>templates/</code> <code>scripts/</code> に逃がす。
+          </aside>
+
+          <h3>数学的曖昧性スコアリング（deep-interview 流）</h3>
+          <p>
+            <code>deep-interview</code> は「いつ質問を止めるか」を <strong>数値で決める</strong>。普通のスキルにも応用できる発想：
+          </p>
+          <table>
+            <thead><tr><th>Score Range</th><th>Meaning</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td>0.0 - 0.1</td><td>Crystal clear</td><td>Proceed immediately</td></tr>
+              <tr><td>≤ resolved threshold</td><td>Clear enough</td><td>Proceed</td></tr>
+              <tr><td>&gt; threshold + minor gaps</td><td>Some gaps</td><td>Continue interviewing</td></tr>
+              <tr><td>Moderate</td><td>Significant gaps</td><td>Focus on weakest dimensions</td></tr>
+              <tr><td>High</td><td>Very unclear</td><td>May need reframing</td></tr>
+              <tr><td>Extreme</td><td>Almost nothing known</td><td>Early stages, keep going</td></tr>
+            </tbody>
+          </table>
+          <p>
+            5次元（Goal Clarity / Constraint Clarity / Success Criteria / Component / Risk）を 0.0-1.0 で評価し、平均が閾値を切ったら次フェーズへ。
+          </p>
+          <aside class="callout tip">
+            <strong>教訓:</strong> ループ系スキル（<code>ralph</code> / <code>autoresearch</code> / <code>deep-interview</code>）は <strong>「終わる条件」を数値化</strong> している。「LLM の判断にお任せ」ではなく、明示的なメトリクスとしきい値を持たせる。
+          </aside>
+
+          <h3>mode composition（スキルの入れ子）</h3>
+          <p>OMC は重量スキルを <strong>他のスキルから呼ぶ</strong> 設計。<code>pipeline:</code> frontmatter が連鎖の hint：</p>
+
+          <figure class="zoomable">
+            <svg viewBox="0 0 540 240" role="img" aria-label="モード合成">
+              <rect x="20" y="20" width="500" height="60" rx="8" fill="currentColor" opacity="0.06"/>
+              <text x="40" y="48" font-size="13" font-weight="700" fill="currentColor">autopilot</text>
+              <text x="40" y="68" font-size="11" fill="currentColor" opacity="0.7">autonomous execution (full lifecycle)</text>
+
+              <rect x="60" y="100" width="460" height="50" rx="8" fill="currentColor" opacity="0.10"/>
+              <text x="80" y="125" font-size="13" font-weight="700" fill="currentColor">ralph</text>
+              <text x="80" y="142" font-size="11" fill="currentColor" opacity="0.7">persistence wrapper (loop + verification reviewer)</text>
+
+              <rect x="100" y="170" width="420" height="50" rx="8" fill="currentColor" opacity="0.14"/>
+              <text x="120" y="195" font-size="13" font-weight="700" fill="currentColor">ultrawork</text>
+              <text x="120" y="212" font-size="11" fill="currentColor" opacity="0.7">parallel execution engine</text>
+            </svg>
+            <figcaption>図2: autopilot → ralph → ultrawork の入れ子構造。</figcaption>
+          </figure>
+
+          <div class="code-wrap">
+<pre><code class="language-yaml"># omc-plan
+pipeline: [deep-interview]
+
+# deep-interview
+pipeline: [deep-interview, plan]
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>教訓:</strong> 大きいスキルを1個書くより、<strong>小さいスキル群と "それを順番に呼ぶ" 司令塔スキル</strong> に分けたほうが再利用しやすい。
+          </aside>
+        </section>
+
+        <section>
+          <h2>代表スキル深掘り</h2>
+
+          <h3>verify — 最小例</h3>
+          <div class="code-wrap">
+<pre><code class="language-markdown">---
+name: verify
+description: Verify that a change really works before you claim completion
+---
+
+# Verify
+
+Use this skill when the user wants help diagnosing ...
+
+## Rules
+- Do not say a change is complete without evidence.
+- If a check fails, include the failure clearly.
+- If no realistic verification path exists, say that explicitly instead of bluffing.
+- Prefer concise evidence summaries over noisy logs.
+</code></pre>
+          </div>
+          <p>たった 38 行。<code>Rules</code> だけで動作を縛る。<strong>「短くても効くスキル」のお手本</strong>。<code>bluffing 禁止</code> という1行が効く。</p>
+
+          <h3>remember — 記憶の整理</h3>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## Rules
+- Do not dump everything into one store.
+- Prefer project memory for durable team knowledge.
+- Prefer notepad for short-lived working context.
+- Keep entries concise and actionable.
+- If something is uncertain, mark it as uncertain rather than storing it as fact.
+</code></pre>
+          </div>
+          <p>42 行。「メモリストアの<strong>振り分け先</strong>」だけを教えるスキル。判断ヒューリスティクスを5行に圧縮した好例。</p>
+
+          <h3>autopilot / ralph / ultrawork — 自律実行三段重ね</h3>
+          <p><code>autopilot → ralph → ultrawork</code> の入れ子。autopilot は <code>Phase 0: 要件展開</code> から始まり、内部で <code>deep-interview</code> を呼ぶ。</p>
+          <p><code>ralph</code> の状態機械は教科書的：</p>
+          <div class="code-wrap">
+<pre><code class="language-text">1. iteration 1 開始
+2. team pipeline 実行: team-plan → team-prd → team-exec → team-verify
+3. team-verify pass → architect 検証 (STANDARD tier)
+4. architect approve → 完了 (run /cancel)
+5. team-verify fail OR architect reject → team-fix → team-exec へ戻る
+6. fix loop > max_fix_loops → ralph iteration を増やしてリトライ
+7. ralph iteration > max_iterations → terminal failed
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>学び:</strong> 「失敗したら何をして、何回までリトライするか」を <strong>全部明文化</strong> してある。自分のスキルでも、無限ループ防止の上限値を必ず書く。
+          </aside>
+
+          <h3>deep-interview — 曖昧性スコアによる対話制御</h3>
+          <p>frontmatter で pipeline と handoff を宣言：</p>
+          <div class="code-wrap">
+<pre><code class="language-yaml">pipeline: [deep-interview, plan]
+handoff-policy: approval-required
+handoff: .omc/specs/deep-interview-{slug}.md
+</code></pre>
+          </div>
+          <p>本文構造：</p>
+          <ol>
+            <li><code>&lt;Purpose&gt;</code> 何のためのスキルか</li>
+            <li><code>&lt;Use_When&gt;</code> 起動条件</li>
+            <li><code>&lt;Do_Not_Use_When&gt;</code> 起動禁止条件</li>
+            <li><code>&lt;Why_This_Exists&gt;</code> モチベーション</li>
+            <li><code>Phase 1: Topology Lock</code> — 質問対象のコンポーネント確定</li>
+            <li><code>Phase 2: Interview Loop</code> — 質問→回答→曖昧性スコア更新</li>
+            <li><code>Phase 3: Spec Generation</code> — 仕様書を <code>.omc/specs/</code> に書き出す</li>
+            <li><code>Ambiguity Score Interpretation</code> — しきい値テーブル</li>
+          </ol>
+
+          <h3>git-master — ドメイン占有スキル</h3>
+          <div class="code-wrap">
+<pre><code class="language-markdown">### 3.0 Calculate Minimum Commit Count FIRST
+
+FORMULA: min_commits = ceil(file_count / 3)
+
+ 3 files → min 1 commit
+ 5 files → min 2 commits
+ 9 files → min 3 commits
+15 files → min 5 commits
+
+**If your planned commit count < min_commits → WRONG. SPLIT MORE.**
+</code></pre>
+          </div>
+          <p>定量的な強制力。LLM が「まとめてコミット」しがちな性質を、<strong>式と表で抑え込む</strong>。</p>
+
+          <h3>hyperplan — 敵対的多エージェント計画</h3>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## THE 5 ADVERSARIAL MEMBERS — RnR & CHARACTERISTICS
+
+Each member is a `kind: "category"` team member. They route through
+`sisyphus-junior` with the category's model and prompt-append shaping
+their behavior. The `prompt` field below is the **system prompt** that
+establishes their adversarial identity.
+
+Required categories are `unspecified-low`, `unspecified-high`, `ultrabrain`,
+and `artistry`. Include `deep` only when that category is enabled.
+</code></pre>
+          </div>
+          <p>
+            <strong>5体に異なる system prompt を与えて議論させる</strong> 設計。スキル本文に各メンバーの prompt が埋め込まれている。
+          </p>
+
+          <h3>skillify — スキルを作るためのスキル</h3>
+          <p>これは自分用スキル設計の最重要参考。</p>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## Quality Gate
+
+Before extracting a skill, all three should be true:
+- "Could someone Google this in 5 minutes?" → No.
+- "Is this specific to this codebase, project, or workflow?" → Yes.
+- "Did this take real debugging, design, or operational effort to discover?" → Yes.
+
+Prefer skills that encode decision-making heuristics, constraints,
+pitfalls, and verification steps. Avoid generic snippets, boilerplate,
+or library usage examples that belong in normal documentation.
+</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>自分用スキルを作るためのテンプレ</h2>
+
+          <h3>設計チェックリスト：書く前に答える</h3>
+
+          <h4>Q1〜Q3: スキル化する価値があるか — Skillify Quality Gate</h4>
+          <p>3問とも YES なら作る価値あり。1問でも NO なら別の場所（ドキュメント / メモ / コード本体）に書く。</p>
+          <ul>
+            <li><strong>Q1:</strong> ググって5分で出てくる内容ではない</li>
+            <li><strong>Q2:</strong> 自分のリポジトリ・プロジェクト・ワークフロー固有である</li>
+            <li><strong>Q3:</strong> 発見にデバッグ・設計・運用上の本物の労力がかかった</li>
+          </ul>
+
+          <h4>設置場所を決める</h4>
+          <table>
+            <thead><tr><th>配置</th><th>パス</th><th>適用範囲</th><th>共有</th></tr></thead>
+            <tbody>
+              <tr><td>ユーザースキル</td><td><code>~/.claude/skills/&lt;name&gt;/SKILL.md</code></td><td>全プロジェクト</td><td>自分だけ</td></tr>
+              <tr><td>プロジェクトスキル</td><td><code>.claude/skills/&lt;name&gt;/SKILL.md</code></td><td>このリポだけ</td><td>git で共有</td></tr>
+              <tr><td>OMC ユーザースキル</td><td><code>~/.omc/skills/&lt;name&gt;/SKILL.md</code></td><td>OMC 配下全体</td><td>自分だけ</td></tr>
+              <tr><td>OMC プロジェクトスキル</td><td><code>.omc/skills/&lt;name&gt;/SKILL.md</code></td><td>このリポの OMC 利用時</td><td>git で共有</td></tr>
+              <tr><td>学習スキル</td><td><code>~/.claude/skills/omc-learned/&lt;name&gt;.md</code></td><td>フラットファイル</td><td>自分だけ</td></tr>
+            </tbody>
+          </table>
+
+          <h4>トリガー設計の心得（自動起動の精度）</h4>
+          <table>
+            <thead><tr><th>やる</th><th>やらない</th></tr></thead>
+            <tbody>
+              <tr><td>description に <code>Use when …</code> と <code>Trigger phrases include "…"</code></td><td>キーワード列だけで終わらせる</td></tr>
+              <tr><td>競合領域なら <code>MUST USE for ANY …</code> と宣言</td><td>全スキルが MUST USE を主張して衝突</td></tr>
+              <tr><td><code>&lt;Use_When&gt;</code> と <code>&lt;Do_Not_Use_When&gt;</code> を本文先頭に書く</td><td>起動条件と禁止条件を曖昧に放置</td></tr>
+              <tr><td>引数があるなら <code>argument-hint</code> または <code>triggers:</code> 配列</td><td>引数のフォーマットを本文の奥に埋める</td></tr>
+            </tbody>
+          </table>
+
+          <h4>本文設計の判断</h4>
+          <table>
+            <thead><tr><th>スキル規模</th><th>推奨構成</th></tr></thead>
+            <tbody>
+              <tr><td>30〜50行（verify / remember 相当）</td><td><code># 表題</code> + <code>## Rules</code> の箇条書きだけ</td></tr>
+              <tr><td>100〜300行（plan / wiki / git-master 相当）</td><td><code>&lt;Purpose&gt;</code> <code>&lt;Use_When&gt;</code> <code>Workflow</code> <code>Rules</code> <code>Gotchas</code></td></tr>
+              <tr><td>500行以上（autopilot / deep-interview 相当）</td><td>XML タグ + フェーズ分割 + 数値しきい値 + サブエージェント呼び出し + <code>references/</code> <code>templates/</code> 分割</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout note">
+            <strong>原則:</strong> SKILL.md の本文は <strong>300行以下に保つ</strong>。それを超えそうなら <code>references/</code> <code>scripts/</code> <code>templates/</code> に逃がす（progressive disclosure）。
+          </aside>
+
+          <h3>SKILL.md 雛形 — 最小版（30〜50行）</h3>
+          <div class="code-wrap">
+<pre><code class="language-markdown">---
+name: my-skill-name
+description: &lt;一行で何をするか&gt;。Use when &lt;ユーザの典型発話 / 状況&gt;. Trigger phrases include "&lt;語1&gt;", "&lt;語2&gt;", "&lt;語3&gt;".
+---
+
+# &lt;表題&gt;
+
+&lt;このスキルの目的を 1〜2 文&gt;
+
+## Rules
+- &lt;絶対に守る制約 1&gt;
+- &lt;絶対に守る制約 2&gt;
+- &lt;曖昧な場合に取る安全な側&gt;
+- &lt;"完了" を宣言する条件&gt;
+- &lt;ハルシネーションが起きそうな箇所への警告&gt;
+
+## Output
+- ファイルに書く場合: `&lt;出力先パス&gt;`
+- レポートだけ返す場合: `&lt;返答フォーマット&gt;`
+</code></pre>
+          </div>
+
+          <h3>SKILL.md 雛形 — 中量版（100〜300行）</h3>
+          <details class="disclosure">
+            <summary>中量版テンプレを展開</summary>
+            <div class="code-wrap">
+<pre><code class="language-markdown">---
+name: my-skill-name
+description: &lt;主語＋動詞&gt;。Use when &lt;発火条件&gt;. Trigger phrases include "&lt;語1&gt;", "&lt;語2&gt;".
+argument-hint: "[--mode-a|--mode-b] &lt;input&gt;"
+---
+
+# &lt;表題&gt;
+
+&lt;Purpose&gt;
+&lt;このスキルが何をするか、なぜ存在するか / 2〜4 文&gt;
+&lt;/Purpose&gt;
+
+&lt;Use_When&gt;
+- &lt;発火条件 1&gt;
+- &lt;発火条件 2&gt;
+- &lt;ユーザの典型発話例&gt;
+&lt;/Use_When&gt;
+
+&lt;Do_Not_Use_When&gt;
+- &lt;別スキルを使うべきケース&gt;
+- &lt;スキル化が不要なほど単純なケース&gt;
+&lt;/Do_Not_Use_When&gt;
+
+## STEP 0: REGISTER TODO LIST (MANDATORY FIRST ACTION)
+
+Before doing anything else, register the workflow as a TODO list:
+
+TodoWrite([
+  {"id": "phase-1", "content": "PHASE 1: &lt;短い説明&gt;", "status": "pending"},
+  {"id": "phase-2", "content": "PHASE 2: &lt;短い説明&gt;", "status": "pending"},
+  {"id": "phase-3", "content": "PHASE 3: &lt;短い説明&gt;", "status": "pending"}
+])
+
+## PHASE 1: &lt;フェーズ名&gt;
+
+&lt;このフェーズの目的&gt;
+
+### 1.1 &lt;ステップ&gt;
+
+&lt;具体的な指示。コマンド・ツール呼び出し・期待値&gt;
+
+### 1.2 &lt;ステップ&gt;
+
+...
+
+## PHASE 2: &lt;フェーズ名&gt;
+
+...
+
+## CRITICAL RULES
+
+1. **&lt;禁止 1&gt;**: &lt;なぜ禁止か&gt;
+2. **&lt;必須 1&gt;**: &lt;なぜ必須か&gt;
+3. **&lt;検証 1&gt;**: &lt;どう確認するか&gt;
+
+## Output
+
+- 成果物: `&lt;パス&gt;`
+- 完了条件: &lt;どうなったら done と宣言してよいか&gt;
+- 失敗時: &lt;revert / retry / abort のどれか&gt;
+</code></pre>
+            </div>
+          </details>
+
+          <h3>SKILL.md 雛形 — 大型版（500行以上）</h3>
+          <p>中量版に加えて：</p>
+          <ul>
+            <li>frontmatter に <code>pipeline: [next-skill]</code> <code>handoff: &lt;path&gt;</code> <code>handoff-policy: approval-required</code></li>
+            <li><code>&lt;Why_This_Exists&gt;</code> セクション（モチベーション）</li>
+            <li>数値しきい値テーブル（曖昧性スコア / リトライ上限 / fix-loop 上限）</li>
+            <li>サブエージェント呼び出しブロック（<code>delegate_task</code> / <code>task</code> の詳細プロンプト）</li>
+            <li>状態機械の遷移リスト（成功 / 失敗 / リトライ条件）</li>
+            <li><code>references/</code> <code>templates/</code> <code>scripts/</code> への分割</li>
+            <li>Ambiguity Score Interpretation のような判定テーブル</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>アンチパターン</h2>
+          <table>
+            <thead><tr><th>アンチパターン</th><th>何が悪い</th><th>どうする</th></tr></thead>
+            <tbody>
+              <tr><td>description が「○○のスキル」だけ</td><td>自動起動に乗らない</td><td>Use when / Trigger phrases を入れる</td></tr>
+              <tr><td>MUST USE を全スキルに付ける</td><td>競合して全部誤発火する</td><td>ドメイン占有スキルだけに限定</td></tr>
+              <tr><td>Rules が抽象的（「丁寧に書く」など）</td><td>LLM が判定できない</td><td>具体的な行動・出力契約に翻訳</td></tr>
+              <tr><td>完了条件が書いてない</td><td>永遠にループ or 早すぎる完了宣言</td><td>「<code>X が Y を満たしたら done</code>」と数値や検証で書く</td></tr>
+              <tr><td>出力先が会話依存</td><td>スキル間連携できない</td><td>frontmatter <code>handoff:</code> か本文 <code>## Output</code> で固定</td></tr>
+              <tr><td>1ファイル1000行</td><td>context を圧迫</td><td><code>references/</code> <code>scripts/</code> に逃がす</td></tr>
+              <tr><td><code>cat</code> / <code>echo</code> でファイル書き出し</td><td>出力が context に保持されがち</td><td>Write / Edit で直接ファイルに</td></tr>
+              <tr><td>検証なしで done と言う</td><td>偽の完了。後工程が壊れる</td><td><code>verify</code> 相当の検証ステップを必ず入れる</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>Claude Code / OpenCode 互換性メモ</h2>
+          <table>
+            <thead><tr><th>機能</th><th>Claude Code</th><th>OpenCode</th><th>共通</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code> <code>description</code></td><td>✅</td><td>✅</td><td><strong>これだけで動く</strong></td></tr>
+              <tr><td><code>triggers:</code> 配列</td><td>✅（OMC 拡張）</td><td>△（無視される場合あり）</td><td>description 内に文章で書くのが安全</td></tr>
+              <tr><td><code>argument-hint</code> <code>pipeline</code> <code>handoff</code></td><td>✅（OMC 拡張）</td><td>×</td><td>OMC でしか効かない</td></tr>
+              <tr><td><code>delegate_task(...)</code></td><td>✅</td><td>✅</td><td>標準</td></tr>
+              <tr><td><code>task(category, run_in_background, load_skills, prompt)</code></td><td>△（OMC 拡張寄り）</td><td>✅</td><td>OpenCode のほうがネイティブ</td></tr>
+              <tr><td><code>TodoWrite</code></td><td>✅</td><td>✅</td><td>共通</td></tr>
+              <tr><td><code>references/</code> <code>scripts/</code></td><td>✅</td><td>✅</td><td>共通</td></tr>
+              <tr><td>MCP ツール呼び出し</td><td>✅</td><td>✅</td><td>共通</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>判断:</strong> 自分用 universal スキルを書くなら、frontmatter は <code>name</code> + <code>description</code> のみ。本文の指示は <strong>どちらの CLI でも通じる素の Markdown + 標準ツール名（Read / Write / Edit / Bash / Grep / Glob / TodoWrite）</strong> で書く。OMC 専用機能（pipeline / handoff など）は使わない。
+          </aside>
+        </section>
+
+        <section>
+          <h2>これから自分用に書きたいスキルのアイデア（種）</h2>
+          <p>このリサーチを踏まえて、Vault・ワークフロー固有の "Quality Gate を満たす" スキル候補：</p>
+          <ul>
+            <li><strong>vault-link-fixer</strong> — Obsidian の <code>[[wikilink]]</code> を Read → 壊れたリンクを Grep → 修正候補を提示。codebase 固有 + 発見にコストあり + ググって出ない、を満たす。</li>
+            <li><strong>llm-wiki-page</strong> — <code>llm-wiki/SCHEMA.md</code> の規約を強制する new page スキル。frontmatter 必須 + ファイル名 lowercase + <code>index.md</code> / <code>log.md</code> 自動更新。</li>
+            <li><strong>company-meeting-notes</strong> — <code>.company/secretary/notes/YYYY-MM-DD-decisions.md</code> への追記専用スキル。同日 1 ファイルルールを守る。</li>
+            <li><strong>research-to-plans</strong> — <code>リサーチ/</code> のメモを実装方針が支配的になった瞬間に検出して <code>plans/</code> への移動を提案。CLAUDE.md にあるルールをスキル化。</li>
+          </ul>
+          <p>
+            各アイデアごとに <strong>(a) Skillify 3問</strong>、<strong>(b) Use_When / Do_Not_Use_When</strong>、<strong>(c) Output パス</strong>、<strong>(d) Rules（NEVER/MUST）</strong> を5行で詰めるところから着手すれば、最小スキルがすぐ書ける。
+          </p>
+        </section>
+
+        <section>
+          <h2>付録: 効くフレーズ集（コピペ用）</h2>
+          <p>そのまま自分のスキルに転用していい定型句。短いのに LLM の挙動を顕著に変えることが分かっている。</p>
+          <div class="code-wrap">
+<pre><code class="language-text">"MUST USE for ANY &lt;ドメイン&gt; operations."
+
+"STRONGLY RECOMMENDED: Use with delegate_task(category='quick',
+  load_skills=['&lt;skill&gt;'], ...) to save context."
+
+"Use when users ask to ..., ..., ..., or ..."
+
+"Trigger phrases include '...', '...', '...', or any &lt;domain&gt; request."
+
+"Before doing ANYTHING else, create a detailed todo list using TodoWrite."
+
+"No &lt;evidence&gt; = no claim. If you cannot back a statement with
+  &lt;evidence&gt;, state 'No evidence found' instead."
+
+"Never guess. Always verify with &lt;検証ツール&gt; before &lt;破壊的操作&gt;."
+
+"One &lt;unit&gt; = one commit."
+"Test after every &lt;unit&gt;. If it fails, REVERT and skip."
+
+"Output goes to &lt;固定パス&gt; via Write tool."
+
+"If the planned &lt;count&gt; &lt; min_&lt;count&gt; → WRONG. SPLIT MORE."
+
+"ABSOLUTE RULES for Subagents:
+  ONLY ANALYZE / READ-ONLY / WRITE REPORT ONLY / EVIDENCE REQUIRED"
+
+"Do not say a change is complete without evidence."
+
+"If no realistic verification path exists, say that explicitly
+  instead of bluffing."
+</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>カテゴリ横断深掘り — 似たスキルの差分から学ぶ</h2>
+          <p>
+            各プロジェクトのスキルを <strong>目的別</strong> に並べ替えて、似たスキル同士の差分を見ていく。OMC・OpenAgent・OpenCode の <strong>設計哲学の違い</strong> がここに出る。
+          </p>
+
+          <h3>A. 自律実行・並列実行（ループ）系</h3>
+          <p>OMC が最も力を入れている領域。「自分で考えてループする」エージェントをどう作るか。</p>
+
+          <h4>入れ子構造（OMC 内部）</h4>
+          <div class="code-wrap">
+<pre><code class="language-text">autopilot (autonomous execution / full lifecycle)
+ └─ ralph (persistence wrapper / loop + verification reviewer)
+     └─ ultrawork (parallelism only)
+</code></pre>
+          </div>
+          <table>
+            <thead><tr><th>スキル</th><th>役割</th><th>抜けるもの</th></tr></thead>
+            <tbody>
+              <tr><td><code>ultrawork</code></td><td>並列実行<strong>だけ</strong>。タスクを N 個に分けて同時に走らせる</td><td>検証なし。終了しない</td></tr>
+              <tr><td><code>ralph</code></td><td>ultrawork に「ループ + 検証レビューア」を被せる</td><td>要件展開なし</td></tr>
+              <tr><td><code>autopilot</code></td><td>ralph に「Phase 0: 要件展開 (deep-interview 経由)」を頭に追加</td><td>起動時のすり合わせは依然必要</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>設計の含意:</strong> 同じ「ループする実行」でも、層を分けて単機能のスキルを重ねている。<strong>1スキル = 1責務</strong> を徹底すると、組み合わせが効く。
+          </aside>
+
+          <h4>ultraqa — QA に特化したループ</h4>
+          <p>ループだが対象が QA。最大 5 サイクル：</p>
+          <ol>
+            <li><strong>RUN QA</strong> — <code>--tests</code> / <code>--build</code> / <code>--lint</code> / <code>--typecheck</code> / <code>--custom</code> / <code>--interactive</code> のいずれかで検証</li>
+            <li><strong>CHECK RESULT</strong> — pass なら exit、fail なら次へ</li>
+            <li><strong>ARCHITECT DIAGNOSIS</strong> — <code>architect</code> subagent (opus) に根本原因と修正案を出させる</li>
+            <li><strong>FIX ISSUES</strong> — <code>executor</code> subagent (sonnet) に修正させる</li>
+            <li><strong>REPEAT</strong> — Step 1 へ</li>
+          </ol>
+          <aside class="callout tip">
+            <strong>学び:</strong> 「役割分担した3体（QA tester / architect / executor）を直列に呼ぶ」がループ系の鉄板パターン。<strong>診断と修正を別エージェントに分ける</strong> ことで責務が明確になり、各役の system prompt をチューニングできる。
+          </aside>
+
+          <h4>team vs omc-teams（チーム実行の2系統）</h4>
+          <table>
+            <thead><tr><th>観点</th><th><code>team</code></th><th><code>omc-teams</code></th></tr></thead>
+            <tbody>
+              <tr><td>Worker</td><td>Claude Code ネイティブ team agents</td><td>claude / codex / gemini CLI プロセス（tmux ペイン）</td></tr>
+              <tr><td>起動</td><td><code>TeamCreate</code> / <code>Task</code> / <code>SendMessage</code></td><td><code>omc team [N:agent] ...</code> + status + shutdown + api</td></tr>
+              <tr><td>協調</td><td>ネイティブ team メッセージング + 段階パイプライン</td><td>tmux ワーカー + CLI API state ファイル</td></tr>
+              <tr><td>用途</td><td>Claude ネイティブの team orchestration</td><td>外部 CLI ワーカーをぶつ切りで動かす</td></tr>
+            </tbody>
+          </table>
+          <p>「Claude 同士の議論」を回したい → <code>team</code>。「Claude + Codex + Gemini」みたいに <strong>異なるモデルプロバイダ</strong> を混ぜたい → <code>omc-teams</code>。</p>
+
+          <h4>sciomc — 並列 scientist</h4>
+          <div class="code-wrap">
+<pre><code class="language-python"># 並列発火（独立データセット）
+Task(subagent_type="oh-my-claudecode:scientist", model="haiku",
+     prompt="[STAGE:1] Analyze src/api/...")
+Task(subagent_type="oh-my-claudecode:scientist", model="haiku",
+     prompt="[STAGE:2] Analyze src/utils/...")
+Task(subagent_type="oh-my-claudecode:scientist", model="haiku",
+     prompt="[STAGE:3] Analyze src/components/...")
+</code></pre>
+          </div>
+          <p><code>haiku</code> を並列で動かしてコスト圧縮しつつ、出力を main で集約。<strong>安いモデル × 並列 × メイン集約</strong> の典型。</p>
+
+          <h4>self-improve — 進化アルゴリズム</h4>
+          <p>トーナメント選抜による自律進化的コード改善：</p>
+          <ol>
+            <li>複数候補を <code>executor</code> 並列生成</li>
+            <li>各候補を <code>benchmark_score</code> で評価（Tournament Selection）</li>
+            <li><code>status: "success"</code> のみ filter</li>
+            <li><code>benchmark_direction</code> を尊重した ranked-candidate loop</li>
+            <li>勝者を merge、敗者ブランチを <code>git-master</code> 経由で archive</li>
+            <li>勝者なし → 何も merge せず、improvement branch は前回値のまま</li>
+            <li>ラウンド毎に Merge Report JSON を <code>&lt;self-improve-root&gt;/state/merge_reports/round_{n}.json</code> に保存</li>
+          </ol>
+          <aside class="callout warn">
+            <strong>注意:</strong> 「LLM が自分でコードを書き、自分で評価する」を <strong>進化アルゴリズム的に並列化</strong> するなら、評価関数（benchmark）を最初に厳格に書く必要がある。<strong>評価が定量化できない領域には適用できない</strong>。
+          </aside>
+
+          <h4>比較: openagent 系の自律ループ</h4>
+          <table>
+            <thead><tr><th>プロジェクト</th><th>スキル</th><th>性格</th></tr></thead>
+            <tbody>
+              <tr><td>OMC</td><td><code>autopilot</code> / <code>ralph</code> / <code>ultrawork</code></td><td>「汎用ループ」を3層で作り分け</td></tr>
+              <tr><td>OpenAgent</td><td><code>work-with-pr</code></td><td>PR ライフサイクル<strong>専用</strong>ループ（worktree → 実装 → atomic commit → PR → CI / review-work / Cubic 承認 → merge → worktree cleanup）</td></tr>
+              <tr><td>OpenAgent</td><td><code>pre-publish-review</code></td><td>リリース承認<strong>専用</strong>ループ（16エージェント・ゲート）</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>思想の差:</strong> OMC は <strong>汎用基盤</strong> を提供して合成で対応する。OpenAgent は <strong>特定ユースケース専用</strong> のスキルを大規模に作る。前者は柔軟、後者は導入即戦力。
+          </aside>
+
+          <h3>B. 対話・要件結晶化・調査系</h3>
+          <p>「実行する前に何を実行すべきか決める」スキル群。<strong>ループ系の前段</strong> として機能する。</p>
+
+          <h4>plan / ralplan / deep-interview / deep-dive の関係</h4>
+          <div class="code-wrap">
+<pre><code class="language-text">deep-dive (causal investigation + requirements crystallization)
+  ├─ Phase 3: trace (3並列laneの競合仮説)
+  └─ Phase 4: deep-interview (3-point injection)
+       └─ Ambiguity score < threshold → spec を .omc/specs/deep-dive-{slug}.md へ
+
+omc-plan (strategic planning)
+  └─ オプションで deep-interview 起動 (--interactive)
+  └─ 出力: .omc/plans/ralplan-*.md
+  └─ handoff-policy: approval-required
+
+ralplan = omc-plan の consensus mode alias
+</code></pre>
+          </div>
+
+          <h4>deep-dive の 3-point injection</h4>
+          <p>deep-dive の Phase 4 では、deep-interview に <strong>3 つの情報を同時注入</strong> して質問を始める：</p>
+          <ol>
+            <li><code>initial_idea</code> — ユーザの当初発話</li>
+            <li><code>codebase_context</code> — 該当リポの構造・規約</li>
+            <li><code>question_queue</code> — Phase 3 の trace で出た per-lane の "critical unknowns"</li>
+          </ol>
+          <p>trace 由来のテキストは <code>&lt;trace-context&gt;</code> 区切り文字で囲む（untrusted data guard）— LLM がユーザ発話と取り違えないため。</p>
+          <aside class="callout tip">
+            <strong>学び:</strong> 複数の情報源を1つの LLM プロンプトに混ぜるとき、<strong>ソースごとに区切り文字を分ける</strong> のは prompt injection 対策として有効。
+          </aside>
+
+          <h4>trace — 因果調査の並列化</h4>
+          <p><code>agent: tracer</code> を frontmatter で宣言（OMC 独自）。built-in <code>tracer</code> エージェントを <strong>3 lane 並列</strong> で走らせ、競合仮説を立てる。</p>
+          <ul>
+            <li>Lane 1: 観察の機械的な原因</li>
+            <li>Lane 2: 設計上の原因</li>
+            <li>Lane 3: MOVE 候補 (リファクタリングで解消できる場所)。<code>ownership_scope</code> を必ず含め、cross-boundary なら警告</li>
+          </ul>
+          <aside class="callout tip">
+            <strong>学び:</strong> 「同じ問題を異なる視点で3つ独立に解析」は、特に "わからない" を最速で潰す手段。Lane 3 の MOVE 候補に <code>ownership_scope</code> を持たせるのは、コードオーナーシップ境界を越える変更を default 推奨にしない<strong>安全装置</strong>。
+          </aside>
+
+          <h4>autoresearch — 評価器契約付きのループ</h4>
+          <p><code>deep-interview --autoresearch</code> で起動できる「研究ミッション専用」ループ。重要な制約：</p>
+          <ul>
+            <li><strong>mission clarity</strong> と <strong>evaluator clarity</strong> を hard readiness gate にする（通常の ambiguity threshold とは別）</li>
+            <li>evaluator command を取得できないと起動しない</li>
+            <li>起動後は <code>omc-plan</code> / <code>autopilot</code> / <code>ralph</code> / <code>team</code> のいずれにもブリッジしない（自前ループ）</li>
+            <li>mission slug / evaluator command / max-runtime / artifact location を最初に announce</li>
+          </ul>
+          <aside class="callout tip">
+            <strong>学び:</strong> ループを開始する前に <strong>「終わる条件」と「評価方法」を強制的に取りに行く</strong> のは reliability の肝。
+          </aside>
+
+          <h4>external-context — 並列 doc-specialist</h4>
+          <div class="code-wrap">
+<pre><code class="language-python"># 同時発火、独立 facet（最大5体）
+Task(subagent_type="oh-my-claudecode:document-specialist", model="sonnet",
+     prompt="Search for: &lt;facet 1&gt;. Use WebSearch and WebFetch. Cite all sources.")
+Task(subagent_type="oh-my-claudecode:document-specialist", model="sonnet",
+     prompt="Search for: &lt;facet 2&gt;. ...")
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>学び:</strong> external-context は <strong>facet 分解</strong> が肝。「React Server Components」を5体に同じプロンプトで投げても収穫は減衰する。「公式」「実装例」「パフォーマンス」「移行手順」「批判」のように切り分ける。
+          </aside>
+
+          <h4>ccg — Claude + Codex + Gemini の役割分担</h4>
+          <p>Execution Protocol：</p>
+          <ol>
+            <li><strong>Decompose Request</strong>:
+              <ul>
+                <li><strong>Codex prompt</strong>: architecture, correctness, backend, risks, test strategy</li>
+                <li><strong>Gemini prompt</strong>: UX/content clarity, alternatives, edge-case usability, docs polish</li>
+                <li><strong>Synthesis plan</strong>: how to reconcile conflicts</li>
+              </ul>
+            </li>
+            <li>それぞれの結果を Claude が <strong>synthesize</strong></li>
+            <li>片方が落ちている場合は available provider + Claude のみで継続、欠落視点をリスクとして明記</li>
+          </ol>
+          <aside class="callout tip">
+            <strong>学び:</strong> 単に「全モデルに同じ質問」ではなく、<strong>モデルごとに役割を分けて聞く</strong>。Codex はバックエンド寄り、Gemini はユーザ体験寄りの返答を返す傾向があるから、prompt を分けるのが効く。
+          </aside>
+
+          <h4>比較: openagent の hyperplan（敵対批判型）</h4>
+          <table>
+            <thead><tr><th>プロジェクト</th><th>スキル</th><th>性格</th></tr></thead>
+            <tbody>
+              <tr><td>OMC</td><td><code>deep-interview</code></td><td>1体の AI が socratic に質問 + 数学的曖昧性 score</td></tr>
+              <tr><td>OMC</td><td><code>omc-plan --consensus</code></td><td>複数視点のレビューアが計画を批評</td></tr>
+              <tr><td>OMC</td><td><code>ccg</code></td><td>3体（Claude / Codex / Gemini）が各観点から回答 → Claude 集約</td></tr>
+              <tr><td>OpenAgent</td><td><code>hyperplan</code></td><td>5体の <strong>敵対カテゴリ</strong>（unspecified-low / -high / deep / ultrabrain / artistry）が議論 → 守れる結論だけ抽出 → 強制的に <code>plan</code> に渡す</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>思想の差:</strong> OMC は「同意形成」型、OpenAgent の hyperplan は「敵対批判」型。後者は弱い仮定・盲点を炙り出すのが目的で、出力が <strong>守れる結論だけに削り込まれる</strong>。
+          </aside>
+
+          <h3>C. 知識・メモリ・スキル管理系</h3>
+          <p>「セッションを跨いで何を残すか」のスキル群。種類が多いのは「何を残すか」の選択肢が複数あるから。</p>
+
+          <h4>wiki — 永続知識ベース（Karpathy型）</h4>
+          <div class="code-wrap">
+<pre><code class="language-text">.omc/wiki/
+├── *.md         ← ページ本体（YAML frontmatter付き）
+├── index.md     ← 自動メンテのカタログ
+└── log.md       ← append-only の操作履歴
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>学び:</strong> 知識ベースに必ず <code>index.md</code> と <code>log.md</code> をセットで持たせる。log は誰が何をしたかの追跡用、index は LLM が最初に読むハブ。Obsidian Vault と同じ思想。
+          </aside>
+
+          <h4>remember — 4種のメモリサーフェスへ振り分け</h4>
+          <ul>
+            <li><strong>Project memory</strong> — durable team/project knowledge</li>
+            <li><strong>Notepad priority</strong> — 次の数ターン用の高シグナルメモ</li>
+            <li><strong>Notepad working</strong> — 一時的なセッションメモ</li>
+            <li><strong>Docs / AGENTS / CLAUDE files</strong> — 永続的なルール・規約</li>
+          </ul>
+          <p>「全部覚える」より「<strong>4種のうちどれに該当するか</strong>判定する」を本体にしたほうが、後で何度も読み返すコストが下がる。</p>
+
+          <h4>skillify — 会話からスキルを抽出</h4>
+          <p>Output：</p>
+          <ul>
+            <li>Proposed skill name</li>
+            <li>Target location</li>
+            <li>Draft workflow structure or complete skill file</li>
+            <li>Verification or quality-gate notes</li>
+            <li>Open questions, if any</li>
+          </ul>
+          <aside class="callout tip">
+            <strong>学び:</strong> 「これスキル化したほうが…」と思った瞬間に <strong>Quality Gate 3 問を口に出して答える</strong> だけで、9割は雑になる前に止まる。<code>learner</code> は <code>skillify</code> の deprecated alias。
+          </aside>
+
+          <h4>skill — スキル管理 CLI</h4>
+          <div class="code-wrap">
+<pre><code class="language-bash">/skill list          # 全スキル
+/skill add my-skill  # 新規追加（テンプレ提示）
+/skill remove old
+/skill edit error-handler
+/skill search typescript error
+/skill info my-skill
+/skill sync          # スコープ間同期（プロジェクト ↔ ユーザー）
+/skill setup         # ウィザード
+/skill scan          # 短時間スキャン
+</code></pre>
+          </div>
+
+          <h4>writer-memory — ドメイン特化メモリ</h4>
+          <p>汎用 memory に書くと検索しにくいから、ドメイン固有のスキーマで保存先を切る：</p>
+          <ul>
+            <li><strong>Characters (캐릭터)</strong>: 감정궤도 / 태도 / 대사톤 / 화법</li>
+            <li><strong>World (세계관)</strong>: settings, rules, atmosphere, constraints</li>
+            <li><strong>Relationships (관계)</strong>: 動的変化</li>
+            <li><strong>Scenes (장면)</strong>: cut composition / narration tone / emotional tags</li>
+            <li><strong>Themes (테마)</strong>: emotional themes / authorial intent</li>
+          </ul>
+          <p>データは <code>.writer-memory/memory.json</code> に保存（git-friendly）。</p>
+
+          <h4>deepinit — 階層化 AGENTS.md</h4>
+          <div class="code-wrap">
+<pre><code class="language-text">src/
+├── AGENTS.md         ← トップレベル
+├── api/
+│   └── AGENTS.md     ← サブシステム
+└── components/
+    └── AGENTS.md     ← サブシステム
+</code></pre>
+          </div>
+          <p>各ディレクトリに <code>AGENTS.md</code> を置いて、LLM がそこに入ったときに <strong>コンテキストを段階的に展開</strong> できるようにする。これも progressive disclosure の一形態。</p>
+
+          <h3>D. 検証・QA・分析系</h3>
+          <p>「コードや出力が信頼できるか」を測るスキル群。<strong>evidence 主義</strong> が共通。</p>
+
+          <h4>verify — 最小例（38行）</h4>
+          <p>本体は4行：</p>
+          <div class="code-wrap">
+<pre><code class="language-markdown">## Rules
+- Do not say a change is complete without evidence.
+- If a check fails, include the failure clearly.
+- If no realistic verification path exists, say that explicitly instead of bluffing.
+- Prefer concise evidence summaries over noisy logs.
+</code></pre>
+          </div>
+          <p><code>bluffing 禁止</code> の1行が効く。短くても LLM の挙動を縛れる。</p>
+
+          <h4>visual-verdict — スクショ vs リファレンス比較</h4>
+          <p>UI のリグレッションテストで「人間に何を見せれば判断できるか」を構造化する Visual QA verdict。</p>
+
+          <h4>ai-slop-cleaner — 削除ファーストのレビュー</h4>
+          <div class="code-wrap">
+<pre><code class="language-bash">/oh-my-claudecode:ai-slop-cleaner &lt;target&gt;
+/oh-my-claudecode:ai-slop-cleaner &lt;target&gt; --review     # レビューだけ
+/oh-my-claudecode:ai-slop-cleaner &lt;file-a&gt; &lt;file-b&gt;
+</code></pre>
+          </div>
+          <p>Ralph から呼ばれた場合は Ralph のセッションで変更されたファイルだけを対象にして、Ralph に戻る（post-cleanup regression verification）。</p>
+          <aside class="callout tip">
+            <strong>学び:</strong> 「AI が書いたコードを掃除する」は、<strong>削除を default</strong> にすると過剰実装が消える。リライトより削除が安全。
+          </aside>
+
+          <h4>github-triage — 読み取り専用の徹底ぶり</h4>
+          <p>Anti-Patterns（重大度付き）：</p>
+          <table>
+            <thead><tr><th>Violation</th><th>Severity</th></tr></thead>
+            <tbody>
+              <tr><td>ANY GitHub mutation (comment/close/merge/review/label/edit)</td><td><strong>CRITICAL</strong></td></tr>
+              <tr><td>Claim without permalink</td><td><strong>CRITICAL</strong></td></tr>
+              <tr><td>Using category other than <code>quick</code></td><td>CRITICAL</td></tr>
+              <tr><td>Batching multiple items into one task</td><td>CRITICAL</td></tr>
+              <tr><td><code>run_in_background=false</code></td><td>CRITICAL</td></tr>
+              <tr><td><code>git checkout</code> on PR branch</td><td>CRITICAL</td></tr>
+              <tr><td>Guessing without codebase evidence</td><td>HIGH</td></tr>
+              <tr><td>Not writing report to <code>{REPORT_DIR}</code></td><td>HIGH</td></tr>
+              <tr><td>Using branch name instead of commit SHA in permalink</td><td>HIGH</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>学び:</strong> アンチパターン表で <strong>重大度を明示</strong> するのは強い。「これをやると重大」を本文に書くと、LLM は実行前に該当しないか自己点検する。
+          </aside>
+
+          <h4>pre-publish-review — 16 エージェントゲート</h4>
+          <p>仕組み：</p>
+          <ol>
+            <li><code>/get-unpublished-changes</code> で前回リリース以降の変更を全列挙</li>
+            <li>最大10体の <code>ultrabrain</code> エージェントが per-change 深堀り分析</li>
+            <li><code>/review-work</code>（5体）で全体的レビュー</li>
+            <li><code>1 oracle</code> が総合判定</li>
+          </ol>
+          <p>トリガー語の網羅性が特徴的：<code>pre-publish review</code>, <code>review before publish</code>, <code>release review</code>, <code>ready to publish?</code>, <code>can I publish?</code>, <code>safe to publish</code> など、命令形だけでなく <strong>疑問形</strong> や <strong>形容詞 + 名詞</strong> も入れている。</p>
+
+          <h3>E. ブラウザ自動化・UI/UX系（OpenCode 系のみ）</h3>
+          <p>OMC にはないカテゴリ。OpenCode 系の builtin として 3 本：</p>
+          <table>
+            <tbody>
+              <tr><td><code>agent-browser</code></td><td>CLI 型のブラウザ自動化（コマンド毎回起動・状態を持たない）</td></tr>
+              <tr><td><code>dev-browser</code></td><td>永続セッション付きブラウザ自動化（ログイン状態など保持）</td></tr>
+              <tr><td><code>frontend-ui-ux</code></td><td>デザインモックなしで UI/UX を作る「デザイナー出身デベロッパー」</td></tr>
+            </tbody>
+          </table>
+          <p>開発中のテスト一発 → <code>agent-browser</code>。ログインしてから複数操作 → <code>dev-browser</code>。UI コードを書きたい → <code>frontend-ui-ux</code>。</p>
+
+          <h3>F. Git・コミット・リリース系</h3>
+          <table>
+            <thead><tr><th>プロジェクト</th><th>スキル</th><th>役割</th></tr></thead>
+            <tbody>
+              <tr><td>OpenCode</td><td><code>git-master</code></td><td>"MUST USE for ANY git operations" — atomic commit、rebase / squash、log -S、bisect、blame</td></tr>
+              <tr><td>OpenCode</td><td><code>/publish</code></td><td>GitHub Actions ワークフロー経由で npm 公開</td></tr>
+              <tr><td>OpenCode</td><td><code>/get-unpublished-changes</code></td><td>HEAD と公開バージョンを diff</td></tr>
+              <tr><td>OpenCode</td><td><code>/remove-deadcode</code></td><td>LSP + ultrawork + atomic commit でデッドコード除去</td></tr>
+              <tr><td>OMC</td><td><code>release</code></td><td>リリース手順を <code>.omc/RELEASE_RULE.md</code> にキャッシュ</td></tr>
+              <tr><td>OpenAgent</td><td><code>pre-publish-review</code></td><td>16 エージェント release gate</td></tr>
+            </tbody>
+          </table>
+
+          <h4>git-master の最小コミット数公式</h4>
+          <p>他のスキルにも応用できる：</p>
+          <div class="code-wrap">
+<pre><code class="language-text">FORMULA: min_commits = ceil(file_count / 3)
+
+ 3 files → min 1 commit
+ 5 files → min 2 commits
+ 9 files → min 3 commits
+15 files → min 5 commits
+
+If your planned commit count < min_commits → WRONG. SPLIT MORE.
+</code></pre>
+          </div>
+          <p>LLM は「まとめてコミット」しがち。<strong>式と表で抑え込む</strong> のは、抽象的な指示より強い。</p>
+
+          <h3>G. セットアップ・運用系</h3>
+          <table>
+            <tbody>
+              <tr><td><code>setup</code></td><td>install/update のルーター</td></tr>
+              <tr><td><code>omc-setup</code></td><td>plugin / npm / local-dev のいずれかで導入</td></tr>
+              <tr><td><code>omc-doctor</code></td><td>インストール不調の診断と自動修復</td></tr>
+              <tr><td><code>omc-reference</code></td><td>エージェント・ツール・チーム・skills レジストリの自動参照書（<code>user-invocable: false</code> で裏方）</td></tr>
+              <tr><td><code>mcp-setup</code></td><td>主要 MCP サーバ群の自動構成</td></tr>
+              <tr><td><code>configure-notifications</code></td><td>Telegram / Discord / Slack を自然言語で設定</td></tr>
+              <tr><td><code>hud</code></td><td>HUD 表示の設定</td></tr>
+              <tr><td><code>cancel</code></td><td>autopilot / ralph / ultrawork / ultraqa / swarm / pipeline / team を中断</td></tr>
+              <tr><td><code>project-session-manager</code></td><td>issue / PR / feature ごとに worktree + tmux セッション</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout tip">
+            <strong>学び:</strong> <code>omc-reference</code> が <code>user-invocable: false</code> なのは、<strong>「ユーザーから直接呼ばれることはなく、他スキルから auto-load される」</strong> の典型例。スキル一覧 UI から隠したい裏方は <code>user-invocable: false</code>。
+          </aside>
+
+          <h3>H. 設計思想のサマリ</h3>
+          <table>
+            <thead><tr><th>軸</th><th>OMC</th><th>OpenAgent</th><th>OpenCode (fork)</th></tr></thead>
+            <tbody>
+              <tr><td>哲学</td><td>汎用基盤の合成</td><td>特定ユースケース専用の大砲</td><td>日常運転の最小セット</td></tr>
+              <tr><td>自律実行</td><td>autopilot / ralph / ultrawork の3層</td><td>work-with-pr 専用ループ</td><td>なし</td></tr>
+              <tr><td>計画系</td><td>同意形成型（plan / deep-interview / ccg）</td><td>敵対批判型（hyperplan）</td><td>なし</td></tr>
+              <tr><td>QA</td><td>verify / visual-verdict / ai-slop-cleaner</td><td>github-triage / pre-publish-review (16体)</td><td>/remove-deadcode</td></tr>
+              <tr><td>知識管理</td><td>wiki / remember / writer-memory</td><td>なし</td><td>なし</td></tr>
+              <tr><td>ブラウザ</td><td>なし</td><td>なし</td><td>agent-browser / dev-browser</td></tr>
+              <tr><td>Git</td><td>release</td><td>なし</td><td>git-master / /publish / etc.</td></tr>
+              <tr><td>セットアップ</td><td>多数</td><td>なし</td><td>なし</td></tr>
+            </tbody>
+          </table>
+          <aside class="callout note">
+            <strong>示唆:</strong> OMC は「インフラ的に重武装」、OpenAgent は「攻撃的・批判的」、OpenCode は「足元固め」。<strong>自分でスキルを作るなら、目的に合わせて3つの思想のうちどれを採るか先に決める</strong> と設計がブレない。
+            <ul>
+              <li>日常運転を楽にしたい → OpenCode 寄り（短く具体的）</li>
+              <li>レビューや判断の質を上げたい → OpenAgent 寄り（敵対多体、ガード強め）</li>
+              <li>長時間ループを安全に回したい → OMC 寄り（層分け、評価器契約、cancel）</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <h2>まとめ</h2>
+          <ul>
+            <li>SKILL.md は「LLM が自動的に呼ぶプロンプトファイル」。<strong>description が全て</strong>。</li>
+            <li>長いスキルほど <code>&lt;Use_When&gt;</code> / <code>&lt;Do_Not_Use_When&gt;</code> / <code>STEP 0: REGISTER TODO LIST</code> / 数値しきい値 / 状態機械 を入れる。</li>
+            <li>ガードは具体的に。<code>MUST</code> <code>NEVER</code> <code>CRITICAL</code> + 偽陽性ガードのリストで LLM の判断を抑え込む。</li>
+            <li>サブエージェント委譲は <code>READ-ONLY</code> + <code>WRITE REPORT ONLY</code> + <code>EVIDENCE REQUIRED</code> の3点セットで運用。</li>
+            <li>出力先（artifact path）は最初に決める。<code>/tmp/{datetime}/</code> や <code>.omc/specs/</code> のように <strong>パスが宣言される</strong> ことでスキル間連携が成立する。</li>
+            <li>自作の判断は Skillify Quality Gate の3問だけで十分。3問とも YES なら作る、それ以外はドキュメントに書く。</li>
+            <li>universal に書くなら frontmatter は <code>name</code> + <code>description</code> だけにし、本文は素の Markdown + 標準ツール名で書く。</li>
+          </ul>
+          <p>
+            次の一歩は、「これから自分用に書きたいスキルのアイデア」から1本（たぶん <code>llm-wiki-page</code> が一番 Skillify 3問通る）を最小版（30〜50行）で起こす。
+          </p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://github.com/Yeachan-Heo/oh-my-claudecode" target="_blank" rel="noopener">Yeachan-Heo/oh-my-claudecode — GitHub</a></li>
+            <li><a href="https://github.com/code-yeongyu/oh-my-openagent" target="_blank" rel="noopener">code-yeongyu/oh-my-openagent — GitHub</a></li>
+            <li><a href="https://github.com/opensoft/oh-my-opencode" target="_blank" rel="noopener">opensoft/oh-my-opencode — GitHub</a></li>
+            <li><a href="https://ohmyclaudecode.com/" target="_blank" rel="noopener">oh-my-claudecode 公式サイト</a></li>
+            <li><a href="https://yeachan-heo.github.io/oh-my-claudecode-website/" target="_blank" rel="noopener">oh-my-claudecode ドキュメント</a></li>
+            <li><a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic — Agent Skills Overview</a></li>
+            <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code Docs — Extend Claude with skills</a></li>
+            <li><a href="https://opencode.ai/docs/skills/" target="_blank" rel="noopener">OpenCode Docs — Agent Skills</a></li>
+            <li><a href="https://github.com/VoltAgent/awesome-agent-skills" target="_blank" rel="noopener">VoltAgent/awesome-agent-skills — 1000+ コミュニティスキル集</a></li>
+            <li><a href="https://github.com/alirezarezvani/claude-skills" target="_blank" rel="noopener">alirezarezvani/claude-skills — 232+ Claude Code skills</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <dialog class="lightbox" id="lightbox" aria-label="図解を拡大表示">
+      <button class="close" type="button" aria-label="閉じる">×</button>
+      <div class="lb-body"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>

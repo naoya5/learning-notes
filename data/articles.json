@@ -80,6 +80,22 @@
     "updated": null
   },
   {
+    "slug": "omc-opencode-agent-skills",
+    "date": "2026-05-11",
+    "title": "Agent Skills を読み解く — OMC と OpenCode、50本のSKILL.mdからプロンプト設計を学ぶ",
+    "summary": "OMC・OpenCode系50本のSKILL.mdを解剖。description設計、ガード文、サブエージェント委譲、自作テンプレまで網羅。",
+    "description": "oh-my-claudecode (Claude Code向け) と oh-my-opencode / oh-my-openagent (OpenCode向け) のスキル全50本を解剖。frontmatter作法、トリガー設計、ガード文、サブエージェント委譲、出力契約、自作SKILL.mdの雛形と設計チェックリストまで一望する。",
+    "tags": [
+      "claude-code",
+      "agent-skills",
+      "prompt-engineering",
+      "oh-my-claudecode",
+      "opencode",
+      "skill-design"
+    ],
+    "updated": null
+  },
+  {
     "slug": "kv-cache",
     "date": "2026-05-10",
     "title": "KVキャッシュの全体像：仕組み・ボトルネック・主要な最適化技術",
