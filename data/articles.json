@@ -1,5 +1,24 @@
 [
   {
+    "slug": "harness-engineering-complete-guide",
+    "date": "2026-05-25",
+    "title": "ハーネスエンジニアリング完全ガイド — 2026年AIエージェント時代のソフトウェア工学",
+    "summary": "2026年に確立した「ハーネスエンジニアリング」の全貌を、英日33ソースの一次調査から統合。定義・歴史・パターン・実装まで網羅",
+    "description": "2026年初頭にOpenAI・Anthropic・Martin Fowler・LangChain・Mitchell Hashimotoらが相次いで発信した『ハーネスエンジニアリング』を、英日33本の一次情報から統合した実践ガイド。定義・命名史・3層モデル・構成要素・7つのアーキテクチャパターン・ケーススタディの定量証拠まで網羅。",
+    "tags": [
+      "harness-engineering",
+      "ai-agent",
+      "claude-code",
+      "codex",
+      "agent-orchestration",
+      "context-engineering",
+      "llm",
+      "multi-agent",
+      "prompt-engineering"
+    ],
+    "updated": null
+  },
+  {
     "slug": "architecture-lv1-fundamentals",
     "date": "2026-05-11",
     "title": "アーキテクチャ Lv1 — 基礎原則完全解説（SOLID / Clean Code / GoF）",
