@@ -1,5 +1,23 @@
 [
   {
+    "slug": "architecture-characteristics-and-styles",
+    "date": "2026-06-01",
+    "title": "ソフトウェアアーキテクチャの基礎 — アーキテクチャ特性と6つのスタイル",
+    "summary": "アーキテクチャ特性(イリティ)と適応度関数を軸に、レイヤード〜マイクロサービスまで6つのスタイルをMermaid図で整理した学習ノート",
+    "description": "『ソフトウェアアーキテクチャの基礎』で学んだ要点を整理。適応度関数とアーキテクチャ特性(イリティ)、アーキテクチャ決定を押さえ、レイヤード/マイクロカーネル/サービスベース/イベント駆動/スペースベース/マイクロサービスの6スタイルを図とトレードオフで解説する。",
+    "tags": [
+      "software-architecture",
+      "architecture",
+      "architecture-characteristics",
+      "fitness-function",
+      "layered",
+      "microservices",
+      "event-driven",
+      "space-based"
+    ],
+    "updated": null
+  },
+  {
     "slug": "harness-engineering-complete-guide",
     "date": "2026-05-25",
     "title": "ハーネスエンジニアリング完全ガイド — 2026年AIエージェント時代のソフトウェア工学",

@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>ソフトウェアアーキテクチャの基礎 — アーキテクチャ特性と6つのスタイル — learning-notes</title>
+    <meta name="description" content="『ソフトウェアアーキテクチャの基礎』で学んだ要点を整理。適応度関数とアーキテクチャ特性(イリティ)、アーキテクチャ決定を押さえ、レイヤード/マイクロカーネル/サービスベース/イベント駆動/スペースベース/マイクロサービスの6スタイルを図とトレードオフで解説する。" />
+
+    <!-- 構造化メタ（update-index.py が読む） -->
+    <meta name="article:slug" content="architecture-characteristics-and-styles" />
+    <meta name="article:date" content="2026-06-01" />
+    <meta name="article:tags" content="software-architecture,architecture,architecture-characteristics,fitness-function,layered,microservices,event-driven,space-based" />
+    <meta name="article:summary" content="アーキテクチャ特性(イリティ)と適応度関数を軸に、レイヤード〜マイクロサービスまで6つのスタイルをMermaid図で整理した学習ノート" />
+
+    <!-- OGP -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="ソフトウェアアーキテクチャの基礎 — アーキテクチャ特性と6つのスタイル" />
+    <meta property="og:description" content="『ソフトウェアアーキテクチャの基礎』で学んだ要点を整理。適応度関数とアーキテクチャ特性(イリティ)、アーキテクチャ決定を押さえ、レイヤード/マイクロカーネル/サービスベース/イベント駆動/スペースベース/マイクロサービスの6スタイルを図とトレードオフで解説する。" />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-06-01-architecture-characteristics-and-styles.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <!-- ダークモードトグル: OS追従 + localStorage 永続。bindThemeToggle が動く -->
+    <button class="theme-toggle" type="button" aria-label="テーマ切り替え">
+      ◐ theme
+    </button>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-06-01">2026-06-01</time>
+          <!-- タグは article.js が article:tags meta から自動描画する。
+               手動で <span class="dot">·</span><span class="tags">…</span> を書いてもOK -->
+        </p>
+        <h1>ソフトウェアアーキテクチャの基礎 — アーキテクチャ特性と6つのスタイル</h1>
+        <p class="lead">アーキテクチャ特性(イリティ)と適応度関数を軸に、レイヤード〜マイクロサービスまで6つのスタイルをMermaid図で整理した学習ノート</p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li><strong>アーキテクチャ特性</strong>＝システムが満たすべき「〜性（-ility / イリティ）」。要件には明記されない暗黙知から特定する力が設計の肝。</li>
+            <li>特性は互いに<strong>トレードオフ</strong>する（セキュリティを上げると性能が落ちる等）。だから"全部入り"は不可能で、絞るほど良い設計になる。</li>
+            <li><strong>適応度関数</strong>で特性を数値化し CI/CD で継続計測すると、「アーキテクチャが壊れていないか」を自動で守れる。</li>
+            <li><strong>アーキテクチャ決定</strong>は「どう作るか」のルール＝ガードレール。特性（何を満たすか）とセットで考える。</li>
+            <li>スタイルは目的別の道具箱。レイヤード→単純さ / マイクロカーネル→拡張性 / サービスベース→実用的な分散 / EDA→非同期スケール / スペースベース→高並行 / マイクロサービス→独立デプロイ。</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>アーキテクチャ特性（イリティ）</h2>
+          <p>
+            ソフトウェアアーキテクチャは大きく <strong>構造</strong>・<strong>アーキテクチャ特性</strong>・<strong>アーキテクチャ決定</strong>・<strong>設計指針</strong> の4つで語れる（Richards &amp; Ford『ソフトウェアアーキテクチャの基礎』）。このうち最初に向き合うのが「このシステムは何が"良い状態"なのか」を決める<strong>アーキテクチャ特性</strong>だ。<aside class="sidenote">特性は要件定義書に「可用性99.9%」と書かれることもあるが、多くは「うちのドメインなら当然これが要る」という暗黙知として埋もれている。それを掘り起こすのが設計者の腕。</aside>
+          </p>
+
+          <h3>適応度関数 — 良さを数値化する</h3>
+          <p>
+            <strong>適応度関数</strong>は「解の良さ」を数値化する関数で、局所最適ではなく<strong>大域最適</strong>を目指すための物差しだ（遺伝的アルゴリズム由来の比喩）。アーキテクチャの文脈では、CI/CD で継続的に計測する<strong>品質ゲート</strong>として実装する。結合度・レイテンシ・セキュリティスキャンなど「望ましい状態」を関数に落とし込み、壊れたら気づける状態を作る。これが進化的アーキテクチャの中核になる。
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-python"># 適応度関数の一例：p95 レイテンシが予算を破っていないか CI で検証する
+def test_p95_latency_within_budget():
+    samples = load_latency_samples("checkout")   # 直近の本番計測
+    p95 = percentile(samples, 95)
+    assert p95 &lt; 100, f"p95={p95}ms が予算 100ms を超過"
+</code></pre>
+          </div>
+          <aside class="callout tip">
+            <strong>Tip:</strong> 適応度関数は性能だけでなく「層を飛び越えた依存がないか（結合度）」「禁止された import がないか」のような<strong>構造ルール</strong>にも使える。ArchUnit などがこの用途の定番。
+          </aside>
+
+          <h3>システムが満たす「〜性」を3つに分類する</h3>
+          <p>特性は数えると無数にあるが、おおむね次の3カテゴリで整理できる。</p>
+          <table>
+            <thead>
+              <tr><th>分類</th><th>意味</th><th>代表例</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>運用特性</strong></td><td>稼働・運用時の振る舞い</td><td>可用性 / 性能 / スケーラビリティ / 弾力性 / 信頼性 / 回復性</td></tr>
+              <tr><td><strong>構造特性</strong></td><td>コード構造・変更しやすさ</td><td>保守性 / 拡張性 / 設定容易性 / 移植性 / 再利用性</td></tr>
+              <tr><td><strong>横断特性</strong></td><td>分野をまたいで効く品質</td><td>セキュリティ / アクセシビリティ / プライバシー / ユーザビリティ / 認証・認可</td></tr>
+            </tbody>
+          </table>
+
+          <h3>トレードオフ — 特性は少ないほどいい</h3>
+          <p>
+            アーキテクチャ特性は<strong>ほとんどの場合、相互に影響しあう</strong>。セキュリティ向上のために処理を追加すればパフォーマンスは落ちるし、可用性を上げれば構成が複雑になる。すべてを同時に最大化することはできない。だから特性は<strong>取捨選択して、できるだけ少なく</strong>絞るほど、設計は明確になり守りやすくなる。
+          </p>
+          <aside class="callout note">
+            <strong>Note:</strong> 目標は「最高のアーキテクチャ」ではなく「最も無理のないアーキテクチャ」。ドメインの関心事・要件・暗黙知から<strong>効く特性を特定する能力</strong>そのものが、アーキテクトの中心スキルになる。
+          </aside>
+        </section>
+
+        <section>
+          <h2>アーキテクチャ決定</h2>
+          <p>
+            <strong>アーキテクチャ決定</strong>とは、システムをどう構築すべきかの<strong>ルール</strong>を定めるものだ。たとえばレイヤードアーキテクチャで「ビジネス層とサービス層のみがデータベースに直接アクセスできる」と決める、といったもの。決定はチームの選択肢を意図的に狭める<strong>ガードレール</strong>として働く。
+          </p>
+          <aside class="callout tip">
+            <strong>Tip:</strong> 重要な決定は ADR（Architecture Decision Record）として「背景・決定・理由・結果」を1ファイルに残すと、後から「なぜこうなっているのか」を辿れる。
+          </aside>
+          <p>
+            なお本記事に頻出する<strong>ハッピーパス</strong>とは、エラーや例外が一切発生しない理想的な正常系の処理経路のこと。後述するマイクロカーネルのコアは、この「ハッピーパスだけ」を担当する。
+          </p>
+        </section>
+
+        <section>
+          <h2>アーキテクチャスタイルの地図</h2>
+          <p>
+            ここからは代表的な<strong>アーキテクチャスタイル</strong>を見ていく。スタイルは大きく、1プロセスに収める<strong>モノリシック系</strong>（レイヤード・マイクロカーネル）と、ネットワーク越しに分割する<strong>分散系</strong>（サービスベース・イベント駆動・スペースベース・マイクロサービス）に分かれる。どれを選ぶかは「どの特性を最大化したいか」で決まる。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    Root["アーキテクチャスタイル"]
+    Mono["モノリシック系<br/>(1プロセス)"]
+    Dist["分散系<br/>(ネットワーク分割)"]
+    Root --> Mono
+    Root --> Dist
+    Mono --> L["レイヤード<br/>単純さ"]
+    Mono --> MK["マイクロカーネル<br/>拡張性"]
+    Dist --> SB["サービスベース<br/>実用的な分散"]
+    Dist --> EDA["イベント駆動<br/>非同期スケール"]
+    Dist --> SP["スペースベース<br/>高並行"]
+    Dist --> MS["マイクロサービス<br/>独立デプロイ"]
+            </pre>
+            <figcaption>図1: 本記事で扱う6スタイルの位置づけ。</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2>レイヤードアーキテクチャ</h2>
+          <p>
+            層ごとに役割を分離するアーキテクチャ。シンプルで、アーキテクチャを本格的に検討する前の<strong>出発点</strong>としてよく使われる。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    User([👤 ユーザー])
+    P[プレゼンテーション層<br/>UI・HTML・REST API]
+    B[ビジネス層<br/>ルール・計算・集約]
+    Pe[永続化層<br/>SQL・ORM・データアクセス]
+    DB[(データベース層<br/>MySQL / PostgreSQL 等)]
+    User --> P
+    P --> B
+    B --> Pe
+    Pe --> DB
+    style P fill:#4A90D9,color:#fff
+    style B fill:#7B68EE,color:#fff
+    style Pe fill:#20B2AA,color:#fff
+    style DB fill:#708090,color:#fff
+            </pre>
+            <figcaption>図2: レイヤードアーキテクチャ。上から下へだけ依存する。</figcaption>
+          </figure>
+          <p>
+            原則は<strong>閉鎖的</strong>で、上の層は必ずすぐ下の層を通してデータを渡す。ただし必要に応じて層を<strong>開放</strong>し、層を飛ばして取りにいけるようにする（パフォーマンス改善などのため）。
+          </p>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>シンプルさ / 低コスト / テスト容易性（層単位でモックしやすい）</td><td>スケーラビリティ / 弾力性 / 性能 / デプロイ容易性（全体を再デプロイ）</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> 単純さと低コストの代わりに、変更容易性とスケールを諦める。各層をただ素通りするだけのリクエストが増えると<strong>アーキテクチャシンクホール</strong>（層分割がオーバーヘッドにしかならないアンチパターン）に陥る。素通りが8割を超えるなら層分割を見直す合図。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>小規模アプリ・社内ツール・PoC / MVP など「まず動かす」段階</li>
+            <li>予算・納期・チーム規模が限られ、分散の複雑さを背負えないとき</li>
+            <li>アーキテクチャを本格検討する前の<strong>デフォルトの出発点</strong></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>マイクロカーネルアーキテクチャ</h2>
+          <p>
+            <strong>プラグインアーキテクチャ</strong>とも呼ばれる。製品ベース（ダウンロード／インストール型）のアプリに最適で、Eclipse・Chrome・Jira・VS Code などプラグインで拡張する製品で採用されている。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    User([👤 ユーザー])
+    UI[UI / APIエンドポイント]
+    Core["🏛️ コアシステム<br/>────────────────<br/>・最低限の機能<br/>・ハッピーパス処理<br/>・プラグイン管理<br/>・循環的複雑度を最小化"]
+    R[("📋 レジストリ<br/>プラグイン名<br/>コントラクト情報<br/>アクセス方法")]
+    P1["🔌 プラグイン A<br/>（税率計算: カリフォルニア州）"]
+    P2["🔌 プラグイン B<br/>（税率計算: テキサス州）"]
+    P3["🔌 プラグイン C<br/>（税率計算: ニューヨーク州）"]
+    P4["🔌 プラグイン D<br/>（新規: 別パターン追加容易）"]
+    User --> UI --> Core
+    Core <-->|参照| R
+    Core --> P1
+    Core --> P2
+    Core --> P3
+    Core --> P4
+    style Core fill:#4A90D9,color:#fff
+    style R fill:#FFD700,color:#000
+    style P1 fill:#28A745,color:#fff
+    style P2 fill:#28A745,color:#fff
+    style P3 fill:#28A745,color:#fff
+    style P4 fill:#6C757D,color:#fff
+            </pre>
+            <figcaption>図3: コア＋プラグイン。新パターンはプラグイン追加で対応する。</figcaption>
+          </figure>
+          <table>
+            <thead><tr><th>項目</th><th>内容</th></tr></thead>
+            <tbody>
+              <tr><td><strong>目的</strong></td><td>最低限の機能を形式的に定義。「ハッピーパス」のみ担当</td></tr>
+              <tr><td><strong>設計原則</strong></td><td>循環的複雑度を最小化。カスタム処理はプラグインへ委譲</td></tr>
+              <tr><td><strong>知らなくてよいこと</strong></td><td>プラグインの内部処理・ビジネスロジック</td></tr>
+            </tbody>
+          </table>
+          <p>
+            肝は<strong>コアとプラグインの明確な分離</strong>、そして両者の境界を定める<strong>コントラクト</strong>の設計だ。
+          </p>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>進化性 / 拡張性（プラグイン追加で機能拡張）/ テスト容易性 / デプロイ容易性（プラグイン単位）</td><td>スケーラビリティ / 弾力性 / 耐障害性（コアがモノリシックなため）</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> 機能の追加・差し替えは抜群にしやすい一方、全体としてはモノリシックなのでスケールは苦手。<strong>コアとプラグインのコントラクトをどうバージョン管理するか</strong>が運用上の肝になる。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>IDE・ブラウザ・SaaS など<strong>プラグインで拡張する製品</strong>（VS Code / Eclipse / Jira）</li>
+            <li>ビジネスルールのバリエーションが多い領域（税計算・保険商品・申請フローなど、州や条件ごとに分岐）</li>
+            <li>サードパーティに拡張を開放したいエコシステム型プロダクト</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>サービスベースアーキテクチャ</h2>
+          <p>
+            マイクロサービスの<strong>ハイブリッド</strong>。柔軟性が高く、最も実用的な分散スタイルの一つ。マイクロサービスやイベント駆動ほどの複雑さ・コストを払わずに、分散の利点を享受できる。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    User([👤 ユーザー])
+    UI["🖥️ ユーザーインターフェイス<br/>（モノリシック or 分割）"]
+    subgraph Services["ドメインサービス群（4〜12個、平均7個）"]
+        S1["📦 見積依頼サービス<br/>（粗粒度・独立デプロイ）"]
+        S2["📦 注文管理サービス<br/>（粗粒度・独立デプロイ）"]
+        S3["📦 在庫サービス<br/>（粗粒度・独立デプロイ）"]
+        S4["📦 顧客管理サービス<br/>（粗粒度・独立デプロイ）"]
+    end
+    DB[("🗄️ 共有モノリシックDB<br/>（標準構成）")]
+    User --> UI
+    UI --> S1 &amp; S2 &amp; S3 &amp; S4
+    S1 &amp; S2 &amp; S3 &amp; S4 --> DB
+    style S1 fill:#4A90D9,color:#fff
+    style S2 fill:#4A90D9,color:#fff
+    style S3 fill:#4A90D9,color:#fff
+    style S4 fill:#4A90D9,color:#fff
+    style DB fill:#708090,color:#fff
+            </pre>
+            <figcaption>図4: 粗粒度サービス群が共有DBを使う実用的な分散。</figcaption>
+          </figure>
+          <table>
+            <thead><tr><th>項目</th><th>内容</th></tr></thead>
+            <tbody>
+              <tr><td><strong>粒度</strong></td><td>粗い（アプリケーションの一部）</td></tr>
+              <tr><td><strong>デプロイ</strong></td><td>個別デプロイ（EAR/WAR/アセンブリ）</td></tr>
+              <tr><td><strong>コンテナ化</strong></td><td>必須ではない</td></tr>
+              <tr><td><strong>DB</strong></td><td>通常は単一のモノリシックDBを共有</td></tr>
+              <tr><td><strong>通信</strong></td><td>通常 REST。メッセージング・RPC・SOAP も可</td></tr>
+            </tbody>
+          </table>
+          <p>
+            マイクロサービスとレイヤードの<strong>中間</strong>。DB やUIが分かれることもある。ACID トランザクションが重要で「どこかで失敗したらロールバックしたい」処理に向く。
+          </p>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>デプロイ容易性 / 進化性 / テスト容易性 / 耐障害性（サービス単位で隔離）/ 分散の中では高いシンプルさ</td><td>弾力性 / スケーラビリティ（共有DBが天井になる）</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> マイクロサービスの運用コストを払わずに分散の利点を得られるが、<strong>共有DBがスケールの上限</strong>になる。裏を返せば、DBを共有するおかげで<strong>ACIDトランザクションを保ちやすく</strong>、サーガが要らない場面が多いのが実用上の強み。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>モノリスから<strong>段階的に分割</strong>していきたいとき（いきなりマイクロサービスにしない）</li>
+            <li>ACIDトランザクションが重要で、整合性を崩したくない業務系</li>
+            <li>マイクロサービスがオーバーキルな中規模アプリ、DDDで境界が引けているチーム</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>イベント駆動アーキテクチャ（EDA）</h2>
+          <p>
+            高度にスケーラブルで高パフォーマンスな<strong>分散・非同期型</strong>スタイル。「何かが起きた（イベント）」という事実を中心に、各コンポーネントが非同期に連携する。従来のリクエスト/レスポンス型が「A が B を呼び、結果を待って次へ進む」のに対し、EDA では <strong>「A はイベントを発行するだけ。誰が受け取るかは A の関心事ではない」</strong>。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph LR
+    Pub["注文サービス<br/>イベント発行"] -->|order.created| Broker[("イベントブローカー<br/>Kafka / SNS など")]
+    Broker --> C1["在庫引当サービス"]
+    Broker --> C2["課金サービス"]
+    Broker --> C3["通知サービス"]
+    Broker --> C4["レコメンド更新"]
+    style Pub fill:#4A90D9,color:#fff
+    style Broker fill:#FF8C00,color:#fff
+    style C1 fill:#28A745,color:#fff
+    style C2 fill:#28A745,color:#fff
+    style C3 fill:#28A745,color:#fff
+    style C4 fill:#28A745,color:#fff
+            </pre>
+            <figcaption>図5: 1つの「注文」イベントに複数の関心事が独立に subscribe する（fan-out）。</figcaption>
+          </figure>
+          <p>
+            向いている場面は「リアルタイムに反応すべき多消費システム」「監査が重要な領域」「マイクロサービス間の疎結合」。一つの出来事に複数の関心事がぶら下がるサービスは、EDA の恩恵を受けやすい。
+          </p>
+          <details class="disclosure">
+            <summary>実世界の採用例</summary>
+            <ul>
+              <li><strong>配車・デリバリー</strong>：Uber/Lyft はドライバー位置を毎秒イベント化 → マッチング・料金計算・ETA が独立に subscribe。DoorDash は注文ステータス変化を全関係者に fan-out。</li>
+              <li><strong>配信</strong>：Netflix は視聴開始/一時停止/離脱をイベント化 → レコメンド学習・品質監視・課金集計を別チームが消費。</li>
+              <li><strong>決済</strong>：Stripe の Webhook はまさに EDA。銀行の不正検知は取引イベントをリアルタイムに ML 推論へストリーミング。</li>
+              <li><strong>EC</strong>：Amazon は「注文」1つから在庫引当・倉庫指示・配送追跡・レコメンド更新・領収書メールが独立に走る。</li>
+            </ul>
+          </details>
+          <aside class="callout tip">
+            <strong>2つのトポロジ：</strong> イベントを各消費者が自由に受け取る<strong>ブローカー型</strong>（シンプル・最も疎結合）と、中央のメディエーターが処理手順を制御する<strong>メディエーター型</strong>（エラー処理・調整がしやすい）がある。疎結合を取るか、制御しやすさを取るかの選択。
+          </aside>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>性能 / スケーラビリティ / 弾力性 / 耐障害性 / 進化性（消費側を自由に足せる）</td><td>シンプルさ / テスト容易性（非同期は追跡しづらい）/ データ整合性（結果整合性）</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> 高スループットと疎結合の代わりに、<strong>処理フローの追跡・デバッグが難しく</strong>なり、エラーハンドリング・重複・順序保証の設計が複雑になる。「いま全体がどうなっているか」を一望しにくいのが最大の難点。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>リアルタイムに多数が反応する系（配車のマッチング、配信の視聴イベント、決済Webhook）</li>
+            <li>1つの出来事に複数の関心事がぶら下がる<strong>fan-out</strong>（EC注文 → 在庫・配送・通知・レコメンド）</li>
+            <li>監査が重要で全イベントを記録したい領域、マイクロサービス間の疎結合な連携</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>スペースベースアーキテクチャ</h2>
+          <p>
+            Webサーバーをいくらスケールしても<strong>DBが1つだとそこに処理が集中</strong>してボトルネックになる。スペースベースは、DBとは別に<strong>インメモリのデータグリッド</strong>を処理ユニットに持たせて処理を捌き、そこから<strong>非同期でDBへ書き込む</strong>ことでボトルネックを解消する。
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-text">通常のWebアプリ:  Web → App → DB（中央）  ← ここが詰まる
+スペースベース:    Web → 処理ユニット（インメモリ）  ← DBを直接読み書きしない
+                              ↓（非同期）
+                          データポンプ → DB（結果整合性）
+</code></pre>
+          </div>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    User([👤 ユーザー])
+    VM["🔀 仮想ミドルウェア<br/>（4コンポーネント）"]
+    subgraph PU["処理ユニット群（動的にスケール）"]
+        PU1["処理ユニット1<br/>────────────<br/>アプリロジック<br/>インメモリキャッシュ<br/>レプリケーションエンジン"]
+        PU2["処理ユニット2<br/>（同一のキャッシュコピー）"]
+        PU3["処理ユニット N<br/>（負荷に応じて増減）"]
+    end
+    DP["📨 データポンプ<br/>（非同期メッセージング）"]
+    DW["✍️ データライター"]
+    DR["📖 データリーダー"]
+    DB[("🗄️ 物理DB")]
+    User --> VM --> PU1
+    PU1 <-->|キャッシュ同期| PU2
+    PU2 <-->|キャッシュ同期| PU3
+    PU1 &amp; PU2 &amp; PU3 --> DP
+    DP --> DW --> DB
+    DB --> DR
+    DR -->|リバースデータポンプ| PU1
+    style VM fill:#FFD700,color:#000
+    style DP fill:#FF8C00,color:#fff
+    style DW fill:#20B2AA,color:#fff
+    style DR fill:#20B2AA,color:#fff
+    style DB fill:#708090,color:#fff
+            </pre>
+            <figcaption>図6: 処理ユニットはインメモリで捌き、データポンプ経由で非同期にDBへ。</figcaption>
+          </figure>
+          <p>
+            中核は<strong>仮想ミドルウェアの4コンポーネント</strong>。中でも<strong>データグリッド</strong>がレプリケーションキャッシュを担う最重要要素だ。
+          </p>
+          <figure>
+            <pre class="mermaid">
+graph TD
+    VM["仮想ミドルウェア"]
+    MG["1️⃣ メッセージンググリッド<br/>────────────────<br/>・入力リクエスト管理<br/>・セッション状態管理<br/>・ロードバランシング<br/>・実装: HAProxy, Nginx"]
+    DG["2️⃣ データグリッド【最重要】<br/>────────────────<br/>・レプリケーションキャッシュ<br/>・処理ユニット内に実装<br/>・通常100ms以下で同期<br/>・実装: Hazelcast, Ignite"]
+    PG["3️⃣ 処理グリッド（オプション）<br/>────────────────<br/>・複数ユニットが1リクエストを協調処理<br/>・オーケストレーション役"]
+    DM["4️⃣ デプロイメントマネージャー<br/>────────────────<br/>・応答時間・負荷を継続監視<br/>・負荷増→ユニット起動 / 負荷減→停止<br/>・弾力性実現の要"]
+    VM --> MG &amp; DG &amp; PG &amp; DM
+    style DG fill:#DC3545,color:#fff
+    style DM fill:#28A745,color:#fff
+            </pre>
+            <figcaption>図7: 仮想ミドルウェアの4コンポーネント。</figcaption>
+          </figure>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>弾力性 / スケーラビリティ / 性能（いずれも極めて高い）</td><td>シンプルさ / テスト容易性（本番規模の負荷再現が困難）/ 全体コスト / データ整合性</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> 桁外れの同時実行とスパイク耐性を得る代わりに、<strong>キャッシュ整合性とインメモリ運用の難しさ</strong>、高い構築・運用コストを払う。DBへは非同期反映なので<strong>結果整合性</strong>を許容できることが前提になる。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>負荷が<strong>予測不能に急増</strong>する系（コンサートチケット、フラッシュセール、オークション、座席予約）</li>
+            <li>同時接続数が読めず、DBが真っ先にボトルネックになる高並行アプリ</li>
+            <li>スパイク時でも一貫した低レイテンシを維持したいとき</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>マイクロサービスアーキテクチャ（MSA）</h2>
+          <p>
+            単一の責務を持つ小さなサービスの集合体で、各サービスが<strong>独立してデプロイ・スケール・開発</strong>できるアーキテクチャ。モノリシックでは規模拡大に伴い「一部を変えても全体を再デプロイ」「特定機能だけスケールしにくい」といった問題が出る。それを分割で解く。
+          </p>
+          <aside class="callout note">
+            <strong>哲学:</strong> DDD の<strong>境界づけられたコンテキストを物理化</strong>したもの。そして<strong>「再利用よりも重複」</strong>——共通化は結合を生み独立デプロイを壊すので、多少コピーしても分離を優先する。
+          </aside>
+          <figure>
+            <pre class="mermaid">
+graph LR
+    Client[クライアント] --> GW[API Gateway]
+    GW --> US[ユーザーサービス]
+    GW --> OS[注文サービス]
+    GW --> PS[決済サービス]
+    GW --> NS[通知サービス]
+    GW --> IS[在庫サービス]
+    US --> UDB[(User DB)]
+    OS --> ODB[(Order DB)]
+    PS --> PDB[(Payment DB)]
+    NS --> MQ[[Message Queue]]
+    IS --> IDB[(Inventory DB)]
+    style GW fill:#4ecdc4,color:#fff
+    style MQ fill:#ffe66d,color:#333
+            </pre>
+            <figcaption>図8: サービスごとに専用DB。データは完全分離する。</figcaption>
+          </figure>
+          <p>特徴：</p>
+          <ul>
+            <li><strong>データは完全分離</strong>。共有DB・共有テーブル・他サービスDBへの直接アクセスは禁止。欲しいデータは「信頼できる唯一の情報源」へ問い合わせる。</li>
+            <li>各サービスは<strong>1つのビジネス能力</strong>だけに責任を持つ。「ユーザー管理が注文データを直接触る」のは境界違反。</li>
+            <li><strong>トランザクション境界とコレオグラフィ</strong>を常に意識する。特にトランザクションが鬼門（サーガが頻発する設計は避ける）。</li>
+            <li>スケーラビリティ・弾力性・進化性・デプロイ容易性・テスト容易性が強い一方、分散の複雑さとネットワーク呼び出しの多さで<strong>性能は弱め</strong>。DevOps（CI/CD・k8s）なしには成立しない。</li>
+          </ul>
+          <p>サービス間通信は同期（REST/gRPC）と非同期（イベント駆動）を使い分ける。</p>
+          <figure>
+            <pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant OrderSvc as 注文サービス
+    participant PaymentSvc as 決済サービス
+    participant MQ as Message Queue
+    participant NotifySvc as 通知サービス
+    Note over Client,PaymentSvc: 同期通信（REST / gRPC）
+    Client->>OrderSvc: 注文作成
+    OrderSvc->>PaymentSvc: 決済リクエスト（HTTP）
+    PaymentSvc-->>OrderSvc: 決済結果
+    OrderSvc-->>Client: 注文完了
+    Note over OrderSvc,NotifySvc: 非同期通信（イベント駆動）
+    OrderSvc->>MQ: order.completed イベント発行
+    MQ-->>NotifySvc: イベント受信
+    NotifySvc->>NotifySvc: メール送信（非同期）
+            </pre>
+            <figcaption>図9: 同期は応答が要る箇所、非同期は通知など待たなくてよい箇所に。</figcaption>
+          </figure>
+          <aside class="callout tip">
+            <strong>サーガとは:</strong> 各サービスのローカルトランザクションを順に実行し、途中で失敗したら成功分を逆順に<strong>補償トランザクション</strong>で打ち消す仕組み。例）注文→決済→在庫引当→配送手配で在庫引当が失敗したら、決済を返金・注文をキャンセルと逆順に巻き戻す。実行用とは別に取り消し用メソッドが要るので、使いすぎ注意。中央指揮役のいる<strong>オーケストレーション型</strong>と、イベント連鎖で進む<strong>コレオグラフィ型</strong>がある。
+          </aside>
+          <h3>特性とトレードオフ</h3>
+          <table>
+            <thead><tr><th>強い特性</th><th>弱い特性</th></tr></thead>
+            <tbody>
+              <tr><td>スケーラビリティ / 弾力性 / 進化性 / デプロイ容易性 / テスト容易性 / 耐障害性 / モジュール性（いずれも最高クラス）</td><td>性能（ネットワークホップが増える）/ シンプルさ / 全体コスト</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>トレードオフ：</strong> サービスごとの独立性と細かいスケールを手に入れる代わりに、<strong>分散の複雑さ・性能低下・運用コスト</strong>を背負う。とりわけ複数サービスをまたぐトランザクションは<strong>サーガ</strong>が必要になり一気に難しくなる。CI/CD・k8s・監視といったDevOps基盤の成熟が前提。
+          </p>
+          <h3>採用される場面</h3>
+          <ul>
+            <li>大規模・多チームで<strong>独立して頻繁にデプロイ</strong>したいプロダクト</li>
+            <li>機能ごとにスケール要件が大きく異なる（決済は堅く、レコメンドは大量に、など）</li>
+            <li>ドメインを明確に<strong>境界づけられたコンテキスト</strong>へ分割でき、組織もそれに沿っている（コンウェイの法則）</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>まとめ</h2>
+          <ul>
+            <li>アーキテクチャ特性（イリティ）は要件の裏にある暗黙知。<strong>効く特性を特定し、少数に絞る</strong>のが設計の出発点。</li>
+            <li>特性は<strong>トレードオフ</strong>する。全部入りは不可能。だから「何を諦めるか」を決めるのが本質。</li>
+            <li><strong>適応度関数</strong>で特性を数値化し CI/CD で継続計測すれば、アーキテクチャの劣化を自動で防げる。</li>
+            <li>スタイルは<strong>特性を実現する道具</strong>。単純さならレイヤード、拡張性ならマイクロカーネル、独立デプロイならマイクロサービス——目的から逆引きする。</li>
+            <li>分散系は強力だが<strong>トランザクション・整合性・運用コスト</strong>という代償を伴う。サーガを多用する設計は黄信号。</li>
+          </ul>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://www.developertoarchitect.com/" target="_blank" rel="noopener">Mark Richards — Developer to Architect（『ソフトウェアアーキテクチャの基礎』著者の無料教材）</a></li>
+            <li><a href="https://martinfowler.com/architecture/" target="_blank" rel="noopener">Martin Fowler — Software Architecture Guide</a></li>
+            <li><a href="https://martinfowler.com/articles/201701-event-driven.html" target="_blank" rel="noopener">Martin Fowler — What do you mean by “Event-Driven”?</a></li>
+            <li><a href="https://martinfowler.com/articles/microservices.html" target="_blank" rel="noopener">James Lewis &amp; Martin Fowler — Microservices</a></li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <!-- Lightbox: figure.zoomable を click すると bindLightbox がここに描画 -->
+    <dialog class="lightbox" id="lightbox" aria-label="図解を拡大表示">
+      <button class="close" type="button" aria-label="閉じる">×</button>
+      <div class="lb-body"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+
+    <!-- Mermaid (この記事固有の図解レンダリング) -->
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: dark ? "dark" : "default",
+        themeVariables: {
+          fontFamily: "'Inter','Noto Sans JP',system-ui,sans-serif",
+          fontSize: "14px",
+        },
+        flowchart: { htmlLabels: true, curve: "basis" },
+      });
+    </script>
+  </body>
+</html>
