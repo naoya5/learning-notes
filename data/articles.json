@@ -1,5 +1,19 @@
 [
   {
+    "slug": "pstack",
+    "date": "2026-06-11",
+    "title": "pstack — Cursorを規律あるエンジニアリングチームに変えるプラグイン",
+    "summary": "React Core TeamのLauren Tanが作ったCursorプラグインpstack。15のplaybookと20の原則でAIコードの質を上げる仕組みを読み解く",
+    "description": "pstackはMeta・Netflix・Cursorで働きReact Compilerを開発するLauren Tan(poteto)によるCursor公式プラグイン。「速く行きたければまず深く行け」を掲げ、ルーティングスキルpoteto-mode、15のplaybook、20のエンジニアリング原則、マルチモデル戦略でAIコーディングの質を担保する設計を整理する。",
+    "tags": [
+      "cursor",
+      "agent-skills",
+      "agent-orchestration",
+      "skill-design"
+    ],
+    "updated": null
+  },
+  {
     "slug": "architecture-characteristics-and-styles",
     "date": "2026-06-01",
     "title": "ソフトウェアアーキテクチャの基礎 — アーキテクチャ特性と6つのスタイル",

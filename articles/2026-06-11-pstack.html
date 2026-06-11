@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>pstack — Cursorを規律あるエンジニアリングチームに変えるプラグイン — learning-notes</title>
+    <meta name="description" content="pstackはMeta・Netflix・Cursorで働きReact Compilerを開発するLauren Tan(poteto)によるCursor公式プラグイン。「速く行きたければまず深く行け」を掲げ、ルーティングスキルpoteto-mode、15のplaybook、20のエンジニアリング原則、マルチモデル戦略でAIコーディングの質を担保する設計を整理する。" />
+
+    <!-- 構造化メタ（update-index.py が読む） -->
+    <meta name="article:slug" content="pstack" />
+    <meta name="article:date" content="2026-06-11" />
+    <meta name="article:tags" content="cursor,agent-skills,agent-orchestration,skill-design" />
+    <meta name="article:summary" content="React Core TeamのLauren Tanが作ったCursorプラグインpstack。15のplaybookと20の原則でAIコードの質を上げる仕組みを読み解く" />
+
+    <!-- OGP -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="pstack — Cursorを規律あるエンジニアリングチームに変えるプラグイン" />
+    <meta property="og:description" content="pstackはMeta・Netflix・Cursorで働きReact Compilerを開発するLauren Tan(poteto)によるCursor公式プラグイン。「速く行きたければまず深く行け」を掲げ、ルーティングスキルpoteto-mode、15のplaybook、20のエンジニアリング原則、マルチモデル戦略でAIコーディングの質を担保する設計を整理する。" />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-06-11-pstack.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <!-- ダークモードトグル: OS追従 + localStorage 永続。bindThemeToggle が動く -->
+    <button class="theme-toggle" type="button" aria-label="テーマ切り替え">
+      ◐ theme
+    </button>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-06-11">2026-06-11</time>
+        </p>
+        <h1>pstack — Cursorを規律あるエンジニアリングチームに変えるプラグイン</h1>
+        <p class="lead">React Core TeamのLauren Tan(poteto)が作ったCursor公式プラグインpstack。「速く行きたければ、まず深く行け」の哲学を、15のplaybookと20の原則という構造に落とし込んだスキル設計を読み解く。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li>pstackは<a href="https://github.com/cursor/plugins/tree/main/pstack" target="_blank" rel="noopener">cursor/plugins</a>で公開されているCursor公式プラグイン。作者はReact Compilerを開発するLauren Tan(poteto)で、「AIはslop（雑なコード）を書きすぎる」問題への回答として自身が日常で使うスキル群を公開したもの</li>
+            <li>哲学は「if you want to go fast, go deep first」。LOC最大化の逆を行き、<strong>少なく・質の高いコード</strong>を書かせる。深掘りを信頼できるからこそ恐れずに並列化できる（fearless parallelism）</li>
+            <li>中枢は<code>/poteto-mode</code>というルーティングスキル。タスクを15のplaybookにマッチさせ、手順をtodolistに<strong>逐語コピー</strong>してから実行する</li>
+            <li>20のエンジニアリング原則を「インラインの索引 + 1原則1スキルのleafファイル」という2層で持つ。索引はタスク開始時に必ず読み、適用時にleafを全文読む</li>
+            <li>モデルはロール別に使い分け（コード生成・判断・レビューパネル）。<code>/setup-pstack</code>で手持ちモデルに合わせて再構成でき、<code>/automate-me</code>で自分の作業履歴から「自分版mode」を生成できる</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>pstackとは何か</h2>
+          <p>
+            pstackはCursorのプラグインマーケットプレイスで配布されているスキル集で、<code>/add-plugin pstack</code>一発でインストールできる。作者のLauren Tan(poteto)はMeta・Netflix・Cursorで大規模コードベースに携わり、React Core TeamでReact Compilerを開発しているエンジニア。READMEの自己紹介がいきなり「i'm not a president or ceo」で始まるのが好い。
+            <aside class="sidenote">リポジトリはMITライセンス。READMEには「fork it. improve it. make it yours.」とあり、PRも歓迎されている。</aside>
+          </p>
+          <p>
+            出発点は「AIはコードを書きすぎる」という問題意識だ。READMEの言葉を借りれば、20人のslop職人チームのように出荷したいわけではない。スループットの最大化は目標ではなく、むしろその逆で、<strong>pstackは「少なく書くが、より質の高いコード」を書くための仕組み</strong>として設計されている。
+          </p>
+          <p>
+            面白いのは、品質への規律が並列化の前提になっている点。1つのエージェントに深い仕事を任せて「検証可能な良いコードを書く」と信頼できるなら、複数エージェントを安心して同時に走らせられる。これをREADMEは<strong>fearless parallelism</strong>と呼ぶ。品質は速度の敵ではなく、並列スケールの土台という整理だ。
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-bash"># インストールはこれだけ
+/add-plugin pstack
+
+# 使い方も基本これだけ。タスクの先頭に付ける
+/poteto-mode this pr has a subtle bug where the scroll drifts every 750ms
+              even when idle. repro first, then fix and verify.</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>全体アーキテクチャ</h2>
+          <p>
+            プラグインの中身は驚くほどシンプルで、<code>plugin.json</code>（マニフェスト）、<code>agents/poteto-agent.md</code>（サブエージェント定義）、そして<code>skills/</code>配下の34個のスキルだけ。スキルは役割で3種類に分かれる。
+          </p>
+          <ul>
+            <li><strong>ルーティングスキル</strong>: <code>poteto-mode</code>。タスクの入口で、playbook選択と他スキルへの誘導を担う</li>
+            <li><strong>ワークフロースキル</strong>: <code>how</code> / <code>why</code> / <code>architect</code> / <code>arena</code> / <code>interrogate</code> / <code>tdd</code> / <code>unslop</code> など13個。単体でも呼べる道具</li>
+            <li><strong>原則スキル</strong>: <code>principle-*</code>が20個。1ファイル1原則の短いリファレンス</li>
+          </ul>
+          <figure class="zoomable">
+            <svg viewBox="0 0 760 440" role="img" aria-label="pstackの全体構造図。ユーザーのリクエストがpoteto-modeに入り、playbook・ワークフロースキル・原則スキルへルーティングされ、サブエージェントはpoteto-agentでラップされる">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+              <!-- user -->
+              <rect x="20" y="20" width="240" height="56" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="140" y="44" text-anchor="middle" font-size="14" fill="currentColor">ユーザー</text>
+              <text x="140" y="64" text-anchor="middle" font-size="12" fill="currentColor">/poteto-mode &lt;タスク&gt;</text>
+              <!-- poteto-mode -->
+              <rect x="20" y="130" width="340" height="96" rx="8" fill="currentColor" opacity="0.2"/>
+              <text x="190" y="158" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor">poteto-mode（ルーティング中枢）</text>
+              <text x="190" y="180" text-anchor="middle" font-size="12" fill="currentColor">非交渉ルール / 原則インデックス</text>
+              <text x="190" y="198" text-anchor="middle" font-size="12" fill="currentColor">playbookマッチング / 文章規範</text>
+              <!-- playbooks -->
+              <rect x="430" y="20" width="310" height="76" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="585" y="48" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">playbooks × 15</text>
+              <text x="585" y="68" text-anchor="middle" font-size="12" fill="currentColor">手順をtodolistへ逐語コピー</text>
+              <!-- workflow skills -->
+              <rect x="430" y="140" width="310" height="86" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="585" y="166" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">ワークフロースキル × 13</text>
+              <text x="585" y="186" text-anchor="middle" font-size="12" fill="currentColor">how / why / architect / arena</text>
+              <text x="585" y="204" text-anchor="middle" font-size="12" fill="currentColor">interrogate / tdd / unslop …</text>
+              <!-- principles -->
+              <rect x="20" y="290" width="340" height="76" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="190" y="318" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">principle-* leafスキル × 20</text>
+              <text x="190" y="338" text-anchor="middle" font-size="12" fill="currentColor">適用する原則は全文を読む</text>
+              <!-- poteto-agent -->
+              <rect x="430" y="290" width="310" height="76" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="585" y="318" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">poteto-agent サブエージェント</text>
+              <text x="585" y="338" text-anchor="middle" font-size="12" fill="currentColor">spawn時の既定wrapper（同じ流儀で動く）</text>
+              <!-- arrows -->
+              <line x1="140" y1="76" x2="140" y2="130" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="360" y1="160" x2="430" y2="70" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="360" y1="180" x2="430" y2="182" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="190" y1="226" x2="190" y2="290" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="585" y1="226" x2="585" y2="290" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)"/>
+              <text x="160" y="262" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">タスク開始時に索引を読む</text>
+              <text x="610" y="262" text-anchor="start" font-size="11" fill="currentColor" opacity="0.7">委譲はすべてwrapper経由</text>
+            </svg>
+            <figcaption>図1: pstackの全体構造。poteto-modeが中枢で、playbook・道具スキル・原則スキルを編成する。クリックで拡大。</figcaption>
+          </figure>
+          <p>
+            さらに<code>agents/poteto-agent.md</code>というサブエージェント定義が同梱されていて、親エージェントから<code>subagent_type: "poteto-agent"</code>で起動すると、作業前に<code>poteto-mode</code>のSKILL.mdを原則インデックスごと全文読むことが保証される。汎用の<code>generalPurpose</code>で代用するとこの読み込みが飛んでスタイルがドリフトする、と定義ファイル自身が警告しているのが面白い。
+          </p>
+          <aside class="callout note">
+            <strong>Note:</strong> pstackは意図的に全部入りではない。<code>/deslop</code>や<code>control-cli</code> / <code>control-ui</code>は姉妹プラグイン<code>cursor-team-kit</code>側にあり、併用が前提。また「planningスキルがないのはなぜ?」という問いにREADMEは「the best spec is code（最良の仕様書はコード）」と答えている。
+          </aside>
+        </section>
+
+        <section>
+          <h2>poteto-mode: ルーティングの中枢</h2>
+          <p>
+            <code>/poteto-mode</code>を打つと、エージェントはまずtodolistを開き、<strong>最初の項目として原則インデックスを読む</strong>。これはSKILL.mdの冒頭で「Non-negotiables（交渉の余地なし）」と宣言されているルールで、さらに返信では「どの原則がどの判断を変えたか」を実際の選択に紐付けて引用することまで要求される。原則を読んだフリの引用（decisionの伴わないcitation）は禁止、という徹底ぶりだ。
+          </p>
+          <h3>playbookの逐語コピー</h3>
+          <p>
+            次にタスクを15のplaybookのどれかにマッチさせ、該当ファイルの手順を<strong>verbatim（逐語）でtodolistにコピー</strong>する。SKILL.mdはわざわざ失敗モードまで書いている。「playbookを読んだあと、名前付きステップを落とした自己流プランを書いてしまう」のが典型的な事故で、それを防ぐために逐語コピーを強制する。やらないステップも黙って消すのではなく、<code>skip: 理由</code>を一行添えてリストに残す。
+            <aside class="sidenote">エージェントへの指示で「要約・言い換え」を許すと手順が静かに欠落していく問題への、構造による対策。スキル設計の参考になる。</aside>
+          </p>
+          <details class="disclosure">
+            <summary>15のplaybook一覧</summary>
+            <table>
+              <thead>
+                <tr><th>playbook</th><th>対象</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>investigation</td><td>読み取り専用の調査。Xはどう動く? なぜYはこう作られた?</td></tr>
+                <tr><td>bug fix</td><td>欠陥の再現・根本原因特定・ランタイム証拠つきの修正</td></tr>
+                <tr><td>perf</td><td>計測された遅さをトレースし、ベースライン比で改善</td></tr>
+                <tr><td>runtime forensics</td><td>ライブ計測からの症状診断（リーク、CPUスピン等）。成果物は診断</td></tr>
+                <tr><td>trace forensics</td><td>採取済みプロファイル（cpuprofile、heap snapshot等）の事後診断</td></tr>
+                <tr><td>feature</td><td>新規・変更される振る舞い。名前付きのデータ形状から組み立てる</td></tr>
+                <tr><td>refactoring</td><td>振る舞いを保存する構造変更</td></tr>
+                <tr><td>prototype</td><td>設計判断を安く下すための捨てるスケッチ。実験で分岐を決める</td></tr>
+                <tr><td>visual parity</td><td>2実装のピクセル一致</td></tr>
+                <tr><td>authoring a skill</td><td>SKILL.mdの執筆・編集</td></tr>
+                <tr><td>eval</td><td>スキルやプロンプト変更が挙動に与える影響をブラインドで検証</td></tr>
+                <tr><td>autonomous run</td><td>止まらずに完了まで走る長時間タスク</td></tr>
+                <tr><td>session pickup</td><td>先行エージェントの仕掛り作業の再開・引き継ぎ</td></tr>
+                <tr><td>pause safely</td><td>再開可能な形で仕掛り作業をきれいに中断</td></tr>
+                <tr><td>multi-phase plan</td><td>フェーズやstacked PRをまたぐ作業</td></tr>
+              </tbody>
+            </table>
+            <p>このほか、全playbookの最後に呼ばれる「opening a pr」が別途ある。</p>
+          </details>
+          <h3>人間に聞く前に、実験で決める</h3>
+          <p>
+            個人的に一番唸ったのがここ。「どっちのアプローチがいい?」と人間に質問しようとしたら、その前に質問を分類せよというルールがある。<strong>何かを動かせば観察できる事実（挙動・タイミング・レイアウト・性能）は人間に聞くものではない</strong>。prototype playbookで捨てるスケッチを作り、結果に決めさせる。人間への質問は、実験では決まらない純粋なプロダクト判断・好みの判断だけに留める。READMEいわく「質問は遅いパスであり、使い捨てのプローブの方がたいてい速く答えが出るうえ、人間には判断ではなく結果へのリアクションを渡せる」。
+          </p>
+        </section>
+
+        <section>
+          <h2>20のエンジニアリング原則</h2>
+          <p>
+            pstackの背骨は20個の原則スキル。各原則は「いつ適用するか」のトリガー条件つきでpoteto-mode内に索引化されていて、タスク開始時はこの索引だけを読む。実際にその原則が発火する場面になったら、leafスキル（<code>principle-*</code>）の全文を読む。<strong>索引で広く浅く、適用時に深く</strong>という2段階のprogressive disclosureになっている。
+          </p>
+          <p>
+            カテゴリは5つ。core（9個）、architecture（5個）、verification（3個）、delegation（2個）、meta（1個）。代表としてcoreの筆頭「Laziness Protocol」を見ると、原則スキルの粒度がよく分かる。
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-markdown"># Laziness Protocol（抜粋・意訳）
+
+コードを書くのは君にとって安価で、だからこそ過剰設計しやすい。
+人間のメンテナの「疲労」を借りて、それに対抗せよ。
+
+- 削除を優先せよ。リファクタを頼まれたら、追加より先に削除を探す
+- 階層をフラットに保て。3ファイル/3層を超えるトレースが要るなら平らに
+- 判断を1箇所に集約せよ。同じ選択を複数箇所で繰り返さない
+- 差分を最小化せよ。「エレガントな」ボイラープレートより少ない行数
+- シグナルの引き回しを疑え。型やスキーマを貫通する配線にはより直接の道がある
+
+Prime directive: 人間の開発者が維持に疲弊するコードは悪い解。怠惰であれ。</code></pre>
+          </div>
+          <details class="disclosure">
+            <summary>20原則の全リスト（カテゴリ別）</summary>
+            <ul>
+              <li><strong>core</strong>: laziness-protocol（最小の変更と削除バイアス）/ foundational-thinking（ロジックの前に型とデータ構造）/ redesign-from-first-principles(新要件は初日からあったかのように再設計) / subtract-before-you-add（足す前に死荷重を除去）/ minimize-reader-load（読者の負荷を最小化）/ outcome-oriented-execution（互換の中間状態を温存せずターゲットへ収束）/ experience-first（実装都合よりユーザー体験）/ exhaust-the-design-space（前例なき判断は2〜3個の競合プロトタイプで比較）/ build-the-lever（手作業でなく、それを行う・証明するツールを作る）</li>
+              <li><strong>architecture</strong>: boundary-discipline（境界でガード、内部は型を信頼）/ type-system-discipline（不正状態を表現不能に）/ make-operations-idempotent（クラッシュとリトライの中で同一終状態に収束）/ migrate-callers-then-delete-legacy-apis（呼び出し元を移行して旧APIを一括削除）/ separate-before-serializing-shared-state（共有を直列化する前に共有自体を排除）</li>
+              <li><strong>verification</strong>: prove-it-works（プロキシでなく実物で検証）/ fix-root-causes（症状でなく根本原因）/ sequence-verifiable-units（検証可能な小単位に分割し、各単位をチェックで締める）</li>
+              <li><strong>delegation</strong>: guard-the-context-window（バルクはサブエージェントへ、メインには要約だけ）/ never-block-on-the-human（可逆な作業は進めて結果を見せ、人間に軌道修正させる）</li>
+              <li><strong>meta</strong>: encode-lessons-in-structure（同じ指示を2度書いたら、lint・チェック・スクリプトの形で構造に焼き込む）</li>
+            </ul>
+          </details>
+          <aside class="callout tip">
+            <strong>Tip:</strong> 原則スキルには<code>disable-model-invocation: true</code>が付いている。モデルが勝手に呼ぶのではなく、poteto-modeの索引から明示的にナビゲートさせる設計。スキルの「自動発火させたくないが参照はさせたい」ケースで使えるテクニック。
+          </aside>
+        </section>
+
+        <section>
+          <h2>playbookの実例: bug fix</h2>
+          <p>
+            playbookの実物がどれくらい具体的か、bug-fix.mdを見てみる。冒頭の宣言は「You own this task. Plan, review, verify.（このタスクの所有者は君だ。計画し、レビューし、検証せよ）」。調査と修正はサブエージェントに委譲してよいが、リードは渡さない。
+          </p>
+          <ol>
+            <li><strong>自分で再現する</strong>。再現手順をユーザーに丸投げしない。直接再現しないなら、トリガーを合成し条件を締め上げ、発火するまで計装する</li>
+            <li><strong>原因を二分探索する</strong>。仮説群を立て、毎回「残りの問題空間を最も削る分割」を選び、ランタイム証拠で消去する。推測は禁止。状態が不明ならログを足して動かして読む</li>
+            <li><strong>修正を計画する</strong>。関数境界をまたぐなら先に<code>architect</code>。実装はモデル指定つきでサブエージェントに委譲し、自分でdiffをレビュー</li>
+            <li><strong>同じ表面で検証する</strong>。元の再現手順が今は通ることを確認。「結果が不明瞭」はパスではない。ユニットテストは分岐の挙動を示すだけで、バグの不在は示さない</li>
+            <li><strong>コミットを物語る順に積む</strong>。失敗する再現を先に、修正をその上に。git履歴のdiffがそのままストーリーになる</li>
+          </ol>
+          <p>
+            通底するのは「Be scientific. Every shipped line traces to runtime evidence.（科学的であれ。出荷される全行はランタイム証拠まで遡れる）」という規律。「効くかもしれない」保険的な変更は仮説であって修正ではないので出荷しない。証拠が仮説を棄却したら、その仮説が動機づけた変更はrevertする。
+          </p>
+        </section>
+
+        <section>
+          <h2>サブエージェントとマルチモデル戦略</h2>
+          <p>
+            pstackのもう1つの柱がモデルの使い分け。「すべてのフロンティアモデルには得手不得手がある」前提で、多くのスキルがマルチモデルワークフローになっている。
+          </p>
+          <ul>
+            <li><code>/arena</code> は同じタスクにN個の並列候補を生成させ、ベースを選んで敗者の強い部分を移植する</li>
+            <li><code>/interrogate</code> はdiffに対して<strong>4つの異なるモデル</strong>が壊そうと試みる敵対的レビュー。厳格なコード品質レンズも含む</li>
+            <li><code>/why</code> は実行時に利用可能なMCPを発見し、ソース管理・課題トラッカー・ドキュメント・チャット・オブザーバビリティ・エラートラッキング・分析基盤という証拠カテゴリを並列に照会する</li>
+          </ul>
+          <p>
+            ロールとモデルの対応は<code>/setup-pstack</code>で構成できる。手持ちのモデルを検出して、コード担当・判断担当・レビューパネルのそれぞれにモデルを割り当てる小さなルールを書き出し、各スキルはそれを読む（無ければ既定値にフォールバック）。既定はコード生成が高速系、散文と判断がthinking系という割り当てで、サブエージェント呼び出しは<code>run_in_background: true</code>・ファイルポインタ渡し（コンテキストをインライン展開しない）が標準とされている。
+          </p>
+          <aside class="callout warn">
+            <strong>注意:</strong> 委譲しても責任は移らない。「You own every subagent's work」。サブエージェントの“done”要約を鵜呑みにせず自分でdiffをレビューし、要約も自分の言葉で書き直す。中断を挟んだresumeは指示を静かに落とすので、統合し直したスコープで新しいサブエージェントを起動し直せ、という運用ノウハウまで書かれている。
+          </aside>
+        </section>
+
+        <section>
+          <h2>文章まで設計対象: unslop</h2>
+          <p>
+            pstackが他のスキル集と一線を画すのは、コードだけでなく<strong>エージェントの書く文章そのもの</strong>を品質管理の対象にしている点。<code>/unslop</code>はAIっぽい文章の癖（AI tells）を除去するスキルで、poteto-modeの返信規範にも織り込まれている。
+          </p>
+          <ul>
+            <li>短い宣言文。1文1思考</li>
+            <li>長いダッシュ（em dash）は全面禁止。ファイル名と説明をダッシュで繋がず、文として書く</li>
+            <li>文中接続のコロンも禁止（リスト導入のコロンは可）</li>
+            <li>簡潔さを理由に内容を落とさない。詳細・トレードオフ・未決事項は全部残す</li>
+            <li>リンク・引用・トランスクリプト参照の捏造は絶対禁止。このセッションで自分が作ったか読んだものだけをリンクする</li>
+          </ul>
+          <p>
+            根拠として面白いのが「書いた後のクリーンアップは失敗すると<strong>測定済み</strong>。だから悪い文を最初から生成するな」という一文。後処理パスに頼らず、生成時点の規範として効かせる。コメント規約も同様で、「<code>// Phase 1: add cards</code>のようなナレーション型コメントを書くな、assertやログ文字列が唯一のドキュメントだ」と、エージェントが実際にやりがちな失敗を名指しで潰している。
+          </p>
+        </section>
+
+        <section>
+          <h2>スキル設計として学べるパターン</h2>
+          <p>
+            自分のClaude Codeスキル設計に持ち帰れるパターンを抜き出しておく。
+          </p>
+          <ul>
+            <li><strong>索引 + leafの2層構造</strong>。20原則をインライン索引で常時ロードし、全文は適用時にだけ読む。コンテキスト予算と網羅性の両立パターン</li>
+            <li><strong>手順の逐語コピー強制</strong>。playbookを「読んで参考にする」のではなくtodolistへverbatimコピーさせ、skipには理由を書かせる。エージェントの自己流ドリフトへの構造的対策</li>
+            <li><strong>失敗モードを名指しで書く</strong>。「読んだ後に自己流プランを書く」「ナレーションコメントを書く」など、実際に観測された失敗を具体的にスキルへ書き戻す。これ自体がmeta原則encode-lessons-in-structureの実践</li>
+            <li><strong>質問の前に分類</strong>。観察可能な事実は実験（プロトタイプ）で決め、人間には好みとプロダクト判断だけを聞く</li>
+            <li><strong>カスタマイズの自動生成</strong>。<code>/automate-me</code>は最近のトランスクリプトをマイニングして「自分がどう働いてきたか」から<code>&lt;your-name&gt;-mode</code>を起草し、pstackを土台として残す。スキルをフォークさせるのではなく、ルーティング層だけ差し替えさせる設計</li>
+            <li><strong>サブエージェントのスタイル保証</strong>。専用subagent定義（poteto-agent）でwrapperを固定し、汎用エージェント代用によるドリフトを防ぐ</li>
+          </ul>
+          <p>
+            全体として、pstackは「良いエンジニアの暗黙知をどうやってエージェントの構造に焼き込むか」の実例集になっている。プロンプトに「気をつけて」と書くのではなく、todolist・逐語コピー・索引・wrapper・モデル割り当てルールといった<strong>構造</strong>で規律を作る。この姿勢が一番の学びだと思う。
+          </p>
+        </section>
+
+        <section>
+          <h2>まとめ</h2>
+          <ul>
+            <li>pstackは「質を構造で担保すれば並列化を恐れなくてよい」というAIコーディング観の実装。量を出すためではなく、少なく正しく書くためのプラグイン</li>
+            <li>中枢のpoteto-modeは、原則索引の強制読了・playbookの逐語コピー・原則引用の実判断トレースという3つの仕掛けでドリフトを抑える</li>
+            <li>20原則・15playbook・13ワークフロースキルという分割は、コンテキスト予算を意識したprogressive disclosureの好例</li>
+            <li>検証の規律（runtime evidence、同一表面での再現、失敗再現を先に積むgit履歴）はそのまま自分のワークフローに輸入できる</li>
+            <li>次の一歩としては、cursor-team-kit側の<code>deslop</code> / <code>control-*</code>を読むこと、そして自分のスキル群に「索引+leaf」「逐語コピー」「失敗モードの名指し」を移植してみること</li>
+          </ul>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li>
+              <a href="https://github.com/cursor/plugins/tree/main/pstack" target="_blank" rel="noopener">pstack — cursor/plugins (GitHub)</a>
+            </li>
+            <li>
+              <a href="https://github.com/cursor/plugins" target="_blank" rel="noopener">cursor/plugins: Cursor plugin specification and official plugins (GitHub)</a>
+            </li>
+            <li>
+              <a href="https://cursor.com/marketplace/cursor/pstack" target="_blank" rel="noopener">pstack — Cursor Plugins Marketplace</a>
+            </li>
+            <li>
+              <a href="https://cursor.com/marketplace/agents/poteto-agent" target="_blank" rel="noopener">poteto-agent — Cursor Agent Marketplace</a>
+            </li>
+            <li>
+              <a href="https://x.com/poteto" target="_blank" rel="noopener">Lauren Tan (@poteto) — X</a>
+            </li>
+            <li>
+              <a href="https://pyshine.com/Cursor-Plugins-AI-Code-Editor-Plugin-Specification/" target="_blank" rel="noopener">Inside Cursor's Official Plugin Ecosystem — PyShine</a>
+            </li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <!-- Lightbox: figure.zoomable を click すると bindLightbox がここに描画 -->
+    <dialog class="lightbox" id="lightbox" aria-label="図解を拡大表示">
+      <button class="close" type="button" aria-label="閉じる">×</button>
+      <div class="lb-body"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>
