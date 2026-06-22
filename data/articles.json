@@ -1,5 +1,22 @@
 [
   {
+    "slug": "gemma4-visual-guide",
+    "date": "2026-06-23",
+    "title": "やさしい Gemma 4 図解ガイド",
+    "summary": "Gemma 4の仕組みを図解。注意機構・MoE・マルチモーダル・投機的デコードをやさしく解説",
+    "description": "Google DeepMindのLLM「Gemma 4」(E2B/E4B/26B A4B/31B)の内部構造を、局所×グローバル注意のインターリーブ、GQA・K=V・p-RoPEによる省メモリ化、ViTと2D RoPEによる画像理解、MoEとPLE、投機的デコードまで、オリジナル図解とたとえ話でやさしく解説する。Maarten Grootendorst『A Visual Guide to Gemma 4』の日本語再構成。",
+    "tags": [
+      "llm",
+      "gemma",
+      "transformer",
+      "attention",
+      "multimodal",
+      "moe",
+      "inference"
+    ],
+    "updated": null
+  },
+  {
     "slug": "pstack",
     "date": "2026-06-11",
     "title": "pstack — Cursorを規律あるエンジニアリングチームに変えるプラグイン",

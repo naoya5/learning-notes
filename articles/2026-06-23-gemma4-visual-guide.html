@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>やさしい Gemma 4 図解ガイド — learning-notes</title>
+<meta name="description" content="Google DeepMindのLLM「Gemma 4」(E2B/E4B/26B A4B/31B)の内部構造を、局所×グローバル注意のインターリーブ、GQA・K=V・p-RoPEによる省メモリ化、ViTと2D RoPEによる画像理解、MoEとPLE、投機的デコードまで、オリジナル図解とたとえ話でやさしく解説する。Maarten Grootendorst『A Visual Guide to Gemma 4』の日本語再構成。">
+
+<!-- 構造化メタ（update-index.py が読む） -->
+<meta name="article:slug" content="gemma4-visual-guide">
+<meta name="article:date" content="2026-06-23">
+<meta name="article:tags" content="llm, gemma, transformer, attention, multimodal, moe, inference">
+<meta name="article:summary" content="Gemma 4の仕組みを図解。注意機構・MoE・マルチモーダル・投機的デコードをやさしく解説">
+
+<!-- OGP -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="やさしい Gemma 4 図解ガイド">
+<meta property="og:description" content="小型〜中型LLM Gemma 4の中身を、専門用語を噛み砕いて図とたとえ話で解説。注意機構・GQA・p-RoPE・ViT・MoE・PLE・投機的デコードまで。">
+<meta property="og:url" content="https://naoya5.github.io/learning-notes/articles/2026-06-23-gemma4-visual-guide.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15151E;
+    --ink-soft:#4A4B57;
+    --paper:#F3F4F8;
+    --card:#FFFFFF;
+    --gem:#4338CA;
+    --gem-deep:#312B8C;
+    --gem-light:#EEEFFE;
+    --amber:#C96B0A;
+    --amber-light:#FBEDD8;
+    --mist:#E6E8F2;
+    --line:#D6D9E6;
+    --ok:#15803D;
+    --ok-light:#E0F2E6;
+    --no:#C42B2B;
+    --no-light:#FBE6E6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Noto Sans JP","Inter",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  .mono{font-family:"Space Mono",monospace}
+  .disp{font-family:"Space Grotesk",sans-serif}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    background:var(--ink);
+    color:#fff;
+    padding:96px 0 84px;
+    overflow:hidden;
+  }
+  .hero .wrap{position:relative;z-index:2}
+  .hero-eyebrow{
+    font-family:"Space Mono",monospace;
+    font-size:.78rem;letter-spacing:.32em;text-transform:uppercase;
+    color:#A9A6F2;margin-bottom:24px;
+  }
+  .hero h1{
+    font-family:"Space Grotesk",sans-serif;
+    font-weight:700;
+    font-size:clamp(2.6rem,7vw,4.6rem);
+    line-height:1.02;letter-spacing:-.02em;margin-bottom:26px;
+  }
+  .hero h1 .jp{display:block;font-family:"Noto Sans JP",sans-serif;font-weight:700;font-size:clamp(1.3rem,3.4vw,2rem);margin-top:14px;color:#E8E7FF}
+  .hero p{max-width:560px;color:#C5C4E0;font-size:1.05rem}
+  .hero-meta{margin-top:34px;font-family:"Space Mono",monospace;font-size:.8rem;color:#8C8AC4;letter-spacing:.04em}
+  .hero-meta a{color:#A9A6F2;text-decoration:none;border-bottom:1px solid #555199}
+  /* faceted gem backdrop */
+  .gem-bg{position:absolute;inset:0;z-index:1;opacity:.9}
+  .gem-bg svg{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;opacity:.5}
+
+  /* ---------- SECTION ---------- */
+  section{padding:72px 0}
+  .sec-num{
+    font-family:"Space Mono",monospace;font-size:.8rem;letter-spacing:.2em;
+    color:var(--gem);display:inline-flex;align-items:center;gap:10px;margin-bottom:14px;
+  }
+  .sec-num::before{content:"";width:26px;height:2px;background:var(--amber)}
+  h2{
+    font-family:"Space Grotesk",sans-serif;font-weight:600;
+    font-size:clamp(1.7rem,4vw,2.5rem);line-height:1.12;letter-spacing:-.01em;
+    margin-bottom:8px;
+  }
+  h2 .sub{display:block;font-family:"Noto Sans JP";font-weight:500;font-size:1rem;color:var(--ink-soft);margin-top:10px;line-height:1.7}
+  h3{
+    font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:1.3rem;
+    margin:42px 0 14px;display:flex;align-items:baseline;gap:12px;
+  }
+  h3 .tag{font-family:"Space Mono",monospace;font-size:.72rem;color:#fff;background:var(--gem);padding:3px 9px;border-radius:4px;letter-spacing:.05em;flex-shrink:0;transform:translateY(-2px)}
+  p{margin:14px 0;color:var(--ink)}
+  .lead{font-size:1.08rem;color:var(--ink-soft)}
+  strong{font-weight:700;color:var(--gem-deep)}
+  em{font-style:normal;background:linear-gradient(transparent 62%, var(--amber-light) 62%);font-weight:500;padding:0 1px}
+
+  /* ---------- CALLOUT ---------- */
+  .note{
+    background:var(--card);border:1px solid var(--line);border-left:4px solid var(--amber);
+    border-radius:0 10px 10px 0;padding:18px 22px;margin:26px 0;
+  }
+  .note .lbl{font-family:"Space Mono",monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;display:block}
+  .note p{margin:4px 0}
+
+  .analogy{
+    background:var(--gem);color:#fff;border-radius:14px;padding:24px 26px;margin:28px 0;
+    position:relative;overflow:hidden;
+  }
+  .analogy .lbl{font-family:"Space Mono",monospace;font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:#C9C7FF;margin-bottom:8px;display:block}
+  .analogy p{margin:6px 0;color:#EDECFF}
+  .analogy strong{color:#fff;text-decoration:underline;text-decoration-color:var(--amber);text-decoration-thickness:2px;text-underline-offset:3px}
+  .analogy svg{position:absolute;right:-30px;bottom:-30px;width:150px;opacity:.18}
+
+  /* ---------- FIGURE ---------- */
+  figure{margin:32px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px 20px;text-align:center;overflow-x:auto}
+  figure svg{max-width:100%;height:auto;display:block;margin:0 auto}
+  figcaption{font-family:"Space Mono",monospace;font-size:.78rem;color:var(--ink-soft);margin-top:18px;letter-spacing:.02em;text-align:center}
+
+  /* ---------- MODEL CARDS ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:30px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;position:relative;transition:transform .2s,box-shadow .2s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 14px 30px -18px rgba(49,43,140,.5)}
+  .card .name{font-family:"Space Grotesk";font-weight:700;font-size:1.25rem;color:var(--gem-deep)}
+  .card .type{font-family:"Space Mono";font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin:4px 0 14px}
+  .card .desc{font-size:.9rem;color:var(--ink-soft);line-height:1.7}
+  .card .bar{height:6px;border-radius:3px;background:var(--mist);margin-top:16px;overflow:hidden}
+  .card .bar span{display:block;height:100%;background:linear-gradient(90deg,var(--gem),var(--amber))}
+
+  /* ---------- KEY POINTS ---------- */
+  .keys{list-style:none;margin:24px 0;display:grid;gap:12px}
+  .keys li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px 14px 48px;position:relative;font-size:.96rem}
+  .keys li::before{
+    content:attr(data-n);position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    font-family:"Space Mono";font-size:.78rem;font-weight:700;color:#fff;background:var(--gem);
+    width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  }
+  .keys li b{color:var(--gem-deep)}
+
+  /* ---------- SUMMARY GRID ---------- */
+  .summary{background:var(--ink);color:#fff;border-radius:18px;padding:38px 32px;margin:30px 0}
+  .summary h3{color:#fff;margin-top:0}
+  .summary ul{list-style:none;display:grid;gap:14px;margin-top:8px}
+  .summary li{padding-left:26px;position:relative;color:#D9D8F0;font-size:.97rem}
+  .summary li::before{content:"◆";position:absolute;left:0;color:var(--amber);font-size:.8rem;top:5px}
+  .summary li b{color:#fff;font-family:"Space Grotesk"}
+
+  /* dividers */
+  .facet-div{height:60px;display:flex;align-items:center;justify-content:center;gap:10px}
+  .facet-div span{width:9px;height:9px;background:var(--gem);transform:rotate(45deg);opacity:.5}
+  .facet-div span:nth-child(2){background:var(--amber);opacity:.8}
+
+  footer{background:var(--ink);color:#8C8AC4;padding:50px 0;font-family:"Space Mono";font-size:.82rem;text-align:center}
+  footer a{color:#A9A6F2;text-decoration:none}
+  footer .big{font-family:"Space Grotesk";color:#fff;font-size:1.1rem;margin-bottom:14px;letter-spacing:.02em}
+  footer .back{display:inline-block;margin-top:22px;color:#A9A6F2;font-family:"Space Mono";font-size:.82rem;text-decoration:none;border-bottom:1px solid #555199}
+
+  /* ---------- SITE NAV (learning-notes 共通) ---------- */
+  .site-nav{background:var(--ink);border-bottom:1px solid #2A2752}
+  .site-nav .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:14px;padding-bottom:14px}
+  .site-nav a{font-family:"Space Mono",monospace;font-size:.8rem;letter-spacing:.06em;text-decoration:none}
+  .site-nav .home{color:#A9A6F2}
+  .site-nav .brand{color:#6F6CA8}
+
+  @media(max-width:600px){
+    section{padding:54px 0}
+    .hero{padding:72px 0 60px}
+    figure{padding:20px 12px 16px}
+    h3{flex-direction:column;gap:8px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SITE NAV ============ -->
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="home" href="../index.html">← learning-notes</a>
+    <span class="brand">学習ノート</span>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="gem-bg">
+    <svg viewBox="0 0 200 200" fill="none">
+      <polygon points="100,8 160,55 130,120 70,120 40,55" fill="#4338CA"/>
+      <polygon points="100,8 160,55 100,72 40,55" fill="#5B52E0"/>
+      <polygon points="40,55 100,72 70,120" fill="#3A33A8"/>
+      <polygon points="160,55 130,120 100,72" fill="#3A33A8"/>
+      <polygon points="70,120 100,72 130,120 100,192" fill="#2C277E"/>
+      <polygon points="70,120 100,192 40,55" fill="#231F66" opacity="0"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="hero-eyebrow">Visual Guide · Reworked in 日本語</div>
+    <h1>Gemma 4<span class="jp">いちばんやさしい仕組みガイド</span></h1>
+    <p>Google DeepMind の小型〜中型LLM「Gemma 4」。その中身を、専門用語を噛み砕いて図とたとえ話で解説します。長い注意機構の話から MoE、スマホで動く秘密、爆速化の仕掛けまで。</p>
+    <div class="hero-meta">元記事: Maarten Grootendorst「A Visual Guide to Gemma 4」を再構成 / <a href="https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-gemma-4">原文を読む →</a></div>
+  </div>
+</header>
+
+<!-- ============ 1. 全体像 ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">01 / 全体像</div>
+    <h2>Gemma 4 は「4兄弟」<span class="sub">サイズ違いの4モデルがあり、自分のPCやスマホに載るものを選べます。どれも画像を理解できる「マルチモーダル」です。</span></h2>
+
+    <div class="cards">
+      <div class="card">
+        <div class="name">E2B</div>
+        <div class="type">Dense · 実質2B</div>
+        <div class="desc">超軽量。スマホ向け。文字+画像に加えて<b>音声</b>も扱える。</div>
+        <div class="bar"><span style="width:18%"></span></div>
+      </div>
+      <div class="card">
+        <div class="name">E4B</div>
+        <div class="type">Dense · 実質4B</div>
+        <div class="desc">軽量。E2Bと同じくオンデバイス&音声対応。</div>
+        <div class="bar"><span style="width:30%"></span></div>
+      </div>
+      <div class="card">
+        <div class="name">26B A4B</div>
+        <div class="type">MoE · 動くのは4B</div>
+        <div class="desc">合計26Bだが、推論時は4B分しか動かない「専門家チーム」型。大きいのに速い。</div>
+        <div class="bar"><span style="width:72%"></span></div>
+      </div>
+      <div class="card">
+        <div class="name">31B</div>
+        <div class="type">Dense · 31B</div>
+        <div class="desc">いちばん素直で大きい「王道」モデル。性能の基準。</div>
+        <div class="bar"><span style="width:100%"></span></div>
+      </div>
+    </div>
+
+    <p class="lead">この4つは大きく2タイプに分かれます。全パラメータを毎回使う <strong>Dense(密)</strong> 型と、必要な専門家だけを呼び出す <strong>Mixture of Experts(MoE)</strong> 型です。まずは全モデルに共通する「土台」から見ていきましょう。</p>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 2. 共通アーキ：インターリーブ ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">02 / 共通の土台</div>
+    <h2>注意の仕組み:近くだけ見る層と、全部見る層<span class="sub">LLMは「どの単語に注目するか(Attention)」で文章を理解します。Gemma 4 は2種類の注目方法を交互に使って、賢さと速さを両立させています。</span></h2>
+
+    <h3><span class="tag">局所</span>スライディング・ウィンドウ注意</h3>
+    <p><strong>ローカル注意(局所注意)</strong>は、直前の決まった数のトークンだけに注目します。全部を見ないぶん計算が軽い。Gemma 4 では小型モデルが直前 <em>512トークン</em>、大型モデルが直前 <em>1024トークン</em>だけを見ます。</p>
+
+    <div class="analogy">
+      <span class="lbl">たとえ話</span>
+      <p>走る電車の窓のようなもの。窓に映る景色(=直近の数トークン)だけを見て進みます。過去の景色は窓から消えますが、<strong>頭の中のメモ(隠れ状態)</strong>として記憶は引き継がれるので、完全に忘れるわけではありません。</p>
+      <svg viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" rx="8" fill="#fff"/><rect x="30" y="30" width="40" height="40" rx="4" fill="#C96B0A"/></svg>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace">
+        <text x="20" y="24" font-size="13" fill="#4A4B57">窓サイズ=4 のとき、各ステップで「注目している」トークン(■)</text>
+        <!-- rows -->
+        <g font-size="12" fill="#15151E">
+          <!-- header tokens -->
+          <g transform="translate(60,50)">
+            <text x="0" y="0" fill="#4A4B57">T1</text><text x="48" y="0" fill="#4A4B57">T2</text><text x="96" y="0" fill="#4A4B57">T3</text><text x="144" y="0" fill="#4A4B57">T4</text><text x="192" y="0" fill="#4A4B57">T5</text><text x="240" y="0" fill="#4A4B57">T6</text><text x="288" y="0" fill="#4A4B57">T7</text><text x="336" y="0" fill="#4A4B57">T8</text>
+          </g>
+        </g>
+        <!-- step rows -->
+        <g>
+          <!-- step at T5 -->
+          <text x="20" y="92" font-size="11" fill="#4A4B57">T5生成</text>
+          <g transform="translate(56,82)">
+            <rect x="40" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="88" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="136" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="184" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="0" y="0" width="16" height="16" rx="3" fill="#E6E8F2"/>
+          </g>
+          <!-- step at T7 -->
+          <text x="20" y="132" font-size="11" fill="#4A4B57">T7生成</text>
+          <g transform="translate(56,122)">
+            <rect x="136" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="184" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="232" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="280" y="0" width="16" height="16" rx="3" fill="#4338CA"/>
+            <rect x="0" y="0" width="16" height="16" rx="3" fill="#E6E8F2"/>
+            <rect x="40" y="0" width="16" height="16" rx="3" fill="#E6E8F2"/>
+            <rect x="88" y="0" width="16" height="16" rx="3" fill="#E6E8F2"/>
+          </g>
+        </g>
+        <line x1="20" y1="165" x2="620" y2="165" stroke="#D6D9E6"/>
+        <g font-size="11">
+          <rect x="20" y="182" width="14" height="14" rx="3" fill="#4338CA"/><text x="42" y="194" fill="#4A4B57">注目している(窓の中)</text>
+          <rect x="240" y="182" width="14" height="14" rx="3" fill="#E6E8F2"/><text x="262" y="194" fill="#4A4B57">窓の外(直接は見ない)</text>
+        </g>
+      </svg>
+      <figcaption>窓が右へスライドし、常に「直近4トークン」だけを見る</figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="lbl">なぜ全部を局所にしないの?</span>
+      <p>局所注意を重ねれば情報は伝わりますが、<b>伝言ゲーム</b>のように層を通るたびに少しずつ薄まります。だから時々「全体を見渡す層」が必要になります。</p>
+    </div>
+
+    <p>窓の外に出たトークンも、完全に消えるわけではありません。各層が計算した <strong>隠れ状態(hidden states)</strong> を通じて、過去の情報は上の層へ少しずつ受け渡されていきます。ただし下の図のように、層を経るほど元の情報は薄まる——だからグローバル層で「本物の全体ビュー」を補う必要があるのです。</p>
+
+    <figure>
+      <svg viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="22" fill="#4A4B57">局所層を積むと情報は伝わるが、伝言ゲームのように薄まる</text>
+        <!-- three layers, info fading -->
+        <g>
+          <text x="20" y="62" fill="#4A4B57" font-size="10">層1</text>
+          <text x="20" y="112" fill="#4A4B57" font-size="10">層2</text>
+          <text x="20" y="162" fill="#4A4B57" font-size="10">層3</text>
+        </g>
+        <!-- layer 1 full color -->
+        <g transform="translate(60,46)">
+          <rect x="0" y="0" width="34" height="24" rx="4" fill="#4338CA"/><rect x="44" y="0" width="34" height="24" rx="4" fill="#4338CA"/><rect x="88" y="0" width="34" height="24" rx="4" fill="#4338CA"/><rect x="132" y="0" width="34" height="24" rx="4" fill="#4338CA"/>
+        </g>
+        <!-- layer 2 fading -->
+        <g transform="translate(60,96)">
+          <rect x="0" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".6"/><rect x="44" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".6"/><rect x="88" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".6"/><rect x="132" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".6"/>
+        </g>
+        <!-- layer 3 most faded -->
+        <g transform="translate(60,146)">
+          <rect x="0" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".3"/><rect x="44" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".3"/><rect x="88" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".3"/><rect x="132" y="0" width="34" height="24" rx="4" fill="#4338CA" opacity=".3"/>
+        </g>
+        <!-- vertical arrows -->
+        <g stroke="#C96B0A" stroke-width="1.5" fill="none" marker-end="url(#ar)">
+          <path d="M77,70 L77,94"/><path d="M77,120 L77,144"/>
+        </g>
+        <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#C96B0A"/></marker></defs>
+        <!-- global layer note -->
+        <rect x="280" y="60" width="300" height="100" rx="10" fill="#15151E"/>
+        <text x="430" y="92" text-anchor="middle" fill="#fff" font-size="12">グローバル層</text>
+        <text x="430" y="116" text-anchor="middle" fill="#C9C7FF" font-size="10">薄まった情報を補い、</text>
+        <text x="430" y="134" text-anchor="middle" fill="#C9C7FF" font-size="10">全トークンを直接見て</text>
+        <text x="430" y="152" text-anchor="middle" fill="#C9C7FF" font-size="10">全体構造を捉え直す</text>
+        <path d="M230,108 L276,108" stroke="#C96B0A" stroke-width="1.5" marker-end="url(#ar)"/>
+      </svg>
+      <figcaption>濃さ=情報の鮮度。局所層だけだと薄れるので、グローバル層で補正する</figcaption>
+    </figure>
+
+    <h3><span class="tag">大域</span>グローバル注意とインターリーブ</h3>
+    <p><strong>グローバル注意(全域注意)</strong>は、これまでの全トークンに注目する通常のやり方。正確ですが重い。そこで Gemma 4 は、軽い局所層を何枚か挟んでから時々グローバル層を入れる<em>インターリーブ(交互配置)</em>を採用します。</p>
+    <p>パターンは <strong>5:1</strong>(局所5枚→グローバル1枚)が基本(E2Bだけ4:1)。そして Gemma 3 からの改良点として、<em>最後の層は必ずグローバル注意</em>になるよう揃えられました。</p>
+
+    <figure>
+      <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace">
+        <text x="20" y="22" font-size="13" fill="#4A4B57">層の積み重ね(下→上) ※5:1パターン</text>
+        <g>
+          <!-- stack of layers -->
+          <g transform="translate(120,40)">
+            <!-- local x5 then global, repeated -->
+            <!-- bottom block -->
+            <rect x="0" y="150" width="320" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="160" y="164" font-size="11" fill="#4338CA" text-anchor="middle">局所</text>
+            <rect x="0" y="126" width="320" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="160" y="140" font-size="11" fill="#4338CA" text-anchor="middle">局所</text>
+            <rect x="0" y="102" width="320" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="160" y="116" font-size="11" fill="#4338CA" text-anchor="middle">局所</text>
+            <rect x="0" y="78" width="320" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="160" y="92" font-size="11" fill="#4338CA" text-anchor="middle">局所</text>
+            <rect x="0" y="54" width="320" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="160" y="68" font-size="11" fill="#4338CA" text-anchor="middle">局所</text>
+            <rect x="0" y="30" width="320" height="20" rx="4" fill="#C96B0A"/><text x="160" y="44" font-size="11" fill="#fff" text-anchor="middle">グローバル</text>
+            <rect x="0" y="0" width="320" height="20" rx="4" fill="#15151E"/><text x="160" y="14" font-size="11" fill="#fff" text-anchor="middle">グローバル(最終層は必ずこれ)</text>
+          </g>
+        </g>
+      </svg>
+      <figcaption>局所5枚ごとにグローバル1枚を挟み、最上層は必ずグローバル</figcaption>
+    </figure>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 3. グローバル注意の効率化 ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">03 / 効率化のワザ</div>
+    <h2>重いグローバル層を軽くする3つの工夫<span class="sub">全部を見る層はメモリを大量に食います。Gemma 4 はここに3つのテクニックを効かせて「速くて省メモリ」を実現します。</span></h2>
+
+    <h3><span class="tag">GQA</span>グループ化クエリ注意</h3>
+    <p>注意機構は <b>Query(質問)・Key(鍵)・Value(値)</b> の3役で動きます。Key と Value はキャッシュに溜まりメモリを圧迫しがち。そこで<strong>複数のQueryで1組のKVを共有</strong>させて節約します。グローバル層では <em>8つのQueryが1組のKVを共有</em>(局所層は2:1)。共有で性能が落ちないよう、Keyのサイズは倍にして補っています。</p>
+
+    <figure>
+      <svg viewBox="0 0 560 180" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="20" fill="#4A4B57">グローバル注意:Q8つ → KV1組を共有</text>
+        <!-- KV -->
+        <rect x="240" y="120" width="80" height="34" rx="6" fill="#C96B0A"/><text x="280" y="142" fill="#fff" text-anchor="middle">KV ×1</text>
+        <!-- Queries -->
+        <g fill="#4338CA">
+          <rect x="40" y="50" width="44" height="26" rx="5"/><rect x="100" y="50" width="44" height="26" rx="5"/><rect x="160" y="50" width="44" height="26" rx="5"/><rect x="220" y="50" width="44" height="26" rx="5"/><rect x="280" y="50" width="44" height="26" rx="5"/><rect x="340" y="50" width="44" height="26" rx="5"/><rect x="400" y="50" width="44" height="26" rx="5"/><rect x="460" y="50" width="44" height="26" rx="5"/>
+        </g>
+        <g fill="#fff" text-anchor="middle">
+          <text x="62" y="67">Q</text><text x="122" y="67">Q</text><text x="182" y="67">Q</text><text x="242" y="67">Q</text><text x="302" y="67">Q</text><text x="362" y="67">Q</text><text x="422" y="67">Q</text><text x="482" y="67">Q</text>
+        </g>
+        <!-- lines -->
+        <g stroke="#D6D9E6" stroke-width="1.5">
+          <line x1="62" y1="76" x2="270" y2="120"/><line x1="122" y1="76" x2="272" y2="120"/><line x1="182" y1="76" x2="276" y2="120"/><line x1="242" y1="76" x2="278" y2="120"/><line x1="302" y1="76" x2="282" y2="120"/><line x1="362" y1="76" x2="284" y2="120"/><line x1="422" y1="76" x2="288" y2="120"/><line x1="482" y1="76" x2="290" y2="120"/>
+        </g>
+      </svg>
+      <figcaption>KVを1組に絞ることでキャッシュ容量を大幅に削減</figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="lbl">局所層とグローバル層で比率が違う</span>
+      <p>局所層は見る範囲が狭いので <b>2 : 1</b>(Q2つでKV1組)で十分。一方グローバル層は全文を保持するためキャッシュ負担が桁違いに大きいので、より強く節約する <b>8 : 1</b> を採用しています。「重い所ほど強く絞る」という考え方です。</p>
+    </div>
+
+    <h3><span class="tag">K=V</span>鍵と値を同じにする</h3>
+    <p>さらに大胆な節約。グローバル層に限って<strong>Key と Value を同じ値にしてしまう</strong>。すると保存するのは実質1種類で済み、KVキャッシュ(実質Kキャッシュ)がもう一段軽くなります。性能への悪影響はほとんどないとのこと。</p>
+
+    <figure>
+      <svg viewBox="0 0 560 150" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- before -->
+        <text x="120" y="22" text-anchor="middle" fill="#4A4B57">通常(K と V を別々に保存)</text>
+        <rect x="70" y="40" width="100" height="34" rx="6" fill="#4338CA"/><text x="120" y="62" text-anchor="middle" fill="#fff">K キャッシュ</text>
+        <rect x="70" y="84" width="100" height="34" rx="6" fill="#C96B0A"/><text x="120" y="106" text-anchor="middle" fill="#fff">V キャッシュ</text>
+        <!-- arrow -->
+        <text x="270" y="84" fill="#C96B0A" font-size="22">→</text>
+        <text x="290" y="62" fill="#4A4B57" font-size="10">K=V に</text>
+        <text x="290" y="78" fill="#4A4B57" font-size="10">統一</text>
+        <!-- after -->
+        <text x="440" y="22" text-anchor="middle" fill="#4A4B57">グローバル層(1種類だけ)</text>
+        <rect x="390" y="62" width="100" height="34" rx="6" fill="#15151E"/><text x="440" y="84" text-anchor="middle" fill="#fff">K キャッシュのみ</text>
+        <text x="440" y="124" text-anchor="middle" fill="#15803D" font-size="11">メモリほぼ半減</text>
+      </svg>
+      <figcaption>K と V を同じにすれば、保存する量は実質半分</figcaption>
+    </figure>
+
+    <h3><span class="tag">p-RoPE</span>位置情報を一部だけに入れる</h3>
+    <p>LLMは <b>RoPE</b> という仕組みで「単語の順番」を覚えます。ベクトルを2個ずつのペアに分け、ペアごとに少しずつ回転させて位置を表す方法です。回転が大きい(高周波)ペアは位置に敏感、回転が小さい(低周波)ペアは<em>意味</em>を担当します。</p>
+    <p>問題は、低周波ペアに無理に位置情報を入れると<b>ノイズ</b>になり、長文では誤差が積み重なって遠くの単語の関係が崩れること。そこで <strong>p-RoPE</strong> は位置情報を<em>最初の25%のペアだけ</em>に入れ、残りは意味専用に温存します。長文を扱うグローバル層でこれが効きます。</p>
+
+    <figure>
+      <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="20" fill="#4A4B57">ベクトルを2個ずつのペアに分け、ペアごとに違う速さで回転させる</text>
+        <!-- four dials -->
+        <g>
+          <!-- pair1 high freq -->
+          <circle cx="90" cy="90" r="34" fill="#EEEFFE" stroke="#4338CA"/>
+          <line x1="90" y1="90" x2="118" y2="72" stroke="#4338CA" stroke-width="3"/>
+          <path d="M 110 64 A 34 34 0 0 1 122 96" fill="none" stroke="#C96B0A" stroke-width="2" marker-end="url(#ar2)"/>
+          <text x="90" y="145" text-anchor="middle" fill="#312B8C" font-size="10">ペア1</text>
+          <text x="90" y="160" text-anchor="middle" fill="#4A4B57" font-size="9">高周波・大回転</text>
+          <!-- pair2 -->
+          <circle cx="200" cy="90" r="34" fill="#EEEFFE" stroke="#4338CA"/>
+          <line x1="200" y1="90" x2="228" y2="78" stroke="#4338CA" stroke-width="3"/>
+          <text x="200" y="145" text-anchor="middle" fill="#312B8C" font-size="10">ペア2</text>
+          <text x="200" y="160" text-anchor="middle" fill="#4A4B57" font-size="9">中回転</text>
+          <!-- pair3 low freq -->
+          <circle cx="310" cy="90" r="34" fill="#FBEDD8" stroke="#C96B0A" stroke-dasharray="3 3"/>
+          <line x1="310" y1="90" x2="343" y2="88" stroke="#C96B0A" stroke-width="3"/>
+          <text x="310" y="145" text-anchor="middle" fill="#C96B0A" font-size="10">ペア3</text>
+          <text x="310" y="160" text-anchor="middle" fill="#4A4B57" font-size="9">低周波・ほぼ動かず</text>
+          <!-- pair4 low freq -->
+          <circle cx="420" cy="90" r="34" fill="#FBEDD8" stroke="#C96B0A" stroke-dasharray="3 3"/>
+          <line x1="420" y1="90" x2="453" y2="89" stroke="#C96B0A" stroke-width="3"/>
+          <text x="420" y="145" text-anchor="middle" fill="#C96B0A" font-size="10">ペア4</text>
+          <text x="420" y="160" text-anchor="middle" fill="#4A4B57" font-size="9">低周波・意味担当</text>
+        </g>
+        <defs><marker id="ar2" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#C96B0A"/></marker></defs>
+        <!-- p-RoPE bracket -->
+        <line x1="56" y1="190" x2="244" y2="190" stroke="#4338CA" stroke-width="2"/>
+        <text x="150" y="210" text-anchor="middle" fill="#312B8C" font-size="11">位置情報を入れる(最初の25%)</text>
+        <line x1="276" y1="190" x2="464" y2="190" stroke="#C96B0A" stroke-width="2"/>
+        <text x="370" y="210" text-anchor="middle" fill="#C96B0A" font-size="11">回転0に=意味を温存</text>
+        <text x="300" y="238" text-anchor="middle" fill="#4A4B57" font-size="10">→ 長文でも遠くの単語の関係が崩れにくい</text>
+      </svg>
+      <figcaption>p=0.25:先頭ペアにだけ位置を入れ、残りは「意味の純度」を守る</figcaption>
+    </figure>
+
+    <div class="summary">
+      <h3>グローバル層に効いている工夫まとめ</h3>
+      <ul>
+        <li><b>最終層</b>は必ずグローバル注意にする</li>
+        <li><b>GQA</b>:Query 8 : KV 1 の比率で共有</li>
+        <li><b>Keyのサイズを倍</b>にして共有の悪影響を補正</li>
+        <li><b>K = V</b>:鍵と値を同一化してキャッシュを削減</li>
+        <li><b>p-RoPE (p=0.25)</b>:位置情報を25%のペアだけに限定</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 4. ビジョンエンコーダ ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">04 / 画像を理解する</div>
+    <h2>ビジョンエンコーダ:絵を「言葉」に変換<span class="sub">全モデルが画像を扱えます。仕組みは Vision Transformer(ViT)。画像を小さなタイルに切って、それぞれを埋め込みベクトルに変えます。</span></h2>
+
+    <p>テキストを単語に分けるように、画像は <strong>16×16ピクセルのパッチ(タイル)</strong>に分割されます。各パッチがTransformerを通って、1つずつ埋め込みに変換される——という流れです。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 150" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- image -->
+        <rect x="20" y="35" width="80" height="80" rx="6" fill="#EEEFFE" stroke="#4338CA"/>
+        <g stroke="#4338CA" stroke-width=".8" opacity=".5">
+          <line x1="46" y1="35" x2="46" y2="115"/><line x1="73" y1="35" x2="73" y2="115"/>
+          <line x1="20" y1="61" x2="100" y2="61"/><line x1="20" y1="88" x2="100" y2="88"/>
+        </g>
+        <text x="60" y="132" text-anchor="middle" fill="#4A4B57">画像</text>
+        <!-- arrow -->
+        <text x="130" y="80" fill="#C96B0A" font-size="18">→</text>
+        <text x="115" y="100" fill="#4A4B57" font-size="10">パッチ分割</text>
+        <!-- patches -->
+        <g fill="#4338CA">
+          <rect x="165" y="50" width="22" height="22" rx="3"/><rect x="192" y="50" width="22" height="22" rx="3" opacity=".75"/><rect x="219" y="50" width="22" height="22" rx="3" opacity=".55"/>
+          <rect x="165" y="78" width="22" height="22" rx="3" opacity=".75"/><rect x="192" y="78" width="22" height="22" rx="3" opacity=".55"/><rect x="219" y="78" width="22" height="22" rx="3"/>
+        </g>
+        <text x="205" y="120" text-anchor="middle" fill="#4A4B57">16×16パッチ</text>
+        <!-- arrow -->
+        <text x="270" y="80" fill="#C96B0A" font-size="18">→</text>
+        <text x="258" y="100" fill="#4A4B57" font-size="10">ViT</text>
+        <!-- embeddings -->
+        <g fill="#C96B0A">
+          <rect x="320" y="48" width="14" height="56" rx="3"/><rect x="340" y="48" width="14" height="56" rx="3"/><rect x="360" y="48" width="14" height="56" rx="3"/><rect x="380" y="48" width="14" height="56" rx="3"/>
+        </g>
+        <text x="357" y="120" text-anchor="middle" fill="#4A4B57">埋め込み</text>
+        <text x="410" y="80" fill="#C96B0A" font-size="18">→</text>
+        <text x="398" y="100" fill="#4A4B57" font-size="10">射影</text>
+        <rect x="450" y="48" width="110" height="56" rx="8" fill="#15151E"/>
+        <text x="505" y="80" text-anchor="middle" fill="#fff" font-size="11">Gemma 4 へ</text>
+      </svg>
+      <figcaption>画像 → パッチ → 埋め込み → サイズを揃えて本体へ投入</figcaption>
+    </figure>
+
+    <h3><span class="tag">工夫1</span>いろんな縦横比に対応(2D RoPE)</h3>
+    <p>従来のViTは画像を正方形に潰すため、横長の絵は不自然に歪んでしまいます。Gemma 4 は<strong>パッチの縦・横の位置を別々に位置情報化する 2D RoPE</strong>と、足りない分を<em>パディング(余白埋め)</em>する仕組みで、元の縦横比を保ったまま処理できます。</p>
+
+    <p>なぜ縦横比が問題かというと——「4番目のパッチ」の意味が画像の形で変わってしまうからです。3×3なら4番目は<em>真ん中</em>ですが、2×4なら<em>左下</em>。位置の意味が崩れるので、縦と横の座標を別々に持たせる必要があるのです。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 200" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="20" fill="#4A4B57">同じ「4番目」でも、グリッドの形で位置の意味が変わる</text>
+        <!-- 3x3 grid -->
+        <text x="95" y="50" text-anchor="middle" fill="#4A4B57" font-size="10">3 × 3 グリッド</text>
+        <g transform="translate(40,60)">
+          <g fill="#EEEFFE" stroke="#4338CA">
+            <rect x="0" y="0" width="36" height="36"/><rect x="38" y="0" width="36" height="36"/><rect x="76" y="0" width="36" height="36"/>
+            <rect x="0" y="38" width="36" height="36"/><rect x="38" y="38" width="36" height="36" fill="#C96B0A"/><rect x="76" y="38" width="36" height="36"/>
+            <rect x="0" y="76" width="36" height="36"/><rect x="38" y="76" width="36" height="36"/><rect x="76" y="76" width="36" height="36"/>
+          </g>
+          <text x="56" y="60" text-anchor="middle" fill="#fff" font-size="11">4</text>
+          <text x="56" y="130" text-anchor="middle" fill="#C96B0A" font-size="10">→ 真ん中</text>
+        </g>
+        <!-- 2x4 grid -->
+        <text x="400" y="50" text-anchor="middle" fill="#4A4B57" font-size="10">2 × 4 グリッド</text>
+        <g transform="translate(320,60)">
+          <g fill="#EEEFFE" stroke="#4338CA">
+            <rect x="0" y="0" width="36" height="36"/><rect x="38" y="0" width="36" height="36"/><rect x="76" y="0" width="36" height="36"/><rect x="114" y="0" width="36" height="36"/>
+            <rect x="0" y="38" width="36" height="36" fill="#C96B0A"/><rect x="38" y="38" width="36" height="36"/><rect x="76" y="38" width="36" height="36"/><rect x="114" y="38" width="36" height="36"/>
+          </g>
+          <text x="18" y="60" text-anchor="middle" fill="#fff" font-size="11">4</text>
+          <text x="75" y="95" text-anchor="middle" fill="#C96B0A" font-size="10">→ 左下に!</text>
+        </g>
+      </svg>
+      <figcaption>1次元の番号では形に振り回される。だから縦横を別々に位置づける(2D RoPE)</figcaption>
+    </figure>
+
+    <h3><span class="tag">工夫2</span>解像度を選べる「トークン予算」</h3>
+    <p>同じ縦横比でも解像度はさまざま。そこで<strong>ソフトトークン予算</strong>を導入。<em>70 / 140 / 280 / 560 / 1120</em>から選べて、予算が大きいほど高解像度=多くのパッチで細かく見られます。物体検出には大きい予算、動画には小さい予算、と使い分けられます。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 180" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="20" fill="#4A4B57">予算が大きいほど高解像度=細かく見える(が、計算は重い)</text>
+        <!-- low budget -->
+        <text x="90" y="48" text-anchor="middle" fill="#4A4B57" font-size="10">予算 70</text>
+        <g transform="translate(50,58)">
+          <rect x="0" y="0" width="80" height="80" rx="4" fill="#EEEFFE" stroke="#4338CA"/>
+          <g stroke="#4338CA" stroke-width=".6" opacity=".5"><line x1="40" y1="0" x2="40" y2="80"/><line x1="0" y1="40" x2="80" y2="40"/></g>
+        </g>
+        <text x="90" y="155" text-anchor="middle" fill="#4A4B57" font-size="9">ざっくり・速い</text>
+        <!-- mid -->
+        <text x="290" y="48" text-anchor="middle" fill="#4A4B57" font-size="10">予算 280</text>
+        <g transform="translate(250,58)">
+          <rect x="0" y="0" width="80" height="80" rx="4" fill="#EEEFFE" stroke="#4338CA"/>
+          <g stroke="#4338CA" stroke-width=".6" opacity=".5"><line x1="20" y1="0" x2="20" y2="80"/><line x1="40" y1="0" x2="40" y2="80"/><line x1="60" y1="0" x2="60" y2="80"/><line x1="0" y1="20" x2="80" y2="20"/><line x1="0" y1="40" x2="80" y2="40"/><line x1="0" y1="60" x2="80" y2="60"/></g>
+        </g>
+        <!-- high -->
+        <text x="490" y="48" text-anchor="middle" fill="#4A4B57" font-size="10">予算 1120</text>
+        <g transform="translate(450,58)">
+          <rect x="0" y="0" width="80" height="80" rx="4" fill="#EEEFFE" stroke="#4338CA"/>
+          <g stroke="#4338CA" stroke-width=".5" opacity=".5">
+            <line x1="10" y1="0" x2="10" y2="80"/><line x1="20" y1="0" x2="20" y2="80"/><line x1="30" y1="0" x2="30" y2="80"/><line x1="40" y1="0" x2="40" y2="80"/><line x1="50" y1="0" x2="50" y2="80"/><line x1="60" y1="0" x2="60" y2="80"/><line x1="70" y1="0" x2="70" y2="80"/>
+            <line x1="0" y1="10" x2="80" y2="10"/><line x1="0" y1="20" x2="80" y2="20"/><line x1="0" y1="30" x2="80" y2="30"/><line x1="0" y1="40" x2="80" y2="40"/><line x1="0" y1="50" x2="80" y2="50"/><line x1="0" y1="60" x2="80" y2="60"/><line x1="0" y1="70" x2="80" y2="70"/>
+          </g>
+        </g>
+        <text x="490" y="155" text-anchor="middle" fill="#4A4B57" font-size="9">緻密・重い</text>
+        <text x="165" y="100" fill="#C96B0A" font-size="16">→</text>
+        <text x="375" y="100" fill="#C96B0A" font-size="16">→</text>
+      </svg>
+      <figcaption>用途に応じて解像度(=パッチの細かさ)を選べる</figcaption>
+    </figure>
+
+    <h3><span class="tag">工夫3</span>本体に合わせる「線形射影」</h3>
+    <p>画像から作った埋め込みは、そのままでは Gemma 4 に渡せません。テキストの単語埋め込みとは<em>住んでいる座標空間が違う</em>からです。そこで小さなニューラルネットで<strong>サイズと値の分布を本体の期待に合わせて変換(射影)</strong>し、最後に RMSNorm でスケールを整えます。これでようやく画像が「言葉と同じ土俵」に乗ります。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 170" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <text x="20" y="20" fill="#4A4B57">バラバラな画像埋め込みを、テキストと同じ空間へ揃える</text>
+        <!-- before: scattered -->
+        <rect x="40" y="40" width="120" height="100" rx="8" fill="#FBE6E6" stroke="#C42B2B" stroke-dasharray="3 3"/>
+        <text x="100" y="58" text-anchor="middle" fill="#C42B2B" font-size="9">射影前(ズレてる)</text>
+        <circle cx="70" cy="80" r="5" fill="#4338CA"/><circle cx="130" cy="120" r="5" fill="#4338CA"/><circle cx="90" cy="125" r="5" fill="#4338CA"/>
+        <circle cx="120" cy="75" r="5" fill="#C96B0A"/><circle cx="75" cy="105" r="5" fill="#C96B0A"/>
+        <!-- arrow -->
+        <rect x="200" y="78" width="120" height="34" rx="8" fill="#15151E"/><text x="260" y="100" text-anchor="middle" fill="#fff" font-size="10">射影 + RMSNorm</text>
+        <text x="180" y="100" fill="#C96B0A" font-size="16">→</text>
+        <text x="330" y="100" fill="#C96B0A" font-size="16">→</text>
+        <!-- after: aligned -->
+        <rect x="360" y="40" width="180" height="100" rx="8" fill="#E0F2E6" stroke="#15803D"/>
+        <text x="450" y="58" text-anchor="middle" fill="#15803D" font-size="9">射影後(同じ空間に整列)</text>
+        <circle cx="400" cy="95" r="5" fill="#4338CA"/><circle cx="420" cy="100" r="5" fill="#4338CA"/><circle cx="440" cy="92" r="5" fill="#4338CA"/>
+        <circle cx="475" cy="98" r="5" fill="#C96B0A"/><circle cx="495" cy="95" r="5" fill="#C96B0A"/>
+        <text x="450" y="130" text-anchor="middle" fill="#4A4B57" font-size="9">● 画像  ● テキスト が近づく</text>
+      </svg>
+      <figcaption>射影は本体と一緒に訓練され、画像とテキストの「物差し」を合わせる</figcaption>
+    </figure>
+    <div class="note">
+      <span class="lbl">補足</span>
+      <p>最終的に隣り合う3×3パッチを平均(プーリング)して1つにまとめるため、見た目のパッチ数より少ないトークン数になります。小型モデルのビジョンエンコーダは150M、それ以外は550Mパラメータです。</p>
+    </div>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 5. 各モデル ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">05 / モデル別の個性</div>
+    <h2>3タイプの中身を深掘り<span class="sub">共通の土台の上に、各モデルが「秘密のひと工夫」を載せています。</span></h2>
+
+    <p>本題に入る前に、2大アーキテクチャ <strong>Dense</strong> と <strong>MoE</strong> の違いを押さえましょう。Denseは全パラメータを毎回フル稼働、MoEは一部の「専門家」だけを起動します。なお、ひとつのモデルが層ごとにDenseとMoEを混ぜることはなく、<em>全層どちらか一方</em>です。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 220" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- Dense -->
+        <text x="140" y="22" text-anchor="middle" fill="#312B8C" font-size="12">Dense(31B / E2B / E4B)</text>
+        <rect x="40" y="40" width="200" height="150" rx="10" fill="#EEEFFE" stroke="#4338CA"/>
+        <text x="140" y="62" text-anchor="middle" fill="#4A4B57" font-size="10">毎回これ全部を計算</text>
+        <rect x="70" y="78" width="140" height="90" rx="6" fill="#4338CA"/>
+        <text x="140" y="128" text-anchor="middle" fill="#fff" font-size="11">1つの大きな FFNN</text>
+        <text x="140" y="210" text-anchor="middle" fill="#4A4B57" font-size="9">シンプル・安定</text>
+        <!-- MoE -->
+        <text x="440" y="22" text-anchor="middle" fill="#C96B0A" font-size="12">MoE(26B A4B)</text>
+        <rect x="340" y="40" width="200" height="150" rx="10" fill="#FBEDD8" stroke="#C96B0A"/>
+        <text x="440" y="62" text-anchor="middle" fill="#4A4B57" font-size="10">必要な専門家だけ起動</text>
+        <g>
+          <rect x="356" y="76" width="38" height="26" rx="4" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="400" y="76" width="38" height="26" rx="4" fill="#C96B0A"/><rect x="444" y="76" width="38" height="26" rx="4" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="488" y="76" width="38" height="26" rx="4" fill="#E6E8F2" stroke="#D6D9E6"/>
+          <rect x="356" y="108" width="38" height="26" rx="4" fill="#C96B0A"/><rect x="400" y="108" width="38" height="26" rx="4" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="444" y="108" width="38" height="26" rx="4" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="488" y="108" width="38" height="26" rx="4" fill="#C96B0A"/>
+        </g>
+        <text x="440" y="156" text-anchor="middle" fill="#4A4B57" font-size="9">小さなFFNN多数(色=起動中)</text>
+        <text x="440" y="210" text-anchor="middle" fill="#4A4B57" font-size="9">大容量だが省計算</text>
+      </svg>
+      <figcaption>Dense=全部使う / MoE=選んで使う。どちらか一方で統一される</figcaption>
+    </figure>
+
+    <h3><span class="tag">31B</span>素直な王道 Dense モデル</h3>
+    <p>いちばんクセのない大型モデル。Gemma 3 の27B版に近い構成で、局所×グローバルのインターリーブや前後のRMSNormも踏襲。違いは前述の <b>K=V</b> と <b>p-RoPE</b> など。層は少なめ(60層)だけど<em>横に広い</em>のが特徴で、他モデルを理解する「基準」になります。</p>
+
+    <h3><span class="tag">26B A4B</span>専門家チーム型(MoE)</h3>
+    <p>名前の <strong>A</strong> は <b>Active(実際に動く)</b>。合計26Bをメモリに載せつつ、推論で動くのは<em>4B分だけ</em>。だから大きいのに4Bモデル並みに速い、という美味しいモデルです。</p>
+
+    <div class="analogy">
+      <span class="lbl">たとえ話</span>
+      <p>大きな病院の<strong>総合受付(ルーター)</strong>を想像してください。患者(トークン)が来ると、受付が症状を見て <strong>128人の専門医</strong>から最適な <strong>8人</strong>だけを呼び出します。さらに何でも診る<strong>総合医(共有エキスパート)</strong>は常に対応。全員を毎回動かさないから速いのです。</p>
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff"/></svg>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- token -->
+        <rect x="30" y="95" width="60" height="30" rx="6" fill="#15151E"/><text x="60" y="115" text-anchor="middle" fill="#fff">トークン</text>
+        <text x="100" y="114" fill="#C96B0A" font-size="16">→</text>
+        <!-- router -->
+        <rect x="130" y="85" width="80" height="50" rx="8" fill="#C96B0A"/><text x="170" y="106" text-anchor="middle" fill="#fff">ルーター</text><text x="170" y="122" text-anchor="middle" fill="#fff" font-size="9">(受付)</text>
+        <!-- experts -->
+        <text x="250" y="30" fill="#4A4B57">128人の専門家 → 8人だけ起動</text>
+        <g fill="#EEEFFE" stroke="#D6D9E6">
+          <rect x="250" y="45" width="42" height="24" rx="4"/><rect x="300" y="45" width="42" height="24" rx="4"/><rect x="350" y="45" width="42" height="24" rx="4"/><rect x="400" y="45" width="42" height="24" rx="4"/>
+          <rect x="250" y="78" width="42" height="24" rx="4"/><rect x="300" y="78" width="42" height="24" rx="4"/>
+        </g>
+        <!-- active experts -->
+        <g fill="#4338CA">
+          <rect x="350" y="78" width="42" height="24" rx="4"/><rect x="400" y="78" width="42" height="24" rx="4"/>
+        </g>
+        <g fill="#fff" text-anchor="middle" font-size="9"><text x="371" y="94">起動</text><text x="421" y="94">起動</text></g>
+        <!-- shared expert -->
+        <rect x="250" y="120" width="192" height="30" rx="6" fill="#15151E"/><text x="346" y="139" text-anchor="middle" fill="#fff" font-size="10">共有エキスパート(常に起動・3倍サイズ)</text>
+        <!-- router arrows -->
+        <g stroke="#C96B0A" stroke-width="1.5" fill="none">
+          <path d="M210,105 L348,90"/><path d="M210,110 L398,90"/><path d="M210,120 L248,134"/>
+        </g>
+        <!-- output -->
+        <text x="455" y="100" fill="#C96B0A" font-size="16">→</text>
+        <rect x="478" y="85" width="70" height="50" rx="8" fill="#4338CA"/><text x="513" y="114" text-anchor="middle" fill="#fff">出力</text>
+      </svg>
+      <figcaption>128人中8人+総合医だけが働く=「26B載せて4Bで走る」</figcaption>
+    </figure>
+
+    <p>ここで大事な2つの言葉。<strong>スパースパラメータ</strong>はモデルの全パラメータで、起動時にメモリへ載せる必要があります。一方<strong>アクティブパラメータ</strong>は実際の計算で使う分。26B A4B は <em>26B載せるけれど、動くのは8人+総合医ぶんの約4Bだけ</em>。残り119人の専門家は出番が来るまで待機。だから容量は大きくても、速度は4Bモデルに近いのです。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 150" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- sparse bar -->
+        <text x="20" y="36" fill="#4A4B57" font-size="10">メモリに載る(スパース)</text>
+        <rect x="20" y="44" width="540" height="26" rx="5" fill="#EEEFFE" stroke="#4338CA"/>
+        <text x="290" y="61" text-anchor="middle" fill="#312B8C">26B すべて</text>
+        <!-- active bar -->
+        <text x="20" y="100" fill="#4A4B57" font-size="10">実際に動く(アクティブ)</text>
+        <rect x="20" y="108" width="540" height="26" rx="5" fill="#F3F4F8" stroke="#D6D9E6"/>
+        <rect x="20" y="108" width="83" height="26" rx="5" fill="#C96B0A"/>
+        <text x="61" y="125" text-anchor="middle" fill="#fff" font-size="10">4B</text>
+        <text x="340" y="125" text-anchor="middle" fill="#4A4B57" font-size="10">← 残りは待機 → ほぼ4Bの速度</text>
+      </svg>
+      <figcaption>「大きいのに速い」の正体:載せる量と動かす量は別物</figcaption>
+    </figure>
+
+    <h3><span class="tag">E2B / E4B</span>スマホで動く Dense モデル</h3>
+    <p>名前の <strong>E</strong> は <b>Effective(実効)</b>。秘密は <strong>Per-Layer Embeddings(層ごとの埋め込み, PLE)</strong> です。</p>
+    <p>通常は性能を上げたいなら層やパラメータを増やします。PLEは発想が逆で、<em>各層ごとに小さな「メモ」を用意</em>します。例えば「cat」というトークンに対し——</p>
+    <ul class="keys">
+      <li data-n="L2"><b>第2層のメモ:</b>「私は名詞。たいてい後ろに動詞が来る」</li>
+      <li data-n="L18"><b>第18層のメモ:</b>「私は小動物で『ペット』『ネコ科』に近い」</li>
+    </ul>
+    <p>このメモ表(巨大なルックアップテーブル)は<strong>フラッシュメモリ(ストレージ)に置いておく</strong>のがポイント。計算に使う貴重な (V)RAM を消費しません。推論開始時に必要なメモだけサッと取り出すので軽い。だから<em>スマホのような限られたメモリでも動く</em>のです。Eは「PLE以外の実際に計算で使うパラメータ」を指します。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 230" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- flash storage -->
+        <rect x="20" y="40" width="150" height="150" rx="10" fill="#FBEDD8" stroke="#C96B0A"/>
+        <text x="95" y="62" text-anchor="middle" fill="#C96B0A" font-size="10">フラッシュ(ストレージ)</text>
+        <text x="95" y="78" text-anchor="middle" fill="#4A4B57" font-size="9">巨大なメモ表(PLE)</text>
+        <g fill="#fff" stroke="#C96B0A">
+          <rect x="40" y="92" width="110" height="20" rx="3"/><rect x="40" y="118" width="110" height="20" rx="3"/><rect x="40" y="144" width="110" height="20" rx="3"/>
+        </g>
+        <text x="95" y="106" text-anchor="middle" fill="#4A4B57" font-size="9">層ごとのメモ…</text>
+        <text x="95" y="206" text-anchor="middle" fill="#15803D" font-size="9">RAMを使わない!</text>
+        <!-- pull once -->
+        <path d="M175,115 L215,115" stroke="#4338CA" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <text x="195" y="106" text-anchor="middle" fill="#4338CA" font-size="9">最初に</text>
+        <text x="195" y="135" text-anchor="middle" fill="#4338CA" font-size="9">1回だけ取得</text>
+        <defs><marker id="ar3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4338CA"/></marker></defs>
+        <!-- decoder stack on RAM -->
+        <rect x="230" y="40" width="330" height="150" rx="10" fill="#EEEFFE" stroke="#4338CA"/>
+        <text x="395" y="60" text-anchor="middle" fill="#312B8C" font-size="10">(V)RAM:デコーダ層の処理</text>
+        <!-- layers with gating -->
+        <g>
+          <rect x="250" y="72" width="140" height="26" rx="5" fill="#4338CA"/><text x="320" y="89" text-anchor="middle" fill="#fff" font-size="10">デコーダ層</text>
+          <rect x="250" y="106" width="140" height="26" rx="5" fill="#4338CA"/><text x="320" y="123" text-anchor="middle" fill="#fff" font-size="10">デコーダ層</text>
+          <rect x="250" y="140" width="140" height="26" rx="5" fill="#4338CA"/><text x="320" y="157" text-anchor="middle" fill="#fff" font-size="10">デコーダ層</text>
+        </g>
+        <!-- gating merge -->
+        <g>
+          <circle cx="430" cy="85" r="11" fill="#C96B0A"/><text x="430" y="89" text-anchor="middle" fill="#fff" font-size="11">+</text>
+          <circle cx="430" cy="119" r="11" fill="#C96B0A"/><text x="430" y="123" text-anchor="middle" fill="#fff" font-size="11">+</text>
+          <circle cx="430" cy="153" r="11" fill="#C96B0A"/><text x="430" y="157" text-anchor="middle" fill="#fff" font-size="11">+</text>
+        </g>
+        <g stroke="#C96B0A" stroke-width="1.2"><line x1="390" y1="85" x2="419" y2="85"/><line x1="390" y1="119" x2="419" y2="119"/><line x1="390" y1="153" x2="419" y2="153"/></g>
+        <text x="490" y="119" text-anchor="middle" fill="#4A4B57" font-size="9">各層でメモを</text>
+        <text x="490" y="134" text-anchor="middle" fill="#4A4B57" font-size="9">重みづけ合流</text>
+      </svg>
+      <figcaption>巨大なメモ表はストレージに置き、必要分だけRAMの計算に合流させる</figcaption>
+    </figure>
+
+    <h3><span class="tag">音声</span>E2B/E4B だけのオーディオ対応</h3>
+    <p>小型モデルは音声も扱えます。流れは:<br>① 生の音声を <b>メルスペクトログラム</b>(時間×周波数の2D画像)に変換 → ② チャンクに区切る → ③ 畳み込みで圧縮して埋め込み列に。エンコーダには <strong>Conformer</strong>(畳み込みを足したTransformer)を使い、最後はビジョンと同じく本体のサイズに合わせて射影します。音声認識や翻訳が得意です。</p>
+
+    <figure>
+      <svg viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="10">
+        <!-- waveform -->
+        <text x="55" y="36" text-anchor="middle" fill="#4A4B57">① 生音声</text>
+        <g stroke="#4338CA" stroke-width="1.5" fill="none">
+          <path d="M20,80 q5,-25 10,0 t10,0 q5,-18 10,0 t10,0 q5,-28 10,0 t10,0 q5,-15 10,0"/>
+        </g>
+        <text x="100" y="80" fill="#C96B0A" font-size="16">→</text>
+        <!-- mel spectrogram -->
+        <text x="170" y="36" text-anchor="middle" fill="#4A4B57">② メル変換</text>
+        <g>
+          <rect x="130" y="50" width="80" height="60" rx="3" fill="#15151E"/>
+          <g opacity=".9">
+            <rect x="134" y="54" width="8" height="8" fill="#C96B0A"/><rect x="142" y="62" width="8" height="8" fill="#4338CA"/><rect x="150" y="54" width="8" height="8" fill="#4338CA"/><rect x="158" y="70" width="8" height="8" fill="#C96B0A"/><rect x="166" y="62" width="8" height="8" fill="#C96B0A"/><rect x="174" y="86" width="8" height="8" fill="#4338CA"/><rect x="182" y="70" width="8" height="8" fill="#C96B0A"/><rect x="190" y="54" width="8" height="8" fill="#4338CA"/><rect x="198" y="78" width="8" height="8" fill="#C96B0A"/>
+          </g>
+        </g>
+        <text x="240" y="80" fill="#C96B0A" font-size="16">→</text>
+        <!-- chunks -->
+        <text x="305" y="36" text-anchor="middle" fill="#4A4B57">③ チャンク化</text>
+        <g fill="#EEEFFE" stroke="#4338CA">
+          <rect x="270" y="55" width="20" height="50" rx="3"/><rect x="294" y="55" width="20" height="50" rx="3"/><rect x="318" y="55" width="20" height="50" rx="3"/>
+        </g>
+        <text x="355" y="80" fill="#C96B0A" font-size="16">→</text>
+        <!-- conformer downsample -->
+        <text x="430" y="36" text-anchor="middle" fill="#4A4B57">④ Conformer圧縮</text>
+        <rect x="378" y="55" width="104" height="50" rx="6" fill="#C96B0A"/><text x="430" y="84" text-anchor="middle" fill="#fff">畳み込み+注意</text>
+        <text x="500" y="80" fill="#C96B0A" font-size="16">→</text>
+        <!-- output -->
+        <rect x="520" y="55" width="70" height="50" rx="8" fill="#15151E"/><text x="555" y="78" text-anchor="middle" fill="#fff" font-size="9">射影して</text><text x="555" y="92" text-anchor="middle" fill="#fff" font-size="9">本体へ</text>
+        <text x="300" y="138" text-anchor="middle" fill="#4A4B57" font-size="9">画像処理とそっくりなパイプライン:最後は必ず本体のサイズへ射影</text>
+      </svg>
+      <figcaption>音声 → 2D画像化 → 区切る → 圧縮 → 本体に合わせて射影</figcaption>
+    </figure>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 6. MTP / 投機的デコード ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">06 / 爆速化の仕掛け</div>
+    <h2>下書き役で速くする:投機的デコード<span class="sub">本体とは別に、小さな「下書き(drafter)」モデルが同時公開されました。これで推論が大きく速くなります。</span></h2>
+
+    <p>LLMは1トークンずつ生成し、簡単な単語でも難しい単語でも同じ計算量がかかります。これが遅さの原因。そこで<strong>小さな下書きモデルが数トークン先回りで予測</strong>し、<strong>本体(target)がまとめて一気に検証</strong>します。これが <em>投機的デコード(Speculative Decoding)</em>、下書き役を <em>Multi-Token Prediction(MTP)ヘッド</em>と呼びます。</p>
+
+    <div class="analogy">
+      <span class="lbl">たとえ話</span>
+      <p>英語のことわざ「<strong>Actions speak</strong> …」と来れば、続きは「louder than words」だと誰でも予想できますよね。こんな簡単な続きを本体がいちいち1語ずつ書くのは時間の無駄。<strong>下書き役が一気に4語先回り</strong>して、本体は「OK!」と<strong>まとめて承認</strong>するだけ。これで何倍も速くなります。</p>
+      <svg viewBox="0 0 100 100"><polygon points="50,10 90,50 50,90 10,50" fill="#fff"/></svg>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 580 250" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- drafter -->
+        <rect x="20" y="20" width="100" height="34" rx="8" fill="#4338CA"/><text x="70" y="42" text-anchor="middle" fill="#fff">下書き役</text>
+        <text x="130" y="40" fill="#4A4B57" font-size="10">が4語を高速予測 ↓</text>
+        <!-- draft tokens -->
+        <g>
+          <rect x="20" y="75" width="120" height="30" rx="5" fill="#EEEFFE" stroke="#4338CA"/><text x="80" y="95" text-anchor="middle" fill="#312B8C">louder</text>
+          <rect x="150" y="75" width="100" height="30" rx="5" fill="#EEEFFE" stroke="#4338CA"/><text x="200" y="95" text-anchor="middle" fill="#312B8C">than</text>
+          <rect x="260" y="75" width="100" height="30" rx="5" fill="#EEEFFE" stroke="#4338CA"/><text x="310" y="95" text-anchor="middle" fill="#312B8C">words</text>
+          <rect x="370" y="75" width="100" height="30" rx="5" fill="#EEEFFE" stroke="#4338CA"/><text x="420" y="95" text-anchor="middle" fill="#312B8C">pens</text>
+        </g>
+        <!-- target verify -->
+        <rect x="20" y="135" width="100" height="34" rx="8" fill="#15151E"/><text x="70" y="157" text-anchor="middle" fill="#fff">本体</text>
+        <text x="130" y="155" fill="#4A4B57" font-size="10">が一気に検証 ↓</text>
+        <!-- verdicts -->
+        <g font-size="11" text-anchor="middle">
+          <rect x="20" y="190" width="120" height="30" rx="5" fill="#E0F2E6" stroke="#15803D"/><text x="80" y="210" fill="#15803D">✓ 採用</text>
+          <rect x="150" y="190" width="100" height="30" rx="5" fill="#E0F2E6" stroke="#15803D"/><text x="200" y="210" fill="#15803D">✓ 採用</text>
+          <rect x="260" y="190" width="100" height="30" rx="5" fill="#E0F2E6" stroke="#15803D"/><text x="310" y="210" fill="#15803D">✓ 採用</text>
+          <rect x="370" y="190" width="100" height="30" rx="5" fill="#FBE6E6" stroke="#C42B2B"/><text x="420" y="210" fill="#C42B2B">✗ 却下→修正</text>
+        </g>
+        <text x="490" y="210" fill="#4A4B57" font-size="10">却下した所から</text>
+        <text x="490" y="224" fill="#4A4B57" font-size="10">本体が書き直す</text>
+      </svg>
+      <figcaption>合っていれば一括採用、間違っていればそこから本体が引き継ぐ</figcaption>
+    </figure>
+
+    <p>本体が下書きに同意すれば全部採用。途中で間違いがあれば、そこまでを採用し<strong>間違った語を本体が自分の答えに差し替え</strong>ます。本体は1語生成する時間で複数語を検証できるので、結果は正確なまま大幅に高速化します。</p>
+
+    <h3><span class="tag">中身</span>下書きモデルを賢く速くする3工夫</h3>
+    <ul class="keys">
+      <li data-n="1"><b>ターゲット活性化の流用:</b>本体の最終層の計算結果を下書きに渡し、より良い予測に。「本体が頑張った成果を捨てるのはもったいない」発想。</li>
+      <li data-n="2"><b>KVキャッシュの共有:</b>下書きが自前でKVを作らず、本体が計算済みのKVキャッシュを借りる。</li>
+      <li data-n="3"><b>効率的エンベッダ:</b>26万トークン全部の確率を計算せず、似た意味の<em>クラスタ</em>に絞ってから候補を出す(E2B/E4Bのみ)。</li>
+    </ul>
+
+    <p>3つ目の「効率的エンベッダ」をもう少し。通常、次トークンを決める最終工程(LM Head)では<strong>26万語ぜんぶの確率</strong>を計算します。小さな下書きモデルにはこれが重い。そこで似た意味の語を<em>クラスタ(かたまり)</em>にまとめ、まず「どのクラスタが当たりか」をざっくり選んでから、その中の語だけ詳しく計算します。図書館で<b>棚を先に選んでから本を探す</b>イメージです。</p>
+
+    <figure>
+      <svg viewBox="0 0 580 200" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- before -->
+        <text x="120" y="22" text-anchor="middle" fill="#4A4B57">通常:26万語を全部チェック(重い)</text>
+        <g fill="#E6E8F2">
+          <rect x="40" y="38" width="14" height="14" rx="2"/><rect x="58" y="38" width="14" height="14" rx="2"/><rect x="76" y="38" width="14" height="14" rx="2"/><rect x="94" y="38" width="14" height="14" rx="2"/><rect x="112" y="38" width="14" height="14" rx="2"/><rect x="130" y="38" width="14" height="14" rx="2"/><rect x="148" y="38" width="14" height="14" rx="2"/><rect x="166" y="38" width="14" height="14" rx="2"/><rect x="184" y="38" width="14" height="14" rx="2"/>
+          <rect x="40" y="56" width="14" height="14" rx="2"/><rect x="58" y="56" width="14" height="14" rx="2"/><rect x="76" y="56" width="14" height="14" rx="2"/><rect x="94" y="56" width="14" height="14" rx="2"/><rect x="112" y="56" width="14" height="14" rx="2"/><rect x="130" y="56" width="14" height="14" rx="2"/><rect x="148" y="56" width="14" height="14" rx="2"/><rect x="166" y="56" width="14" height="14" rx="2"/><rect x="184" y="56" width="14" height="14" rx="2"/>
+        </g>
+        <text x="120" y="100" text-anchor="middle" fill="#C42B2B" font-size="10">✗ 全部に時間をかける</text>
+        <!-- arrow -->
+        <text x="260" y="62" fill="#C96B0A" font-size="20">→</text>
+        <!-- after: clusters -->
+        <text x="430" y="22" text-anchor="middle" fill="#4A4B57">クラスタで絞る:棚→本の二段階</text>
+        <!-- step1 select cluster -->
+        <g>
+          <rect x="320" y="38" width="50" height="34" rx="5" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="378" y="38" width="50" height="34" rx="5" fill="#4338CA"/><rect x="436" y="38" width="50" height="34" rx="5" fill="#E6E8F2" stroke="#D6D9E6"/><rect x="494" y="38" width="50" height="34" rx="5" fill="#E6E8F2" stroke="#D6D9E6"/>
+        </g>
+        <text x="403" y="59" text-anchor="middle" fill="#fff" font-size="9">当たりの棚</text>
+        <text x="345" y="59" text-anchor="middle" fill="#4A4B57" font-size="9">棚A</text>
+        <text x="461" y="59" text-anchor="middle" fill="#4A4B57" font-size="9">棚C</text>
+        <text x="519" y="59" text-anchor="middle" fill="#4A4B57" font-size="9">棚D</text>
+        <!-- step2 -->
+        <path d="M403,72 L403,92" stroke="#C96B0A" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <defs><marker id="ar4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#C96B0A"/></marker></defs>
+        <g fill="#4338CA">
+          <rect x="360" y="98" width="14" height="14" rx="2"/><rect x="378" y="98" width="14" height="14" rx="2"/><rect x="396" y="98" width="14" height="14" rx="2"/><rect x="414" y="98" width="14" height="14" rx="2"/><rect x="432" y="98" width="14" height="14" rx="2"/>
+        </g>
+        <text x="403" y="135" text-anchor="middle" fill="#15803D" font-size="10">✓ その棚の語だけ計算</text>
+      </svg>
+      <figcaption>「棚(クラスタ)を選ぶ→中身だけ精査」で計算を激減させる</figcaption>
+    </figure>
+    <div class="note">
+      <span class="lbl">どれくらい小さい?</span>
+      <p>E2B用の下書きモデルは約<b>76M</b>パラメータ・4層だけ。本体(target)とほぼ同じ品質を保ちつつ、低遅延・オンデバイス用途にぴったりです。</p>
+    </div>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ 7. 全体像を組み立てる ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">07 / 全体像</div>
+    <h2>すべてを1枚に組み立てる<span class="sub">ここまでのパーツを積み上げると、Gemma 4 の1モデルが完成します。入力(文字・画像・音声)から出力までの流れを俯瞰しましょう。</span></h2>
+
+    <figure>
+      <svg viewBox="0 0 600 430" xmlns="http://www.w3.org/2000/svg" font-family="Space Mono, monospace" font-size="11">
+        <!-- inputs -->
+        <rect x="40" y="20" width="100" height="34" rx="8" fill="#EEEFFE" stroke="#4338CA"/><text x="90" y="42" text-anchor="middle" fill="#312B8C">テキスト</text>
+        <rect x="250" y="20" width="100" height="34" rx="8" fill="#EEEFFE" stroke="#4338CA"/><text x="300" y="42" text-anchor="middle" fill="#312B8C">画像 (ViT)</text>
+        <rect x="460" y="20" width="100" height="34" rx="8" fill="#EEEFFE" stroke="#4338CA"/><text x="510" y="42" text-anchor="middle" fill="#312B8C">音声 (Conf.)</text>
+        <!-- arrows to projection -->
+        <g stroke="#C96B0A" stroke-width="1.5" fill="none" marker-end="url(#arX)">
+          <path d="M90,54 L90,78"/><path d="M300,54 L300,78"/><path d="M510,54 L510,78"/>
+        </g>
+        <defs><marker id="arX" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#C96B0A"/></marker></defs>
+        <text x="370" y="74" fill="#4A4B57" font-size="9">※画像/音声は射影で本体サイズへ</text>
+        <!-- unified embeddings -->
+        <rect x="40" y="82" width="520" height="30" rx="6" fill="#15151E"/><text x="300" y="102" text-anchor="middle" fill="#fff">同じ空間に揃った埋め込み列</text>
+        <path d="M300,112 L300,130" stroke="#C96B0A" stroke-width="1.5" fill="none" marker-end="url(#arX)"/>
+        <!-- decoder stack -->
+        <rect x="120" y="134" width="360" height="230" rx="12" fill="#F3F4F8" stroke="#D6D9E6"/>
+        <text x="300" y="154" text-anchor="middle" fill="#4A4B57" font-size="10">デコーダ層スタック(下→上)</text>
+        <!-- layers 5:1 -->
+        <g>
+          <rect x="150" y="316" width="300" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="300" y="330" text-anchor="middle" fill="#4338CA" font-size="9">局所注意 ×5</text>
+          <rect x="150" y="294" width="300" height="18" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/>
+          <rect x="150" y="276" width="300" height="14" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/>
+          <rect x="150" y="252" width="300" height="20" rx="4" fill="#C96B0A"/><text x="300" y="266" text-anchor="middle" fill="#fff" font-size="9">グローバル注意(GQA8:1 / K=V / p-RoPE)</text>
+          <rect x="150" y="228" width="300" height="20" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/><text x="300" y="242" text-anchor="middle" fill="#4338CA" font-size="9">局所注意 ×5</text>
+          <rect x="150" y="206" width="300" height="18" rx="4" fill="#EEEFFE" stroke="#D6D9E6"/>
+          <rect x="150" y="182" width="300" height="20" rx="4" fill="#C96B0A"/><text x="300" y="196" text-anchor="middle" fill="#fff" font-size="9">グローバル注意</text>
+          <rect x="150" y="158" width="300" height="20" rx="4" fill="#15151E"/><text x="300" y="172" text-anchor="middle" fill="#fff" font-size="9">最終層=必ずグローバル</text>
+        </g>
+        <!-- FFNN/MoE note on side -->
+        <text x="495" y="244" fill="#4A4B57" font-size="9">各層のFFNNは</text>
+        <text x="495" y="258" fill="#4A4B57" font-size="9">Dense か MoE</text>
+        <text x="495" y="272" fill="#4A4B57" font-size="9">のどちらか</text>
+        <!-- PLE side note (small models) -->
+        <text x="45" y="240" fill="#C96B0A" font-size="9">小型モデルは</text>
+        <text x="45" y="254" fill="#C96B0A" font-size="9">各層にPLEを</text>
+        <text x="45" y="268" fill="#C96B0A" font-size="9">合流(RAM節約)</text>
+        <!-- output -->
+        <path d="M300,364 L300,382" stroke="#C96B0A" stroke-width="1.5" fill="none" marker-end="url(#arX)"/>
+        <rect x="180" y="386" width="240" height="30" rx="8" fill="#4338CA"/><text x="300" y="406" text-anchor="middle" fill="#fff">次トークン(下書き役MTPで高速化)</text>
+      </svg>
+      <figcaption>入力を同じ空間に揃え → 局所/グローバルのスタックで処理 → 出力。FFNNはDense/MoEのどちらか、小型はPLE、出力はMTPで加速</figcaption>
+    </figure>
+
+    <p class="lead">どのモデルもこの骨格を共有し、<strong>FFNNをDenseにするかMoEにするか</strong>、<strong>PLEを足すか</strong>、<strong>音声エンコーダを付けるか</strong>といった「載せ替え」でキャラクターが決まります。共通の土台があるからこそ、サイズ違いの4兄弟を一貫した設計で作れるわけです。</p>
+  </div>
+</section>
+
+<div class="facet-div"><span></span><span></span><span></span></div>
+
+<!-- ============ まとめ ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">08 / まとめ</div>
+    <h2>Gemma 4 を一言でいうと</h2>
+    <div class="summary">
+      <h3>30秒で振り返り</h3>
+      <ul>
+        <li><b>4兄弟</b>:E2B / E4B(スマホ向け・音声対応)、26B A4B(MoE)、31B(王道Dense)</li>
+        <li><b>注意の二刀流</b>:軽い局所注意と全域グローバル注意を5:1で交互配置、最終層は必ずグローバル</li>
+        <li><b>省メモリ三種の神器</b>:GQA(8:1共有)・K=V・p-RoPE(25%)でグローバル層を軽量化</li>
+        <li><b>マルチモーダル</b>:ViT+2D RoPE+トークン予算で画像、Conformerで音声を処理</li>
+        <li><b>MoEの妙</b>:128人中8人+総合医だけ動かし「26B載せて4Bで走る」</li>
+        <li><b>PLEの妙</b>:層ごとのメモをストレージに逃がしてRAMを節約、スマホで動く</li>
+        <li><b>投機的デコード</b>:小さな下書き役が先回り予測→本体が一括検証で爆速化</li>
+      </ul>
+    </div>
+    <p class="lead">どの工夫も根っこは同じ哲学——<strong>「全部を毎回フルパワーでやらない。必要な所に必要なだけ計算を割く」</strong>。これが Gemma 4 が小さくても賢く、そして速い理由です。</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="big">やさしい Gemma 4 図解ガイド</div>
+    <p>原典:Maarten Grootendorst「A Visual Guide to Gemma 4」(Exploring Language Models)</p>
+    <p style="margin-top:8px"><a href="https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-gemma-4">→ 原文(英語・図版あり)を読む</a></p>
+    <p style="margin-top:18px;opacity:.6">本ガイドは原文の内容を日本語で噛み砕いた解説です。図はすべて解説用に作成したオリジナルです。</p>
+    <a class="back" href="../index.html">← 一覧へ戻る</a>
+  </div>
+</footer>
+
+</body>
+</html>
