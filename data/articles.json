@@ -1,5 +1,23 @@
 [
   {
+    "slug": "learning-log-w12-w24",
+    "date": "2026-06-24",
+    "title": "モデルからハーネスへ：13週間の学習ログ（W12–W24）",
+    "summary": "2026年春・13週間で学んだことの総集編。通底するのは「競争の主戦場はモデルからハーネスへ移った」という一本の軸。",
+    "description": "2026年W12〜W24の13週間で学んだAIエージェント・ハーネス設計・ソフトウェアアーキテクチャ・LLM内部構造を、時系列ではなくテーマ別に再構成した学習ログ総集編。モデルからハーネスへ移る競争軸を背骨に、エージェントメモリからマイクロサービス設計までを横断する。",
+    "tags": [
+      "harness-engineering",
+      "ai-agent",
+      "agent-memory",
+      "software-architecture",
+      "microservices",
+      "llm",
+      "claude-code",
+      "learning-log"
+    ],
+    "updated": null
+  },
+  {
     "slug": "gemma4-visual-guide",
     "date": "2026-06-23",
     "title": "やさしい Gemma 4 図解ガイド",

@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>モデルからハーネスへ：13週間の学習ログ（W12–W24） — learning-notes</title>
+    <meta name="description" content="2026年W12〜W24の13週間で学んだAIエージェント・ハーネス設計・ソフトウェアアーキテクチャ・LLM内部構造を、時系列ではなくテーマ別に再構成した学習ログ総集編。モデルからハーネスへ移る競争軸を背骨に、エージェントメモリからマイクロサービス設計までを横断する。" />
+
+    <!-- 構造化メタ（update-index.py が読む） -->
+    <meta name="article:slug" content="learning-log-w12-w24" />
+    <meta name="article:date" content="2026-06-24" />
+    <meta name="article:tags" content="harness-engineering,ai-agent,agent-memory,software-architecture,microservices,llm,claude-code,learning-log" />
+    <meta name="article:summary" content="2026年春・13週間で学んだことの総集編。通底するのは「競争の主戦場はモデルからハーネスへ移った」という一本の軸。" />
+
+    <!-- OGP -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="モデルからハーネスへ：13週間の学習ログ（W12–W24）" />
+    <meta property="og:description" content="2026年W12〜W24の13週間で学んだAIエージェント・ハーネス設計・ソフトウェアアーキテクチャ・LLM内部構造を、時系列ではなくテーマ別に再構成した学習ログ総集編。モデルからハーネスへ移る競争軸を背骨に、エージェントメモリからマイクロサービス設計までを横断する。" />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-06-24-learning-log-w12-w24.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <!-- ダークモードトグル: OS追従 + localStorage 永続。bindThemeToggle が動く -->
+    <button class="theme-toggle" type="button" aria-label="テーマ切り替え">
+      ◐ theme
+    </button>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-06-24">2026-06-24</time>
+          <!-- タグは article.js が article:tags meta から自動描画する。
+               手動で <span class="dot">·</span><span class="tags">…</span> を書いてもOK -->
+        </p>
+        <h1>モデルからハーネスへ：13週間の学習ログ（W12–W24）</h1>
+        <p class="lead">2026年春・13週間で学んだことの総集編。通底するのは「競争の主戦場はモデルからハーネスへ移った」という一本の軸。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li>
+              2026年 W12〜W24 の学びは、バラバラの点ではなく<strong>「モデルの賢さより、それを動かすハーネス（ツール・ループ・メモリ・スキル）が成果の天井を決める」</strong>という一本の線に収束した。
+            </li>
+            <li>
+              エージェントの自己進化は <strong>L1（スキル）→ L2（スキル+重み）→ L3（改善プロセス自体）</strong> で整理でき、メモリ設計は「何を覚えるか」より<strong>「何を保存しないか」</strong>が難所だった。
+            </li>
+            <li>
+              ソフトウェアアーキテクチャは規模を問わず<strong>「依存を外→内に向け、滅多に変わらないビジネスルールを守る」</strong>が共通原理。CQS・parse・マイクロサービスの「4つの柱」まで一本で繋がった。
+            </li>
+            <li>
+              LLM 内部も KV キャッシュ最適化（Paged Attention / TurboQuant）からエンコーダーレス（Gemma4）まで、推論を<strong>「使う分だけ・無駄なく」</strong>に寄せる方向で進化していた。
+            </li>
+            <li>
+              休息週（W16）が教えてくれた最大の学び：<strong>受動的インプットは自動で回るが、能動的アウトプット（自分の言葉化）は意識しないと止まる。</strong>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>13週間を貫いた一本の軸</h2>
+          <p>
+            この記事は、2026年 W12〜W24（3/16〜6/14）の週次レポートを再構成した学習ログの総集編だ。<aside class="sidenote">元データは毎週の Weekly レポート13本（W21・W25は欠番）。日次の点を週でまとめ、さらに本記事で13週ぶんをテーマ別に束ね直した。</aside>振り返ると、最初は「AIエージェント基盤を片っ端から調査する」ところから始まり、ハーネス・メモリ・アーキテクチャへと掘り下げ、最後は業界そのものの地殻変動を肌で感じる、という流れになっていた。
+          </p>
+          <p>
+            個別のトピックは多岐にわたるのに、読み返すと驚くほど一つの主張に収束する ——
+            <strong>「賢いモデルを手に入れることがゴールではない。モデルを動かす"周辺"（ハーネス）の設計こそが、これからの成果を決める」</strong>。
+            以下、時系列の羅列ではなく、この軸に沿ってテーマ別に再構成する。
+          </p>
+          <aside class="callout tip">
+            <strong>Tip:</strong> 各章は独立して読める。気になる章だけつまんでも、全体を通して「モデル→ハーネス」という地殻変動の一枚絵が見えるように並べている。
+          </aside>
+        </section>
+
+        <section>
+          <h2>ハーネスエンジニアリング — 天井を決めるのはモデルではない</h2>
+          <p>
+            13週間でいちばん太い幹がこれだった。きっかけは Anthropic の
+            <em>「Harness design for long-running application development」</em>
+            の精読（W14）と、論文 <em>Scaling the Harness in Agentic AI</em> / <em>Harness-Bench</em>（W22）。
+            ここで得た中心命題は明快だ ——
+            <strong>agentic AI の次のボトルネックは「強いモデル」ではなく harness 設計（memory・context constructor・skill routing・governance）にある。</strong>
+          </p>
+          <p>
+            さらに刺さったのが <em>HyperAgents</em> の
+            <strong>「制約は改善の天井になる」</strong>という原則（W13）。
+            初期ハーネスを意図的に最小にしておくほど、進化の余地が最大化される。
+            実際 <em>MiniMax M2.7</em> は、エージェント自身がハーネスを自律的に書き換え、
+            <strong>100回ループ・人間介入ゼロで 30% の性能向上を、再トレーニングなしで</strong>達成していた（W14）。
+          </p>
+          <p>
+            W24 では視点がさらに進み、<strong>「プロンプトを書く時代から、ループを書く時代へ」</strong>という言い方で腑に落ちた。
+            ゴール保持とループ操舵をシステム側に作り込む「ループエンジニアリング」、
+            回すほど壊れにくくなる <em>self-repairing harness</em> ——
+            関心のど真ん中が、単発の生成からループの設計へと移っていった。
+          </p>
+          <aside class="callout note">
+            <strong>Note:</strong> 「強いモデル＝信頼できる実行」ではない。能力の高いエージェントがなぜ失敗するのか、を言語化できたのが講義 <em>Learn Harness Engineering</em>（W22）の収穫だった。
+          </aside>
+        </section>
+
+        <section>
+          <h2>エージェントの自己進化とスキル — L1 / L2 / L3 で世界を整理する</h2>
+          <p>
+            自己進化を語る論文は多いが、<strong>「何が変わるのか」の射程で3段階に整理する</strong>と一気に見通しがよくなった（W13）。
+          </p>
+          <figure class="zoomable">
+            <svg viewBox="0 0 520 175" role="img" aria-label="エージェント自己進化の3レベル L1/L2/L3">
+              <rect x="10" y="55" width="150" height="85" rx="8" fill="currentColor" opacity="0.10"/>
+              <text x="85" y="44" text-anchor="middle" font-size="13" fill="currentColor" opacity="0.65">L1</text>
+              <text x="85" y="92" text-anchor="middle" font-size="14" fill="currentColor">スキル進化</text>
+              <text x="85" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">失敗→スキル合成</text>
+              <rect x="185" y="55" width="150" height="85" rx="8" fill="currentColor" opacity="0.16"/>
+              <text x="260" y="44" text-anchor="middle" font-size="13" fill="currentColor" opacity="0.65">L2</text>
+              <text x="260" y="92" text-anchor="middle" font-size="14" fill="currentColor">スキル + 重み</text>
+              <text x="260" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">LoRA / RL</text>
+              <rect x="360" y="55" width="150" height="85" rx="8" fill="currentColor" opacity="0.24"/>
+              <text x="435" y="44" text-anchor="middle" font-size="13" fill="currentColor" opacity="0.65">L3</text>
+              <text x="435" y="92" text-anchor="middle" font-size="14" fill="currentColor">改善プロセス</text>
+              <text x="435" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">自体を自己改善</text>
+              <line x1="160" y1="97" x2="185" y2="97" stroke="currentColor" stroke-width="2" marker-end="url(#ar)"/>
+              <line x1="335" y1="97" x2="360" y2="97" stroke="currentColor" stroke-width="2" marker-end="url(#ar)"/>
+              <defs>
+                <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+            </svg>
+            <figcaption>図1: 自己進化の3レベル。L1=Memento-Skills（GAIAで +13.7pt）、L2=MetaClaw（CLIタスク 21.4%→40.6%）、L3=HyperAgents（タスク側とメタ側の両方を進化）。右へ行くほど「何が変わるか」の射程が広がる。</figcaption>
+          </figure>
+          <h3>スキルは「3段階ロード」で読み込まれる</h3>
+          <p>
+            Agent Skills（<code>SKILL.md</code>）の仕組みも整理できた（W14）。
+            Tier 1（起動時 YAML のみ・〜100 token）→ Tier 2（マッチ時にフル SKILL.md・〜5000 token）→ Tier 3（動的ロード）という段階構成で、
+            必要になるまで重い本体を読み込まない。Anthropic が 2025年12月に標準化し、30以上のエージェント製品が採用済みだ。
+          </p>
+          <p>
+            ただしスキルが増えると、<strong>どうセマンティッククラスタして検索するか</strong>が次の課題になる。
+            関連して <em>InsForge の MCPMark V2</em> の反直観的な結果が効いた（W19）——
+            <strong>賢い Claude ほどトークン使用量が 54% 増える。</strong>
+            賢いモデルはバックエンド状態を確認したがるので、スキルを「狭いスコープ」に切ると認知負荷が下がる。
+          </p>
+          <aside class="sidenote">
+            スキル化のボトルネックは「手順の言語化（SOP化）」。作業を録画 → Gemini 等で解析 → Claude Code で SKILL.md 化、という流れがこの壁と相性が良かった（W18）。
+          </aside>
+        </section>
+
+        <section>
+          <h2>エージェントのメモリ設計 — 「何を保存しないか」が難所</h2>
+          <p>
+            メモリは13週を通じて何度も戻ってきたテーマだ。実装は
+            <strong>MemGPT / Mem0 / LangMem / Letta / Zep / Graphiti / Cognee</strong>、
+            論文系は A-MEM / HippoRAG / LongMemEval / AgeMem などを横断整理した（W20〜W24）。
+            比較軸を持てたことで「自分の運用がどの設計に近いか」を言葉にできるようになった。
+          </p>
+          <p>
+            いちばんの転換は <em>PROJECTMEM</em> 論文の精読（W24）。
+            <strong>「何を覚えるかより、何を保存しないか」「失敗 attempt を first-class event として扱う」</strong>という
+            <em>Memory-as-Governance</em> の設計思想だ。メモリを「成功の記録」ではなく「ガバナンスの装置」として捉え直す視点が新しかった。
+          </p>
+          <p>
+            手前の低レイヤでは、VectorDB 不要・3並列エージェントが
+            <strong>異なる観点（事実・文脈・時系列）で検索する <em>ASMR</em></strong>（W13）や、
+            長時間調査がコンテキスト制限でクラッシュする問題に
+            <strong>Compaction（アクティブメモリ圧縮）+ Memory（再利用可能ハビット保存）</strong>で対処する
+            OpenAI の論文（W19）が実装の手触りを与えてくれた。
+          </p>
+          <aside class="callout tip">
+            <strong>Tip:</strong> コミュニティの収束パターンは「ローカル SQLite + 常駐 markdown」（Hermes）。派手な VectorDB より、素朴で監査しやすい構成に落ち着きつつある。
+          </aside>
+        </section>
+
+        <section>
+          <h2>LLM の内部と推論最適化 — 「使う分だけ・無駄なく」</h2>
+          <p>
+            モデルの中身にも解像度を上げた13週間だった。通底するのは
+            <strong>「事前に大きく確保するのをやめ、使う分だけ無駄なく割り当てる」</strong>という発想だ。
+          </p>
+          <figure class="zoomable">
+            <svg viewBox="0 0 480 190" role="img" aria-label="Paged Attention のメモリ割り当て比較">
+              <text x="14" y="34" font-size="12" fill="currentColor" opacity="0.7">事前確保（最大トークン長ぶん）</text>
+              <rect x="14" y="44" width="452" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+              <rect x="14" y="44" width="150" height="34" rx="4" fill="currentColor" opacity="0.28"/>
+              <text x="89" y="66" text-anchor="middle" font-size="11" fill="currentColor">使用</text>
+              <text x="315" y="66" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.55">未使用（無駄）</text>
+              <text x="14" y="128" font-size="12" fill="currentColor" opacity="0.7">ブロック単位（使う分だけ確保）</text>
+              <rect x="14" y="138" width="42" height="34" rx="4" fill="currentColor" opacity="0.28"/>
+              <rect x="62" y="138" width="42" height="34" rx="4" fill="currentColor" opacity="0.28"/>
+              <rect x="110" y="138" width="42" height="34" rx="4" fill="currentColor" opacity="0.28"/>
+              <rect x="158" y="138" width="42" height="34" rx="4" fill="currentColor" opacity="0.18" stroke="currentColor" stroke-dasharray="3 3"/>
+              <text x="250" y="160" font-size="11" fill="currentColor" opacity="0.6">必要になったら次ブロックを足す →</text>
+            </svg>
+            <figcaption>図3: Paged Attention。OS のページングのように KV キャッシュをブロック単位で GPU にマッピングし、事前確保の無駄をなくす（W24）。</figcaption>
+          </figure>
+          <p>同じ方向の進化が、推論まわりに次々現れた：</p>
+          <ul>
+            <li><strong>TurboQuant</strong>（W13）— KV キャッシュを再学習なしで6倍圧縮、精度ロスほぼゼロ、H100 で最大8倍速。</li>
+            <li><strong>Attention Residuals（AttnRes）</strong>（W13）— 残差接続の重要度希釈問題を各層の softmax attention で解決し、GPQA で最大 +7.5pt。</li>
+            <li><strong>SubQ</strong>（W19）— サブクワドラティック Sparse Attention で 12M トークンを線形スケール処理。FlashAttention の52倍速・コンピュート63%減。</li>
+          </ul>
+          <p>
+            極めつけが <em>Gemma4 12B のエンコーダーレス設計</em>（W23）。
+            従来は音声・画像用の専用エンコーダーがレイテンシ要因だった。Gemma4 はこれを取り払い、
+            画像はパッチに分割 →
+            <strong>1層の Embedding 層でトークン化 → Positional Encoding で位置情報を保持</strong>することで、
+            アテンションなしでも画像の位置を覚えたまま LLM へ入力できる。
+          </p>
+          <details class="disclosure">
+            <summary>補足: なぜ「事前確保」は無駄なのか（KVキャッシュの基礎）</summary>
+            <p>
+              通常の KV キャッシュは、生成しうる最大トークン数ぶんのメモリをあらかじめ確保する。
+              だが実際の出力長は予測できず、短い応答では確保した領域の大半が遊んでしまう。
+              Paged Attention はこれを OS の仮想メモリページングになぞらえ、トークンを固定サイズのブロックで管理して
+              「使う分だけ・必要になったら足す」に切り替える。アナロジーが効いて理解が一気に繋がった。
+            </p>
+          </details>
+        </section>
+
+        <section>
+          <h2>ソフトウェアアーキテクチャ — 依存の向きを内側に守る</h2>
+          <p>
+            W18 以降、O'Reilly『ソフトウェアアーキテクチャの基礎』を軸に設計を体系的に積み上げた。
+            最初の心構えがよかった ——
+            <strong>アーキテクチャ決定で重要なのは知識の「深さ」より「幅」。正解はないので常にトレードオフで考える</strong>（W20）。
+            循環的複雑度は5以下が望ましい、巨大な泥団子は避ける、といった具体の物差しも手に入れた。
+          </p>
+          <h3>依存性の逆転がすべての背骨</h3>
+          <p>
+            レイヤード／DDD の責務分割（Repository=DBアクセス、Entity=ビジネスロジック、Service=処理の主体、Controller=外との受付）から、
+            Hexagonal / Onion / Clean まで比較したが、結局すべては一つの原理に還元された ——
+            <strong>依存は外側（変化が速い DB・フレームワーク）から内側（滅多に変わらないビジネスルール）へ。コアロジックを変化から守る</strong>（W23）。
+          </p>
+          <figure class="zoomable">
+            <svg viewBox="0 0 300 290" role="img" aria-label="依存性の逆転を表す同心円">
+              <circle cx="150" cy="160" r="125" fill="currentColor" opacity="0.06"/>
+              <circle cx="150" cy="160" r="88" fill="currentColor" opacity="0.11"/>
+              <circle cx="150" cy="160" r="48" fill="currentColor" opacity="0.22"/>
+              <text x="150" y="165" text-anchor="middle" font-size="13" fill="currentColor">ドメイン</text>
+              <text x="150" y="95" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">ユースケース</text>
+              <text x="150" y="55" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.65">DB / UI / FW</text>
+              <line x1="150" y1="26" x2="150" y2="105" stroke="currentColor" stroke-width="2" marker-end="url(#dep)"/>
+              <text x="208" y="24" font-size="11" fill="currentColor" opacity="0.7">依存の向き</text>
+              <defs>
+                <marker id="dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+            </svg>
+            <figcaption>図2: 依存は外→内にだけ向ける。自分の規模感では Clean Architecture をフル導入しなくても、この「向き」だけは常に意識する、が落とし所になった。</figcaption>
+          </figure>
+          <h3>堅牢なコード: CQS と parse</h3>
+          <p>
+            コードレベルでは <strong>コマンド・クエリ分離（CQS）</strong>が効いた（W23）。
+            状態を変更する処理（コマンド）と内容を取得する処理（クエリ）を別関数に分ける。
+            <strong>「取得のつもりが状態を変えていた」副作用</strong>がいちばん危ない。
+            検証も <code>validate</code> で終わらせず、データを型にはめる <code>parse</code> まで行う。
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-typescript">// NG: 取得のつもりが状態を変える（隠れた副作用）
+function getNextId(): number {
+  return ++this.counter; // 呼ぶたびに counter が増えてしまう
+}
+
+// OK: コマンド（変更）とクエリ（取得）を分離する
+function currentId(): number {
+  return this.counter;   // 読むだけ。副作用なし
+}
+function advance(): void {
+  this.counter++;        // 変更だけ。値は返さない
+}
+</code></pre>
+          </div>
+          <h3>マイクロサービスの「4つの柱」</h3>
+          <p>
+            W24 で <code>teach</code> スキルを使い、マイクロサービスを1週間で完走した。
+            サービス境界 → サービス間通信・Saga・Context Mapping → レジリエンス・可観測性 → システム設計（CAP定理・Saga パターン）という
+            「4つの柱」を段階的に踏破。教材化しながら学ぶと、定義の暗記ではなく<strong>「人に説明できる形」</strong>まで落ちた。
+            同時に得た区別が <strong>「コード設計のアーキテクチャ ≠ 物理設計のアーキテクチャ」</strong>（W22）だ。
+          </p>
+          <aside class="callout warn">
+            <strong>注意:</strong> マイクロサービスは分散トランザクションやログのトレースが難しく、運用コストが大きい（W23）。「分割すれば良くなる」わけではなく、ここでもトレードオフがすべて。
+          </aside>
+        </section>
+
+        <section>
+          <h2>開発ワークフローと運用 — レビューループ・小さなコミット・定点観測</h2>
+          <p>
+            学びは設計論だけでなく、日々の回し方にも及んだ。効いた実践を挙げる：
+          </p>
+          <ul>
+            <li>
+              <strong>Claude × Codex レビューループ</strong>（W18）— Claude にプランを書かせ → Codex で適合性レビュー → Claude が書き直す、を
+              <strong>Codex の指摘がゼロになるまで</strong>回す。プランが曖昧なフェーズで効く。プラン段階で HTML モックや ASCII ワイヤーフレームを生成させると UI 精度が上がる。
+            </li>
+            <li>
+              <strong>CLAUDE.md にリポジトリ種別を明記</strong>（W19）— 本番／個人／プロトタイプを書くと、Claude が無駄に厳格にならず作業効率が上がる。前提共有は最重要メタ情報。
+            </li>
+            <li>
+              <strong>AM/PM バッチ化と集約アーカイブ</strong>（W14）— 情報収集を朝夕2回に束ね、日次ファイルの積み上げより集約ファイルにすると参照・再利用しやすい。<code>second-brain</code> の23:00更新で点を線にする運用が定着した。
+            </li>
+          </ul>
+          <p>
+            <strong>git pre-commit に Claude を仕込むハック</strong>（W19）も実用的だった。
+            <code>.git/hooks/pre-commit</code> に置いて <code>chmod +x</code> するだけで、コミット前に自動レビューが走る：
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-bash">#!/bin/bash
+# .git/hooks/pre-commit に置いて chmod +x するだけ
+git diff --cached | claude -p "Spot any console.logs, hardcoded secrets, or unfinished TODOs in this diff?"
+</code></pre>
+          </div>
+          <p>
+            設計パターンとしては <strong>ツールディスパッチ・パターン</strong>が引き出しに加わった（W17）。
+            ツールをオブジェクトとして登録し、AI が呼んだ名前で実処理へ振り分ける。
+            <code>if/elif</code> が増えそうな場面をテーブル駆動に置き換える発想で、新ツール追加もエントリを足すだけになる：
+          </p>
+          <div class="code-wrap">
+            <pre><code class="language-typescript">type Tool = (input: string) =&gt; string;
+
+// キー＝ツール名、バリュー＝処理関数として登録する
+const tools: Record&lt;string, Tool&gt; = {
+  read:   (path)  =&gt; readFile(path),
+  write:  (path)  =&gt; writeFile(path),
+  search: (query) =&gt; grep(query),
+};
+
+// AI が選んだ名前でディスパッチ。分岐の if/elif が消える
+function dispatch(name: string, input: string): string {
+  const tool = tools[name];
+  if (!tool) throw new Error(`unknown tool: ${name}`);
+  return tool(input);
+}
+</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>業界の地殻変動 — 行レビュー放棄と、非エンジニアの台頭</h2>
+          <p>
+            13週間は、開発文化そのものが動いた期間でもあった。
+          </p>
+          <ul>
+            <li>
+              <strong>AI 生成コードの行単位レビュー放棄</strong>が本格化（W19）。Simon Willison（Django 共同創設者）が本番コードでも行レビューを諦めたと公言し、Coinbase は非技術者が本番コードをリリースする体制に転換。
+              <strong>「品質の証明は本番での稼働時間だけ」</strong>という時代観へ。
+            </li>
+            <li>
+              <strong>非エンジニアの台頭</strong>（W24）。Anthropic ハッカソンで上位が非エンジニアだった件から、「現代モデルの性能があれば、コードを書ける人よりドメイン知識を持つ人の方が強い」可能性を実感した。
+            </li>
+            <li>
+              <strong>モデルのコモディティ化</strong>（W24）。Claude Fable 5 の公開、DeepSeek V4 Pro の恒久75%値下げなど価格競争が加速。競争の主戦場が<strong>ランタイム／ハーネス</strong>へ移りつつある。
+            </li>
+          </ul>
+          <details class="disclosure">
+            <summary>この潮流が自分のスタンスに与えた影響</summary>
+            <p>
+              モデルが安く強くなるほど、差がつくのは「何を作らせるか」「どう回すか」になる。
+              だからこの13週間、アプリそのものより<strong>ハーネス（スキル・メモリ・ワークフロー）を磨く</strong>方に時間を寄せた。
+              「アプリを作る」より「エージェントにアプリを作らせる足場を作る」——
+              W14 で言語化したこの転換が、最後まで一貫した行動原理になった。
+            </p>
+          </details>
+        </section>
+
+        <section>
+          <h2>メタ学習 — 休息週が教えてくれたこと</h2>
+          <p>
+            最後は、学び方そのものについての学び。W16 は日記の「学んだこと」が7日とも空白の<strong>完全な休息週</strong>だった。
+            この週が逆に教えてくれたのは、<strong>「受動的インプット（RSS 自動収集）は回るが、能動的アウトプット（自分の言葉化）は意識しないと止まる」</strong>という非対称性だ。
+            強いインプット週（W15）の直後に消化・実装ターンが来ないと、学びは揮発しかねない。
+          </p>
+          <p>
+            対策として効いたのが2つ。ひとつは <code>teach</code> スキルでの<strong>教材化</strong>（W24）——
+            人に説明できる形まで落とすと定着する。もうひとつが、まさにこの
+            <strong>learning-notes への HTML 化</strong>だ。
+            「学習結果は Markdown より HTML の方が人間に優しい」という気づき（W19）から、
+            気になったテーマを HTML 記事にして一箇所に集約する仕組みを作った。この記事自体がその実践でもある。
+          </p>
+          <aside class="callout note">
+            <strong>Note:</strong> インプット量に対して蒸留（自分の主張への言語化）は常に手薄になりがちだった。「集めて終わり」を避け、蒸留のリズムを持つことが、学びを資産に変える唯一の鍵だと13週間で痛感した。
+          </aside>
+        </section>
+
+        <section>
+          <h2>まとめ — 13週間で残ったもの</h2>
+          <ul>
+            <li><strong>軸</strong>: 競争の主戦場は「モデルの賢さ」から「ハーネスの設計」へ移った。天井を決めるのは周辺の作り込みだ。</li>
+            <li><strong>エージェント</strong>: 自己進化は L1→L2→L3、スキルは3段階ロードと狭いスコープ、メモリは「何を保存しないか」。</li>
+            <li><strong>LLM内部</strong>: KVキャッシュ最適化からエンコーダーレスまで、「使う分だけ・無駄なく」へ収束。</li>
+            <li><strong>設計</strong>: 規模を問わず「依存を内側に守る」。CQS・parse でコードを堅牢に、マイクロサービスは4つの柱とトレードオフで捉える。</li>
+            <li><strong>学び方</strong>: 受動インプットは放っておくと揮発する。教材化と HTML 蓄積で「説明できる・読み返せる」資産にする。</li>
+          </ul>
+          <p>
+            <strong>次の一歩</strong>: 積み上がったインプットを evergreen ノート（1ノート=1主張）へ蒸留し続けること。
+            そして、ここで学んだハーネス設計を、自分の手で動くものに落とすこと —— 「理解止まり」を「動くもの」に変える番だ。
+          </p>
+        </section>
+
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li>
+              <a href="https://www.anthropic.com/engineering/harness-design-long-running-apps" target="_blank" rel="noopener">Anthropic — Harness design for long-running application development</a>
+            </li>
+            <li>
+              <a href="https://generativeprogrammer.com/p/12-agentic-harness-patterns-from" target="_blank" rel="noopener">12 Agentic Harness Patterns from Claude Code — Generative Programmer</a>
+            </li>
+            <li>
+              <a href="https://shin-sibainu.github.io/cc-company/guide/getting-started" target="_blank" rel="noopener">cc-company — Getting Started</a>
+            </li>
+            <li>
+              本記事は筆者の週次レポート（2026 W12〜W24）を再構成したもの。各 <em>(WNN)</em> は出典の週を示す。論文・モデル名（Memento-Skills / MetaClaw / HyperAgents / PROJECTMEM / SubQ / TurboQuant / Gemma4 ほか）は arXiv・各公式発表を参照。
+            </li>
+          </ol>
+        </section>
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <!-- Lightbox: figure.zoomable を click すると bindLightbox がここに描画 -->
+    <dialog class="lightbox" id="lightbox" aria-label="図解を拡大表示">
+      <button class="close" type="button" aria-label="閉じる">×</button>
+      <div class="lb-body"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>
