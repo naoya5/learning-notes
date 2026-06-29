@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch11 信頼性 & フォールトトレランス | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0.6rem 1.5rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;font-size:0.85rem;}
+.nav-inner span{color:var(--text3);}
+.nav-badge{background:var(--accent);color:#fff;padding:0.2rem 0.7rem;border-radius:999px;font-size:0.8rem;font-weight:600;}
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#2a1a0a 50%,#1a1200 100%);padding:4rem 1.5rem 3rem;text-align:center;border-bottom:1px solid var(--border);}
+.hero-tag{display:inline-block;background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.4);padding:0.3rem 1rem;border-radius:999px;font-size:0.8rem;letter-spacing:0.1em;margin-bottom:1rem;}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,#fb923c,#f59e0b,#fde68a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.8rem;}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:640px;margin:0 auto 1.5rem;}
+.hero-meta{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;}
+.hero-meta span{color:var(--text3);font-size:0.85rem;display:flex;align-items:center;gap:0.3rem;}
+.hero-meta span::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#fb923c;}
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:3rem;}
+.toc h2{font-size:1rem;color:var(--text2);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0.5rem;}
+.toc-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.85rem;color:var(--text2);transition:all 0.2s;}
+.toc-item:hover{border-color:#fb923c;color:var(--text);background:rgba(251,146,60,0.08);}
+.toc-item a{color:inherit;text-decoration:none;}
+.toc-num{color:#fb923c;font-weight:700;margin-right:0.4rem;}
+section{margin-bottom:4rem;}
+.section-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.section-num{background:linear-gradient(135deg,#fb923c,#f59e0b);color:#fff;width:2.2rem;height:2.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;}
+.section-header h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;}
+.card-title::before{content:'';width:3px;height:1em;background:var(--accent2);border-radius:2px;display:inline-block;}
+.card p{color:var(--text2);font-size:0.95rem;margin-bottom:0.6rem;}
+.card p:last-child{margin-bottom:0;}
+.card-orange .card-title{color:#fb923c;}
+.card-orange .card-title::before{background:#fb923c;}
+.card-green .card-title{color:var(--green);}
+.card-green .card-title::before{background:var(--green);}
+.card-red .card-title{color:var(--red);}
+.card-red .card-title::before{background:var(--red);}
+.card-purple .card-title{color:var(--purple);}
+.card-purple .card-title::before{background:var(--purple);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+pre{background:#0d0f1a;border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.4rem;overflow-x:auto;font-family:'Fira Code','Cascadia Code',monospace;font-size:0.84rem;color:#93c5fd;margin:1rem 0;line-height:1.6;}
+code{background:var(--surface2);border-radius:4px;padding:0.1em 0.4em;font-size:0.88em;color:#93c5fd;}
+.formula{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:8px;padding:1rem 1.5rem;margin:1rem 0;font-family:monospace;font-size:1rem;color:var(--accent3);}
+.formula-label{font-size:0.75rem;color:var(--text3);margin-bottom:0.3rem;font-family:sans-serif;}
+.tbl-wrap{overflow-x:auto;margin:1rem 0;}
+table{width:100%;border-collapse:collapse;font-size:0.9rem;}
+th{background:var(--surface2);color:var(--text2);font-weight:600;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:0.65rem 1rem;border-bottom:1px solid rgba(42,45,62,0.5);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(251,146,60,0.04);}
+.td-good{color:var(--green);}
+.td-warn{color:var(--accent3);}
+.td-bad{color:var(--red);}
+.badge{display:inline-block;padding:0.15rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600;}
+.badge-green{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);}
+.badge-red{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+.badge-orange{background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.3);}
+.badge-blue{background:rgba(99,102,241,0.15);color:var(--accent);border:1px solid rgba(99,102,241,0.3);}
+.highlight-box{background:rgba(251,146,60,0.07);border:1px solid rgba(251,146,60,0.25);border-radius:10px;padding:1.2rem 1.5rem;margin:1rem 0;}
+.highlight-box p{color:var(--text2);font-size:0.95rem;margin:0;}
+.tip-box{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-left:3px solid var(--green);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0;}
+.tip-box p{color:var(--text2);font-size:0.9rem;margin:0;}
+.warn-box{background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);border-left:3px solid var(--red);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0;}
+.warn-box p{color:var(--text2);font-size:0.9rem;margin:0;}
+.svg-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.5rem 0;overflow-x:auto;}
+.svg-title{font-size:0.85rem;color:var(--text3);text-align:center;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.06em;}
+.footer-nav{background:var(--surface);border-top:1px solid var(--border);padding:2rem 1.5rem;margin-top:4rem;}
+.footer-nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-nav a{display:flex;align-items:center;gap:0.5rem;color:var(--text2);font-size:0.9rem;padding:0.6rem 1.2rem;border:1px solid var(--border);border-radius:8px;transition:all 0.2s;}
+.footer-nav a:hover{border-color:#fb923c;color:#fb923c;text-decoration:none;background:rgba(251,146,60,0.05);}
+.interview-section{background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(167,139,250,0.1));border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:2rem;margin-top:3rem;}
+.interview-section h3{font-size:1.2rem;font-weight:700;color:var(--purple);margin-bottom:1.2rem;}
+.interview-q{background:var(--surface2);border-radius:8px;padding:0.8rem 1.2rem;margin-bottom:0.6rem;font-size:0.9rem;color:var(--text2);border-left:3px solid var(--purple);}
+.keyword-list{display:flex;flex-wrap:wrap;gap:0.5rem;margin:1rem 0;}
+.kw{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.25rem 0.75rem;font-size:0.82rem;color:var(--text3);}
+ul.styled{padding-left:1.4rem;color:var(--text2);font-size:0.95rem;}
+ul.styled li{margin-bottom:0.4rem;}
+ol.styled{padding-left:1.4rem;color:var(--text2);font-size:0.95rem;}
+ol.styled li{margin-bottom:0.4rem;}
+h3.sub{font-size:1.05rem;font-weight:700;color:var(--text);margin:1.2rem 0 0.5rem;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="00_index.html">🏠 Home</a>
+    <span>›</span>
+    <a href="10_scalability.html">← Ch10 スケーラビリティ</a>
+    <span>›</span>
+    <span class="nav-badge">Ch11 信頼性 &amp; フォールトトレランス</span>
+    <span>›</span>
+    <a href="12_security.html">Ch12 セキュリティ →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">CHAPTER 11</div>
+  <h1>信頼性 &amp; フォールトトレランス</h1>
+  <p>サーキットブレーカー・Saga・冪等性・カオスエンジニアリング・DR設計まで、障害に強いシステムを作る全手法を体系化する</p>
+  <div class="hero-meta">
+    <span>Reliability</span>
+    <span>Fault Tolerance</span>
+    <span>Circuit Breaker</span>
+    <span>Chaos Engineering</span>
+    <span>Disaster Recovery</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- TOC -->
+<div class="toc">
+  <h2>目次</h2>
+  <div class="toc-grid">
+    <div class="toc-item"><a href="#s1"><span class="toc-num">1.</span>信頼性・可用性・耐障害性の定義</a></div>
+    <div class="toc-item"><a href="#s2"><span class="toc-num">2.</span>サーキットブレーカー</a></div>
+    <div class="toc-item"><a href="#s3"><span class="toc-num">3.</span>リトライとバックオフ</a></div>
+    <div class="toc-item"><a href="#s4"><span class="toc-num">4.</span>タイムアウト設計</a></div>
+    <div class="toc-item"><a href="#s5"><span class="toc-num">5.</span>バルクヘッドパターン</a></div>
+    <div class="toc-item"><a href="#s6"><span class="toc-num">6.</span>Sagaパターンと補償トランザクション</a></div>
+    <div class="toc-item"><a href="#s7"><span class="toc-num">7.</span>冪等性の設計</a></div>
+    <div class="toc-item"><a href="#s8"><span class="toc-num">8.</span>Graceful Degradation &amp; Fallback</a></div>
+    <div class="toc-item"><a href="#s9"><span class="toc-num">9.</span>カオスエンジニアリング</a></div>
+    <div class="toc-item"><a href="#s10"><span class="toc-num">10.</span>DR と RTO/RPO</a></div>
+  </div>
+</div>
+
+<!-- ===== SECTION 1 ===== -->
+<section id="s1">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2>信頼性・可用性・耐障害性の定義</h2>
+  </div>
+
+  <div class="grid-3">
+    <div class="card card-orange">
+      <div class="card-title">信頼性 (Reliability)</div>
+      <p>システムが期待通りに動作する確率。MTBF（平均故障間隔）で測る。</p>
+      <div class="formula"><div class="formula-label">定義</div>Reliability = MTBF / (MTBF + MTTR)</div>
+      <p>例：MTBF=1000時間、MTTR=1時間 → 99.9%信頼性</p>
+    </div>
+    <div class="card card-green">
+      <div class="card-title">可用性 (Availability)</div>
+      <p>稼働時間の割合。ユーザーがサービスを使用できる時間の比率。</p>
+      <div class="formula"><div class="formula-label">計算式</div>A = MTBF / (MTBF + MTTR)</div>
+      <p>SLO・SLAで表現され「99.9%」「99.99%」のように表記する。</p>
+    </div>
+    <div class="card card-purple">
+      <div class="card-title">耐障害性 (Fault Tolerance)</div>
+      <p>コンポーネントが故障しても、システム全体として正常動作を続ける性質。</p>
+      <p>冗長化・フェイルオーバー・グレースフルデグラデーションが主な実現手段。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">高可用性（HA）ダウンタイム換算表</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>可用性</th><th>年間ダウンタイム</th><th>月間ダウンタイム</th><th>週間ダウンタイム</th><th>分類</th></tr></thead>
+      <tbody>
+        <tr><td>99%（2ナイン）</td><td class="td-bad">3日15時間36分</td><td class="td-bad">7時間18分</td><td class="td-bad">1時間41分</td><td><span class="badge badge-red">低可用性</span></td></tr>
+        <tr><td>99.9%（3ナイン）</td><td class="td-warn">8時間45分</td><td class="td-warn">43.8分</td><td class="td-warn">10.1分</td><td><span class="badge badge-orange">標準</span></td></tr>
+        <tr><td>99.99%（4ナイン）</td><td class="td-warn">52.6分</td><td class="td-warn">4.4分</td><td class="td-warn">1.0分</td><td><span class="badge badge-orange">高可用性</span></td></tr>
+        <tr><td>99.999%（5ナイン）</td><td class="td-good">5.26分</td><td class="td-good">26.3秒</td><td class="td-good">6.0秒</td><td><span class="badge badge-green">超高可用性</span></td></tr>
+        <tr><td>99.9999%（6ナイン）</td><td class="td-good">31.5秒</td><td class="td-good">2.6秒</td><td class="td-good">0.6秒</td><td><span class="badge badge-green">金融・医療グレード</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>直列 vs 並列の可用性合成：</strong>直列接続では可用性が掛け合わされ低下する（A×B）。2つの99.9%コンポーネントを直列にすると99.8%になる。並列冗長化では <code>1-(1-A)^n</code> で向上する。2台並列なら 1-(0.001)² = 99.9999%。</p>
+  </div>
+
+  <h3 class="sub">障害の種類</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">ハードウェア障害</div>
+      <p>ディスク故障・メモリ不良・NIC不良・電源障害・データセンター停電。大規模クラウド環境では常態として起きることを前提に設計する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">ソフトウェア障害</div>
+      <p>バグ・メモリリーク・デッドロック・設定ミス・依存ライブラリの不具合。人的ミスによるデプロイ失敗も含む。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">ネットワーク分断</div>
+      <p>パーティション障害・高遅延・パケットロス・DNS障害。CAP定理のP（分断耐性）に関わる根本的な分散システムの課題。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">人的ミス</div>
+      <p>Google/Amazon の調査では障害の70〜80%が人的ミス。誤ったconfig変更・誤削除・未検証デプロイなど。自動化とレビューフローで軽減する。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 2 ===== -->
+<section id="s2">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2>サーキットブレーカー (Circuit Breaker)</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">なぜ必要か — カスケード障害の防止</div>
+    <p>依存先サービスが遅延・障害を起こしたとき、呼び出し元がタイムアウトを待ち続けることでスレッドが枯渇し、障害が上流サービスへ連鎖する（カスケード障害）。サーキットブレーカーは依存先への呼び出しを素早く失敗させることで、障害の連鎖を断ち切る。</p>
+  </div>
+
+  <!-- SVG: Circuit Breaker States -->
+  <div class="svg-wrap">
+    <div class="svg-title">サーキットブレーカー 状態遷移ダイアグラム</div>
+    <svg viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;display:block;margin:0 auto;">
+      <!-- Closed box -->
+      <rect x="30" y="110" width="160" height="80" rx="12" fill="#0d1f0d" stroke="#10b981" stroke-width="2"/>
+      <text x="110" y="145" text-anchor="middle" fill="#10b981" font-size="15" font-weight="bold">CLOSED</text>
+      <text x="110" y="163" text-anchor="middle" fill="#6ee7b7" font-size="11">通常動作</text>
+      <text x="110" y="179" text-anchor="middle" fill="#6ee7b7" font-size="10">リクエスト通過</text>
+
+      <!-- Open box -->
+      <rect x="590" y="110" width="160" height="80" rx="12" fill="#1f0d0d" stroke="#ef4444" stroke-width="2"/>
+      <text x="670" y="145" text-anchor="middle" fill="#ef4444" font-size="15" font-weight="bold">OPEN</text>
+      <text x="670" y="163" text-anchor="middle" fill="#fca5a5" font-size="11">遮断状態</text>
+      <text x="670" y="179" text-anchor="middle" fill="#fca5a5" font-size="10">即座にエラー返却</text>
+
+      <!-- Half-Open box -->
+      <rect x="310" y="210" width="160" height="80" rx="12" fill="#1a180a" stroke="#f59e0b" stroke-width="2"/>
+      <text x="390" y="243" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="bold">HALF-OPEN</text>
+      <text x="390" y="261" text-anchor="middle" fill="#fcd34d" font-size="11">試験状態</text>
+      <text x="390" y="277" text-anchor="middle" fill="#fcd34d" font-size="10">一部リクエスト通過</text>
+
+      <!-- Arrow: Closed -> Open -->
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+        </marker>
+        <marker id="ah-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+        </marker>
+        <marker id="ah-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+        <marker id="ah-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+        </marker>
+      </defs>
+
+      <!-- Closed -> Open (top, error threshold) -->
+      <path d="M190,140 C320,100 460,100 590,140" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#ah-red)" stroke-dasharray="6,3"/>
+      <text x="390" y="92" text-anchor="middle" fill="#fca5a5" font-size="11">エラー率 ≥ 閾値 / 連続失敗N回</text>
+
+      <!-- Open -> Half-Open (timeout) -->
+      <path d="M670,190 L670,250 L470,250" fill="none" stroke="#f59e0b" stroke-width="2" marker-end="url(#ah-orange)"/>
+      <text x="600" y="265" text-anchor="middle" fill="#fcd34d" font-size="11">タイムアウト経過後</text>
+
+      <!-- Half-Open -> Closed (success) -->
+      <path d="M310,240 L190,190" fill="none" stroke="#10b981" stroke-width="2" marker-end="url(#ah-green)"/>
+      <text x="210" y="222" text-anchor="middle" fill="#6ee7b7" font-size="11">成功: CLOSE</text>
+
+      <!-- Half-Open -> Open (fail) -->
+      <path d="M470,240 L590,190" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#ah-red)"/>
+      <text x="565" y="222" text-anchor="middle" fill="#fca5a5" font-size="11">失敗: REOPEN</text>
+
+      <!-- Legend -->
+      <rect x="10" y="10" width="200" height="60" rx="6" fill="#13151f" stroke="#2a2d3e"/>
+      <line x1="20" y1="30" x2="50" y2="30" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,3"/>
+      <text x="56" y="34" fill="#94a3b8" font-size="11">障害検知 (Open化)</text>
+      <line x1="20" y1="50" x2="50" y2="50" stroke="#10b981" stroke-width="2"/>
+      <text x="56" y="54" fill="#94a3b8" font-size="11">復旧確認 (Close化)</text>
+    </svg>
+  </div>
+
+  <h3 class="sub">3つの状態と遷移条件</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>状態</th><th>動作</th><th>遷移条件</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">CLOSED</span></td><td>リクエストを通常通り通過させる。失敗カウンターを管理する</td><td>エラー率がしきい値を超えるか、連続失敗N回でOPENへ</td></tr>
+        <tr><td><span class="badge badge-red">OPEN</span></td><td>すべてのリクエストを即座に拒否（フォールバック実行）。依存先への呼び出しをスキップ</td><td>設定したタイムアウト時間経過後にHALF-OPENへ</td></tr>
+        <tr><td><span class="badge badge-orange">HALF-OPEN</span></td><td>限定的なリクエストを通過させ回復を試験する</td><td>成功→CLOSED / 失敗→再度OPEN</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">実装コード例（Python 疑似コード）</h3>
+<pre>import time, threading
+from enum import Enum
+
+class State(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, recovery_timeout=30, half_open_max=3):
+        self.failure_threshold = failure_threshold   # 連続失敗しきい値
+        self.recovery_timeout = recovery_timeout     # OPEN後の待機秒数
+        self.half_open_max = half_open_max           # HALF-OPENで通すリクエスト数
+        self._state = State.CLOSED
+        self._failure_count = 0
+        self._last_failure_time = None
+        self._lock = threading.Lock()
+
+    def call(self, func, *args, **kwargs):
+        with self._lock:
+            if self._state == State.OPEN:
+                elapsed = time.time() - self._last_failure_time
+                if elapsed >= self.recovery_timeout:
+                    self._state = State.HALF_OPEN
+                    self._failure_count = 0
+                else:
+                    raise Exception("CircuitBreaker OPEN: fast fail")
+
+        try:
+            result = func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise
+
+    def _on_success(self):
+        with self._lock:
+            self._failure_count = 0
+            self._state = State.CLOSED
+
+    def _on_failure(self):
+        with self._lock:
+            self._failure_count += 1
+            self._last_failure_time = time.time()
+            if self._failure_count >= self.failure_threshold:
+                self._state = State.OPEN</pre>
+
+  <h3 class="sub">主要ライブラリの比較</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ライブラリ</th><th>言語/フレームワーク</th><th>特徴</th><th>状態</th></tr></thead>
+      <tbody>
+        <tr><td>Resilience4j</td><td>Java / Spring Boot</td><td>軽量・モジュール型・RxJavaサポート・Micrometer連携</td><td><span class="badge badge-green">活発</span></td></tr>
+        <tr><td>Hystrix</td><td>Java / Netflix OSS</td><td>スレッドプール/セマフォ分離・ダッシュボード付き</td><td><span class="badge badge-red">メンテナンス終了</span></td></tr>
+        <tr><td>Polly</td><td>.NET</td><td>リトライ・タイムアウト・CBを組み合わせ可能なポリシーチェーン</td><td><span class="badge badge-green">活発</span></td></tr>
+        <tr><td>pybreaker</td><td>Python</td><td>シンプルなCBデコレーター実装</td><td><span class="badge badge-orange">小規模向け</span></td></tr>
+        <tr><td>go-resilience</td><td>Go</td><td>軽量CBとリトライ実装</td><td><span class="badge badge-green">活発</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">設定パラメーター</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Resilience4j 設定例（YAML）</div>
+<pre>resilience4j.circuitbreaker:
+  instances:
+    paymentService:
+      # CLOSED→OPEN のしきい値
+      failureRateThreshold: 50      # エラー率50%超でOPEN
+      minimumNumberOfCalls: 10      # 最小評価呼び出し数
+      # OPEN の継続時間
+      waitDurationInOpenState: 30s  # 30秒後HALF-OPENへ
+      # HALF-OPEN の設定
+      permittedNumberOfCallsInHalfOpenState: 5
+      # スライディングウィンドウ
+      slidingWindowType: COUNT_BASED
+      slidingWindowSize: 20</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">パラメーター選定の指針</div>
+      <ul class="styled">
+        <li><code>failureRateThreshold</code>：SLOのエラー率上限を参考に設定（通常 50〜70%）</li>
+        <li><code>waitDurationInOpenState</code>：依存サービスの平均復旧時間（MTTR）を参考に設定</li>
+        <li><code>minimumNumberOfCalls</code>：低トラフィック環境では誤発動しやすいため高め設定</li>
+        <li><code>slidingWindowSize</code>：短すぎると誤発動、長すぎると検知遅延。20〜100件が目安</li>
+        <li>本番では必ずメトリクスをモニタリングし段階的チューニング</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 3 ===== -->
+<section id="s3">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2>リトライとバックオフ (Retry &amp; Backoff)</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-green">
+      <div class="card-title">なぜリトライが必要か</div>
+      <p>ネットワークの一時的な障害・503エラー・レートリミット超過などは、再試行することで回復できる。単なる「再実行」ではなく、適切な戦略で行うことが重要。</p>
+    </div>
+    <div class="card card-red">
+      <div class="card-title">単純リトライの危険性</div>
+      <p>大量クライアントが一斉にリトライすると、復旧しかけたサーバーに負荷が集中し再び障害を引き起こす（<strong>Thundering Herd 問題</strong>）。バックオフとジッターで分散させる必要がある。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">Exponential Backoff の仕組み</h3>
+  <div class="formula">
+    <div class="formula-label">待機時間の計算式</div>
+    wait_time = min(base × 2^attempt, max_delay)
+  </div>
+  <p style="color:var(--text2);font-size:0.95rem;margin:0.5rem 0 1rem;">例：base=1s, max=60s の場合：1秒 → 2秒 → 4秒 → 8秒 → 16秒 → 32秒 → 60秒（以降上限）</p>
+
+  <h3 class="sub">Jitter（ランダム要素）の3種類</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>種類</th><th>計算式</th><th>特徴</th><th>推奨度</th></tr></thead>
+      <tbody>
+        <tr><td>Full Jitter</td><td><code>random(0, min(cap, base×2^n))</code></td><td>最も分散効果が高い。平均待機時間が短い</td><td><span class="badge badge-green">推奨</span></td></tr>
+        <tr><td>Equal Jitter</td><td><code>half + random(0, half)</code>（halfは指数バックオフの半分）</td><td>最低限の待機を保証。適度な分散</td><td><span class="badge badge-orange">適宜</span></td></tr>
+        <tr><td>Decorrelated Jitter</td><td><code>min(cap, random(base, prev×3))</code></td><td>前回の待機時間を使って次を計算。よりランダム</td><td><span class="badge badge-orange">適宜</span></td></tr>
+        <tr><td>No Jitter</td><td><code>min(cap, base×2^n)</code></td><td>Thundering Herd が発生しうる</td><td><span class="badge badge-red">非推奨</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">実装コード例（Python — Exponential Backoff + Full Jitter）</h3>
+<pre>import time, random, requests
+
+def retry_with_backoff(
+    func,
+    max_retries: int = 5,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    retryable_status: set = {429, 500, 502, 503, 504},
+    deadline: float = None,          # デッドライン伝播用
+):
+    """Exponential Backoff + Full Jitter リトライ"""
+    start = time.time()
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+        # デッドライン超過チェック
+        if deadline and (time.time() - start) >= deadline:
+            raise TimeoutError(f"Deadline exceeded after {attempt} attempts")
+
+        try:
+            return func()
+        except requests.HTTPError as e:
+            status = e.response.status_code
+            if status not in retryable_status or attempt == max_retries:
+                raise
+            last_exception = e
+        except (requests.ConnectionError, requests.Timeout) as e:
+            if attempt == max_retries:
+                raise
+            last_exception = e
+
+        # Full Jitter: 0 ~ min(cap, base * 2^attempt)
+        exp_backoff = base_delay * (2 ** attempt)
+        wait = random.uniform(0, min(max_delay, exp_backoff))
+        print(f"Attempt {attempt+1} failed. Retrying in {wait:.2f}s...")
+        time.sleep(wait)
+
+    raise last_exception</pre>
+
+  <h3 class="sub">デッドライン伝播（Deadline Propagation）</h3>
+  <div class="card">
+    <div class="card-title">上限時間を超えたリトライを止める</div>
+    <p>gRPC や HTTP ヘッダー（<code>X-Request-Deadline</code>）で呼び出し元から残り時間を伝播させ、タイムアウト済みのリクエストに対してリトライを行わないようにする。</p>
+    <p>例：フロントエンドのタイムアウトが3秒の場合、バックエンドに「残り2.5秒しかない」という情報を渡すことで、無意味なリトライによるシステム負荷を防ぐ。</p>
+  </div>
+
+  <h3 class="sub">冪等性との関係</h3>
+  <div class="tip-box">
+    <p><strong>リトライ可能な操作の条件：</strong>リトライは<strong>冪等な操作</strong>（同じリクエストを複数回送っても同じ結果になる操作）にのみ安全に適用できる。<br>
+    冪等：GET、PUT、DELETE（RFC 7231）、冪等キー付きPOST<br>
+    非冪等：冪等キーなしPOST（決済・注文など二重実行リスクあり）</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 4 ===== -->
+<section id="s4">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2>タイムアウト設計</h2>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Connection Timeout</div>
+      <p>TCP接続確立までの最大待機時間。サーバーが応答しない状態を検知する。一般的に短め（1〜5秒）に設定。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Read Timeout</div>
+      <p>接続後、レスポンスデータ受信完了までの最大待機時間。処理時間の見積もりに基づいて設定（最も重要）。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Write Timeout</div>
+      <p>リクエスト送信完了までの最大待機時間。大きなペイロードを送信する際の上限として機能する。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">適切な値の決め方</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>アプローチ</th><th>計算方法</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>SLO ベース</td><td>SLO × 0.9 を上限とする（SLO内で完了させる余裕）</td><td>SLO=1秒 → タイムアウト=900ms</td></tr>
+        <tr><td>P99 レイテンシ</td><td>本番の P99 レイテンシ × 1.5〜2.0 倍</td><td>P99=300ms → タイムアウト=500ms</td></tr>
+        <tr><td>エンドtoエンド</td><td>呼び出しチェーン全体のSLOから各サービスに予算配分</td><td>全体3秒 → A:1s, B:1s, C:0.5s, buffer:0.5s</td></tr>
+        <tr><td>段階的調整</td><td>まず高めに設定し、実測レイテンシから段階的に引き下げる</td><td>初期30秒→実績200ms→設定500ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">Timeout + Retry 組み合わせ戦略</h3>
+<pre># gRPC デッドライン設定例 (Python)
+import grpc
+from datetime import datetime, timedelta
+
+def call_with_deadline(stub, request, total_budget_seconds=3.0):
+    """全体バジェット内でリトライしながら呼び出す"""
+    deadline = datetime.utcnow() + timedelta(seconds=total_budget_seconds)
+
+    for attempt in range(3):
+        remaining = (deadline - datetime.utcnow()).total_seconds()
+        if remaining <= 0:
+            raise grpc.RpcError("Deadline exceeded")
+
+        # 個別タイムアウト = 残り時間の半分（上限1秒）
+        per_call_timeout = min(remaining * 0.5, 1.0)
+        try:
+            return stub.DoWork(request, timeout=per_call_timeout)
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+                raise  # 全体デッドライン超過は再試行しない
+            # その他のエラーはバックオフ後にリトライ
+            time.sleep(0.1 * (2 ** attempt))</pre>
+
+  <div class="warn-box">
+    <p><strong>タイムアウトなし設定は禁止：</strong>タイムアウトを設定しないと、依存サービスの遅延がスレッドを永遠に保持し、最終的にスレッドプールが枯渇してサービス全体が停止する。すべての外部呼び出しにはタイムアウトを設定すること。</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 5 ===== -->
+<section id="s5">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2>バルクヘッドパターン (Bulkhead Pattern)</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">船の隔壁（Bulkhead）のアナロジー</div>
+    <p>タイタニック号のような大型船には複数の防水隔壁（バルクヘッド）があり、一区画に浸水しても他の区画は保持される。ソフトウェアでも同様に、あるサービスへの障害が他のリソースを使い尽くさないよう隔離する。</p>
+  </div>
+
+  <!-- SVG: Bulkhead -->
+  <div class="svg-wrap">
+    <div class="svg-title">バルクヘッドあり vs なし — スレッドプール分離の比較</div>
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+      <!-- Without Bulkhead -->
+      <text x="185" y="20" text-anchor="middle" fill="#ef4444" font-size="13" font-weight="bold">バルクヘッドなし（共有スレッドプール）</text>
+      <rect x="20" y="35" width="330" height="180" rx="8" fill="#1a0d0d" stroke="#ef4444" stroke-width="1.5"/>
+      <!-- Thread pool box -->
+      <rect x="35" y="50" width="295" height="50" rx="6" fill="#2a1515" stroke="#ef4444" stroke-width="1"/>
+      <text x="182" y="70" text-anchor="middle" fill="#fca5a5" font-size="11">共有スレッドプール (20スレッド)</text>
+      <!-- Thread slots -->
+      <g>
+        <rect x="40" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="57" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="74" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="91" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="108" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="125" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="142" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="159" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="176" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="193" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="210" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="227" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="244" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="261" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="278" y="80" width="14" height="14" rx="2" fill="#ef4444"/>
+        <rect x="295" y="80" width="14" height="14" rx="2" fill="#64748b"/>
+        <rect x="312" y="80" width="14" height="14" rx="2" fill="#64748b"/>
+      </g>
+      <!-- Services -->
+      <rect x="35" y="115" width="85" height="40" rx="6" fill="#2a2d3e" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="77" y="133" text-anchor="middle" fill="#fca5a5" font-size="10">Service A</text>
+      <text x="77" y="147" text-anchor="middle" fill="#ef4444" font-size="9">障害(15スレッド占有)</text>
+      <rect x="130" y="115" width="80" height="40" rx="6" fill="#2a2d3e" stroke="#64748b" stroke-width="1"/>
+      <text x="170" y="133" text-anchor="middle" fill="#94a3b8" font-size="10">Service B</text>
+      <text x="170" y="147" text-anchor="middle" fill="#64748b" font-size="9">スレッドなし！</text>
+      <rect x="220" y="115" width="80" height="40" rx="6" fill="#2a2d3e" stroke="#64748b" stroke-width="1"/>
+      <text x="260" y="133" text-anchor="middle" fill="#94a3b8" font-size="10">Service C</text>
+      <text x="260" y="147" text-anchor="middle" fill="#64748b" font-size="9">スレッドなし！</text>
+      <text x="182" y="200" text-anchor="middle" fill="#fca5a5" font-size="11">A の障害が B・C を道連れにする</text>
+
+      <!-- With Bulkhead -->
+      <text x="565" y="20" text-anchor="middle" fill="#10b981" font-size="13" font-weight="bold">バルクヘッドあり（分離スレッドプール）</text>
+      <rect x="410" y="35" width="330" height="180" rx="8" fill="#0d1f0d" stroke="#10b981" stroke-width="1.5"/>
+      <!-- Pool A -->
+      <rect x="420" y="50" width="90" height="50" rx="6" fill="#2a1515" stroke="#ef4444" stroke-width="1"/>
+      <text x="465" y="68" text-anchor="middle" fill="#fca5a5" font-size="10">Pool A (5)</text>
+      <rect x="425" y="78" width="12" height="12" rx="2" fill="#ef4444"/>
+      <rect x="440" y="78" width="12" height="12" rx="2" fill="#ef4444"/>
+      <rect x="455" y="78" width="12" height="12" rx="2" fill="#ef4444"/>
+      <rect x="470" y="78" width="12" height="12" rx="2" fill="#ef4444"/>
+      <rect x="485" y="78" width="12" height="12" rx="2" fill="#ef4444"/>
+      <!-- Pool B -->
+      <rect x="525" y="50" width="90" height="50" rx="6" fill="#1a2a1a" stroke="#10b981" stroke-width="1"/>
+      <text x="570" y="68" text-anchor="middle" fill="#6ee7b7" font-size="10">Pool B (5)</text>
+      <rect x="530" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="545" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="560" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="575" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="590" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <!-- Pool C -->
+      <rect x="630" y="50" width="90" height="50" rx="6" fill="#1a2a1a" stroke="#10b981" stroke-width="1"/>
+      <text x="675" y="68" text-anchor="middle" fill="#6ee7b7" font-size="10">Pool C (5)</text>
+      <rect x="635" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="650" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="665" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="680" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <rect x="695" y="78" width="12" height="12" rx="2" fill="#10b981"/>
+      <!-- Services -->
+      <rect x="420" y="115" width="85" height="40" rx="6" fill="#2a2d3e" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="462" y="133" text-anchor="middle" fill="#fca5a5" font-size="10">Service A</text>
+      <text x="462" y="147" text-anchor="middle" fill="#ef4444" font-size="9">障害(5スレッド)</text>
+      <rect x="520" y="115" width="85" height="40" rx="6" fill="#2a2d3e" stroke="#10b981" stroke-width="1"/>
+      <text x="562" y="133" text-anchor="middle" fill="#6ee7b7" font-size="10">Service B</text>
+      <text x="562" y="147" text-anchor="middle" fill="#10b981" font-size="9">正常動作中</text>
+      <rect x="620" y="115" width="85" height="40" rx="6" fill="#2a2d3e" stroke="#10b981" stroke-width="1"/>
+      <text x="662" y="133" text-anchor="middle" fill="#6ee7b7" font-size="10">Service C</text>
+      <text x="662" y="147" text-anchor="middle" fill="#10b981" font-size="9">正常動作中</text>
+      <text x="565" y="200" text-anchor="middle" fill="#6ee7b7" font-size="11">A の障害は A のプールにのみ影響する</text>
+    </svg>
+  </div>
+
+  <h3 class="sub">分離の種類と比較</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>分離方法</th><th>仕組み</th><th>オーバーヘッド</th><th>ユースケース</th></tr></thead>
+      <tbody>
+        <tr><td>スレッドプール分離</td><td>サービスごとに独立したスレッドプールを割り当て</td><td>中（スレッドコンテキストスイッチ）</td><td>レイテンシ要件が緩いバッチ処理・非同期処理</td></tr>
+        <tr><td>セマフォ分離</td><td>同時実行数の上限（セマフォ）のみ制御、同一スレッドで実行</td><td>低</td><td>低レイテンシ要件・高スループット</td></tr>
+        <tr><td>プロセス分離</td><td>サービスをプロセスやコンテナで分離</td><td>高</td><td>重大なサービス間の完全分離</td></tr>
+        <tr><td>接続プール分離</td><td>DBコネクションプールをサービスごとに分離</td><td>低〜中</td><td>DB依存の多いバックエンド</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SECTION 6 ===== -->
+<section id="s6">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2>Saga パターンと補償トランザクション</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">分散環境でのトランザクション管理の課題</div>
+    <p>マイクロサービス環境では各サービスが独自のDBを持つため、複数サービスをまたぐ2PCトランザクションは適用できない（可用性・スケーラビリティが大きく損なわれる）。Sagaパターンは一連の<strong>ローカルトランザクション</strong>を連鎖させ、失敗時には<strong>補償トランザクション（Undo操作）</strong>を実行することで整合性を保つ。</p>
+  </div>
+
+  <!-- SVG: Choreography Saga -->
+  <div class="svg-wrap">
+    <div class="svg-title">Choreography Saga — イベント駆動型（注文フロー）</div>
+    <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+      <!-- Services -->
+      <rect x="10" y="60" width="110" height="50" rx="8" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="65" y="82" text-anchor="middle" fill="#a5b4fc" font-size="11" font-weight="bold">注文サービス</text>
+      <text x="65" y="98" text-anchor="middle" fill="#6366f1" font-size="10">注文作成</text>
+
+      <rect x="165" y="60" width="110" height="50" rx="8" fill="#13151f" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="220" y="82" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="bold">在庫サービス</text>
+      <text x="220" y="98" text-anchor="middle" fill="#22d3ee" font-size="10">在庫確保</text>
+
+      <rect x="320" y="60" width="110" height="50" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+      <text x="375" y="82" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="bold">決済サービス</text>
+      <text x="375" y="98" text-anchor="middle" fill="#10b981" font-size="10">決済処理</text>
+
+      <rect x="475" y="60" width="110" height="50" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="530" y="82" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="bold">配送サービス</text>
+      <text x="530" y="98" text-anchor="middle" fill="#f59e0b" font-size="10">配送準備</text>
+
+      <rect x="630" y="60" width="110" height="50" rx="8" fill="#13151f" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="685" y="82" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="bold">通知サービス</text>
+      <text x="685" y="98" text-anchor="middle" fill="#a78bfa" font-size="10">完了通知</text>
+
+      <!-- Event arrows -->
+      <line x1="120" y1="85" x2="163" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="141" y="79" text-anchor="middle" fill="#94a3b8" font-size="9">OrderPlaced</text>
+
+      <line x1="275" y1="85" x2="318" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="296" y="79" text-anchor="middle" fill="#94a3b8" font-size="9">StockReserved</text>
+
+      <line x1="430" y1="85" x2="473" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="451" y="79" text-anchor="middle" fill="#94a3b8" font-size="9">PaymentDone</text>
+
+      <line x1="585" y1="85" x2="628" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="606" y="79" text-anchor="middle" fill="#94a3b8" font-size="9">ShipmentReady</text>
+
+      <!-- Compensation arrows (below) -->
+      <path d="M375,110 C375,140 220,140 220,110" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+      <text x="297" y="157" text-anchor="middle" fill="#fca5a5" font-size="9">PaymentFailed → StockReleased（補償）</text>
+
+      <text x="380" y="185" text-anchor="middle" fill="#64748b" font-size="10">各サービスはイベントを publish/subscribe し、失敗時は補償イベントを発行する</text>
+    </svg>
+  </div>
+
+  <!-- SVG: Orchestration Saga -->
+  <div class="svg-wrap">
+    <div class="svg-title">Orchestration Saga — 中央コーディネーター型</div>
+    <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arr2b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+      </defs>
+      <!-- Orchestrator -->
+      <rect x="290" y="90" width="180" height="60" rx="10" fill="#1a1040" stroke="#6366f1" stroke-width="2"/>
+      <text x="380" y="116" text-anchor="middle" fill="#a5b4fc" font-size="13" font-weight="bold">Saga Orchestrator</text>
+      <text x="380" y="135" text-anchor="middle" fill="#6366f1" font-size="10">状態機械として実装</text>
+
+      <!-- Participant services -->
+      <rect x="30" y="30" width="110" height="45" rx="8" fill="#13151f" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="85" y="52" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="bold">在庫サービス</text>
+      <text x="85" y="68" text-anchor="middle" fill="#22d3ee" font-size="10">在庫確保/解放</text>
+
+      <rect x="30" y="165" width="110" height="45" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+      <text x="85" y="187" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="bold">決済サービス</text>
+      <text x="85" y="203" text-anchor="middle" fill="#10b981" font-size="10">決済/返金</text>
+
+      <rect x="620" y="30" width="110" height="45" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="675" y="52" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="bold">配送サービス</text>
+      <text x="675" y="68" text-anchor="middle" fill="#f59e0b" font-size="10">配送/キャンセル</text>
+
+      <rect x="620" y="165" width="110" height="45" rx="8" fill="#13151f" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="675" y="187" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="bold">通知サービス</text>
+      <text x="675" y="203" text-anchor="middle" fill="#a78bfa" font-size="10">通知</text>
+
+      <!-- Command arrows: Orchestrator -> Services -->
+      <line x1="290" y1="105" x2="140" y2="65" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="195" y="75" text-anchor="middle" fill="#94a3b8" font-size="9">ReserveStock</text>
+
+      <line x1="290" y1="135" x2="140" y2="185" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="195" y="168" text-anchor="middle" fill="#94a3b8" font-size="9">ProcessPayment</text>
+
+      <line x1="470" y1="105" x2="620" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="560" y="75" text-anchor="middle" fill="#94a3b8" font-size="9">ArrangeShipment</text>
+
+      <line x1="470" y1="135" x2="620" y2="185" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="560" y="168" text-anchor="middle" fill="#94a3b8" font-size="9">SendNotification</text>
+
+      <!-- Reply arrows: Services -> Orchestrator -->
+      <line x1="140" y1="52" x2="288" y2="108" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr2b)"/>
+      <line x1="140" y1="188" x2="288" y2="132" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr2b)"/>
+      <line x1="620" y1="52" x2="472" y2="108" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr2b)"/>
+      <text x="380" y="245" text-anchor="middle" fill="#64748b" font-size="10">オーケストレーターが全体フローを制御・補償トランザクションもオーケストレーターが指示</text>
+    </svg>
+  </div>
+
+  <h3 class="sub">Choreography vs Orchestration</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>観点</th><th>Choreography（コレオグラフィ）</th><th>Orchestration（オーケストレーション）</th></tr></thead>
+      <tbody>
+        <tr><td>結合度</td><td class="td-good">疎結合（イベントで連携）</td><td class="td-warn">中結合（中央コーディネーター依存）</td></tr>
+        <tr><td>可観測性</td><td class="td-bad">全体フローの追跡が困難</td><td class="td-good">フローが一箇所で管理・追跡しやすい</td></tr>
+        <tr><td>複雑性</td><td class="td-warn">イベント連鎖の把握が難しい</td><td class="td-good">ビジネスロジックが集中し理解しやすい</td></tr>
+        <tr><td>単一障害点</td><td class="td-good">なし</td><td class="td-bad">オーケストレーターが SPOFになりうる</td></tr>
+        <tr><td>適するケース</td><td>シンプルなフロー・イベント駆動アーキテクチャ</td><td>複雑なフロー・ビジネスプロセス管理</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">補償トランザクション設計</h3>
+  <div class="card">
+    <div class="card-title">各ステップのUndo操作</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>ステップ</th><th>処理</th><th>補償トランザクション</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>注文作成</td><td>注文キャンセル</td></tr>
+          <tr><td>2</td><td>在庫確保</td><td>在庫解放</td></tr>
+          <tr><td>3</td><td>決済処理</td><td>返金処理</td></tr>
+          <tr><td>4</td><td>配送準備</td><td>配送キャンセル</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>補償トランザクションも<strong>冪等性</strong>を持つよう設計する。補償処理自体が失敗する可能性もあるため、リトライ可能であることが必須。</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 7 ===== -->
+<section id="s7">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2>冪等性 (Idempotency) の設計</h2>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>冪等性とは：</strong>同じ操作を1回実行しても100回実行しても、システムの状態と結果が同じであるという性質。ネットワーク障害でのリトライ・二重実行・メッセージキューのat-least-once配信に対して安全なシステムを構築する基盤となる。</p>
+  </div>
+
+  <h3 class="sub">冪等性キー（Idempotency Key）の実装</h3>
+<pre># 決済API 冪等性実装例（FastAPI + PostgreSQL）
+from fastapi import FastAPI, Header, HTTPException
+from sqlalchemy import text
+import uuid
+
+app = FastAPI()
+
+@app.post("/v1/payments")
+async def create_payment(
+    payment: PaymentRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key")
+):
+    """
+    クライアントは一意のIdempotency-Keyを生成してヘッダーに含める。
+    同じキーで再送した場合は前回の結果を返す（二重決済を防止）。
+    """
+    async with db.transaction():
+        # 1. キーが既に存在するか確認
+        existing = await db.fetchrow(
+            "SELECT response, status FROM idempotency_keys WHERE key = $1",
+            idempotency_key
+        )
+
+        if existing:
+            if existing["status"] == "processing":
+                raise HTTPException(409, "Request is still being processed")
+            # 既存のレスポンスをそのまま返す（キャッシュ）
+            return existing["response"]
+
+        # 2. キーを「処理中」として登録（UNIQUE制約で競合防止）
+        try:
+            await db.execute(
+                """INSERT INTO idempotency_keys
+                   (key, status, created_at) VALUES ($1, 'processing', now())""",
+                idempotency_key
+            )
+        except UniqueViolationError:
+            raise HTTPException(409, "Concurrent request with same key")
+
+        # 3. 実際の決済処理
+        result = await payment_processor.charge(payment)
+
+        # 4. 結果を保存（TTL付き）
+        await db.execute(
+            """UPDATE idempotency_keys
+               SET status='completed', response=$1, expires_at=now()+interval'24h'
+               WHERE key=$2""",
+            result.dict(), idempotency_key
+        )
+        return result</pre>
+
+  <h3 class="sub">DBのUNIQUEキーを使った重複防止</h3>
+<pre>-- 冪等性キーテーブルの設計
+CREATE TABLE idempotency_keys (
+    key         UUID PRIMARY KEY,              -- クライアント生成UUID
+    status      VARCHAR(20) NOT NULL,          -- processing / completed / failed
+    request_hash VARCHAR(64),                  -- リクエストボディのハッシュ（改ざん検知）
+    response    JSONB,                         -- キャッシュするレスポンス
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    expires_at  TIMESTAMPTZ                    -- TTL（24時間程度）
+);
+
+-- TTL切れを自動削除するインデックス
+CREATE INDEX idx_idempotency_expires ON idempotency_keys (expires_at);
+
+-- 決済テーブルにも冪等性キー参照を持たせる
+ALTER TABLE payments ADD COLUMN idempotency_key UUID REFERENCES idempotency_keys(key);</pre>
+
+  <h3 class="sub">HTTPメソッド別の冪等性</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>メソッド</th><th>冪等性</th><th>安全性</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td><span class="badge badge-green">冪等</span></td><td><span class="badge badge-green">安全</span></td><td>状態変更なし、何度呼んでも同じ結果</td></tr>
+        <tr><td>PUT</td><td><span class="badge badge-green">冪等</span></td><td><span class="badge badge-red">非安全</span></td><td>同じリクエストで同じ状態に更新</td></tr>
+        <tr><td>DELETE</td><td><span class="badge badge-green">冪等</span></td><td><span class="badge badge-red">非安全</span></td><td>既に削除済みでも404を返すだけ</td></tr>
+        <tr><td>POST</td><td><span class="badge badge-red">非冪等</span></td><td><span class="badge badge-red">非安全</span></td><td>毎回新しいリソース作成→冪等キー必要</td></tr>
+        <tr><td>PATCH</td><td><span class="badge badge-orange">条件付き</span></td><td><span class="badge badge-red">非安全</span></td><td>操作内容による（加算は非冪等、絶対値設定は冪等）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SECTION 8 ===== -->
+<section id="s8">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <h2>Graceful Degradation と Fallback</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-orange">
+      <div class="card-title">Graceful Degradation（優雅な縮退）</div>
+      <p>一部の機能が使用不能になっても、コアとなる機能を継続して提供する設計思想。「全か無か」ではなく「できる範囲でサービスを継続」することを優先する。</p>
+      <p>例：レコメンドシステムが落ちても、デフォルトの人気商品リストを表示する。</p>
+    </div>
+    <div class="card card-green">
+      <div class="card-title">Fallback 戦略</div>
+      <ul class="styled">
+        <li><strong>デフォルト値：</strong>空のリスト・ゼロ・"N/A"など静的な値を返す</li>
+        <li><strong>キャッシュ値：</strong>直前にキャッシュされた古いデータを返す（stale-while-revalidate）</li>
+        <li><strong>静的コンテンツ：</strong>あらかじめ生成済みのHTMLを返す（静的サイトフォールバック）</li>
+        <li><strong>劣化版機能：</strong>軽量な代替処理を実行</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="sub">Feature Flag による機能切り替え</h3>
+<pre># Feature Flag による障害時の機能制御（Python + LaunchDarkly/ローカル実装）
+class FeatureFlags:
+    """実行時に機能を ON/OFF する"""
+    def __init__(self):
+        self._flags = {
+            "enable_recommendations": True,
+            "enable_inventory_check": True,
+            "enable_fraud_detection": True,
+        }
+
+    def is_enabled(self, flag: str) -> bool:
+        return self._flags.get(flag, False)
+
+flags = FeatureFlags()
+
+async def get_product_page(product_id: str) -> dict:
+    product = await product_service.get(product_id)
+
+    # レコメンデーションが無効化されている場合はフォールバック
+    if flags.is_enabled("enable_recommendations"):
+        try:
+            recs = await recommendation_service.get(product_id)
+        except Exception:
+            recs = await get_popular_products()  # フォールバック
+    else:
+        recs = await get_popular_products()      # Feature Flag で無効化
+
+    # 在庫確認が無効化されている場合は「在庫あり」を仮定
+    if flags.is_enabled("enable_inventory_check"):
+        in_stock = await inventory_service.check(product_id)
+    else:
+        in_stock = True  # 楽観的フォールバック（後で在庫切れ対処）
+
+    return {"product": product, "recommendations": recs, "in_stock": in_stock}</pre>
+
+  <h3 class="sub">Netflix の Chaos Engineering 哲学</h3>
+  <div class="card">
+    <div class="card-title">Simian Army の設計思想</div>
+    <p>Netflixは「障害は起きるもの」と割り切り、本番環境で意図的に障害を起こすことでシステムの弱点を発見・強化する手法を開発した。<strong>Chaos Monkey</strong>が始まりで、現在は <strong>Chaos Engineering</strong> として業界標準の実践となっている。</p>
+    <p>中心的な考え方：「もし本番で壊れたら困るのなら、今すぐ意図的に壊して修正しろ」</p>
+    <div class="keyword-list">
+      <span class="kw">Chaos Monkey</span>
+      <span class="kw">Latency Monkey</span>
+      <span class="kw">Conformity Monkey</span>
+      <span class="kw">Doctor Monkey</span>
+      <span class="kw">Janitor Monkey</span>
+      <span class="kw">Chaos Kong（AZ全体を落とす）</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 9 ===== -->
+<section id="s9">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2>カオスエンジニアリング (Chaos Engineering)</h2>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>定義（Netflix原則）：</strong>"Chaos Engineering is the discipline of experimenting on a system in order to build confidence in the system's capability to withstand turbulent conditions in production." — 本番のような乱れた条件でもシステムが耐えられる確信を得るために、システムへの実験を行う規律。</p>
+  </div>
+
+  <h3 class="sub">カオス実験の5ステップ</h3>
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-title">1. 定常状態の定義</div>
+        <p>「正常」の定量的な定義を決める。例：成功率99.9%・P99レイテンシ200ms以下・1秒あたり10,000リクエスト処理可能。これが崩れたら「障害」と判断するしきい値。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">2. 仮説の立案</div>
+        <p>「DBの1ノードが落ちても定常状態は維持される」のような形で仮説を立てる。仮説が明確でないと実験の意味がない。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">3. 実験の実行</div>
+        <p>実際に障害を注入する（CPU負荷・ネットワーク遅延・プロセス停止・ディスク満杯など）。最初は小さいブラストラディウス（影響範囲）から始める。</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">4. 観察と検証</div>
+        <p>メトリクス・ログ・トレースを観察し、定常状態が維持されているか検証する。仮説が成立すれば自信、崩れれば改善のチャンス。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">5. 改善とループ</div>
+        <p>発見した弱点を修正し、より複雑な実験へと移行する。定期的な実施（Game Day）で継続的に検証する。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">ブラストラディウス最小化</div>
+        <p>実験の影響範囲を最小化する原則。最初はステージング環境・次に本番の数%のトラフィック・監視を強化した状態で実施し、問題を即座にロールバックできる準備をする。</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub">主要ツール比較</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ツール</th><th>障害注入の種類</th><th>対応環境</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr><td>Chaos Monkey (Netflix)</td><td>インスタンス/コンテナ停止</td><td>AWS (Spinnaker統合)</td><td>オリジナル。定期的にランダム停止</td></tr>
+        <tr><td>Chaos Toolkit</td><td>CPU・メモリ・ネットワーク・K8sポッド</td><td>マルチクラウド・K8s</td><td>OSSで宣言的実験定義（JSON/YAML）</td></tr>
+        <tr><td>LitmusChaos</td><td>K8sリソース全般</td><td>Kubernetes</td><td>CNCF孵化プロジェクト。CRDベース</td></tr>
+        <tr><td>AWS FIS</td><td>EC2/RDS/EKS/API遅延など</td><td>AWS</td><td>AWSマネージド。IAM統合・セーフガード</td></tr>
+        <tr><td>Gremlin</td><td>100種類以上</td><td>マルチクラウド・オンプレ</td><td>SaaS。GUI操作・ロールバック保証</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">ゲームデー（Game Day）の実施方法</h3>
+  <div class="card">
+    <div class="card-title">計画的な障害演習</div>
+    <ul class="styled">
+      <li><strong>計画段階：</strong>シナリオ選定（例：特定のAZ全断・外部決済API遮断）・期間設定・関係者への告知</li>
+      <li><strong>準備：</strong>モニタリング強化・ロールバック手順の確認・エスカレーションパスの確認</li>
+      <li><strong>実施：</strong>カウントダウン方式で開始・リアルタイムで状態監視・異常時は即停止</li>
+      <li><strong>振り返り：</strong>タイムライン記録・改善点のリストアップ・アクションアイテム設定</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 10 ===== -->
+<section id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>DR (Disaster Recovery) と RTO/RPO</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-orange">
+      <div class="card-title">RTO（Recovery Time Objective）</div>
+      <p><strong>目標復旧時間：</strong>障害発生から業務を再開できるまでの最大許容時間。「何時間までなら止まっていてもいいか」を定義する。</p>
+      <div class="formula"><div class="formula-label">例</div>RTO = 4時間（金融）/ 1時間（EC）/ 5分（ミッションクリティカル）</div>
+    </div>
+    <div class="card card-red">
+      <div class="card-title">RPO（Recovery Point Objective）</div>
+      <p><strong>目標復旧時点：</strong>障害発生時にどの時点までのデータ損失を許容できるか。「最悪どこまで巻き戻っていいか」を定義する。</p>
+      <div class="formula"><div class="formula-label">例</div>RPO = 24時間（日次バックアップ）/ 1時間 / 0秒（ゼロデータ損失）</div>
+    </div>
+  </div>
+
+  <!-- SVG: RTO/RPO Graph -->
+  <div class="svg-wrap">
+    <div class="svg-title">RTO/RPO とコスト・アーキテクチャの関係</div>
+    <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:0 auto;">
+      <!-- Axes -->
+      <line x1="60" y1="280" x2="680" y2="280" stroke="#2a2d3e" stroke-width="2"/>
+      <line x1="60" y1="280" x2="60" y2="20" stroke="#2a2d3e" stroke-width="2"/>
+      <!-- Axis labels -->
+      <text x="370" y="310" text-anchor="middle" fill="#64748b" font-size="12">RTO（復旧時間）→ 短くなる</text>
+      <text x="20" y="160" text-anchor="middle" fill="#64748b" font-size="12" transform="rotate(-90,20,160)">コスト →</text>
+      <!-- X ticks -->
+      <text x="130" y="296" text-anchor="middle" fill="#94a3b8" font-size="10">数時間</text>
+      <text x="270" y="296" text-anchor="middle" fill="#94a3b8" font-size="10">〜1時間</text>
+      <text x="420" y="296" text-anchor="middle" fill="#94a3b8" font-size="10">〜数分</text>
+      <text x="570" y="296" text-anchor="middle" fill="#94a3b8" font-size="10">〜数秒</text>
+      <text x="650" y="296" text-anchor="middle" fill="#94a3b8" font-size="10">≒0</text>
+
+      <!-- Cost curve -->
+      <path d="M130,260 C180,250 250,230 300,200 C380,155 460,100 550,60 C610,35 650,28 670,25" fill="none" stroke="#fb923c" stroke-width="2.5"/>
+      <text x="690" y="28" fill="#fb923c" font-size="11">コスト</text>
+
+      <!-- Strategy boxes -->
+      <!-- Backup Restore -->
+      <rect x="100" y="200" width="115" height="55" rx="8" fill="#1a150a" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="157" y="222" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="bold">Backup &amp; Restore</text>
+      <text x="157" y="237" text-anchor="middle" fill="#94a3b8" font-size="9">RPO: 数時間〜1日</text>
+      <text x="157" y="249" text-anchor="middle" fill="#94a3b8" font-size="9">RTO: 数時間</text>
+
+      <!-- Pilot Light -->
+      <rect x="235" y="160" width="115" height="55" rx="8" fill="#1a150a" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="292" y="182" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="bold">Pilot Light</text>
+      <text x="292" y="197" text-anchor="middle" fill="#94a3b8" font-size="9">RPO: 分〜時間</text>
+      <text x="292" y="209" text-anchor="middle" fill="#94a3b8" font-size="9">RTO: 〜1時間</text>
+
+      <!-- Warm Standby -->
+      <rect x="380" y="110" width="120" height="55" rx="8" fill="#1a1a0a" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="440" y="132" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="bold">Warm Standby</text>
+      <text x="440" y="147" text-anchor="middle" fill="#94a3b8" font-size="9">RPO: 秒〜分</text>
+      <text x="440" y="159" text-anchor="middle" fill="#94a3b8" font-size="9">RTO: 〜数分</text>
+
+      <!-- Multi-region Active-Active -->
+      <rect x="530" y="50" width="130" height="55" rx="8" fill="#0a1a14" stroke="#10b981" stroke-width="1.5"/>
+      <text x="595" y="70" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="bold">Multi-Region</text>
+      <text x="595" y="83" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="bold">Active-Active</text>
+      <text x="595" y="97" text-anchor="middle" fill="#94a3b8" font-size="9">RPO ≈ 0 / RTO ≈ 0</text>
+
+      <!-- Cost arrows indication -->
+      <text x="157" y="265" text-anchor="middle" fill="#64748b" font-size="9">低コスト</text>
+      <text x="595" y="115" text-anchor="middle" fill="#64748b" font-size="9">高コスト</text>
+    </svg>
+  </div>
+
+  <h3 class="sub">DR戦略の比較</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>戦略</th><th>RTO</th><th>RPO</th><th>コスト</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Backup &amp; Restore</strong></td>
+          <td class="td-bad">数時間〜1日</td>
+          <td class="td-bad">数時間〜1日</td>
+          <td class="td-good">最低</td>
+          <td>定期バックアップをS3等に保存。DR時にリストア。開発・テスト環境向け</td>
+        </tr>
+        <tr>
+          <td><strong>Pilot Light</strong></td>
+          <td class="td-warn">〜1時間</td>
+          <td class="td-warn">分〜時間</td>
+          <td class="td-good">低</td>
+          <td>最小限のコアシステムのみDRリージョンで稼働。DR時にスケールアップ</td>
+        </tr>
+        <tr>
+          <td><strong>Warm Standby</strong></td>
+          <td class="td-warn">〜数分</td>
+          <td class="td-warn">秒〜分</td>
+          <td class="td-warn">中</td>
+          <td>縮小スケールで稼働中のDR環境。DR時にトラフィック切り替え＋スケールアップ</td>
+        </tr>
+        <tr>
+          <td><strong>Active-Passive</strong></td>
+          <td class="td-good">〜分</td>
+          <td class="td-good">秒〜分</td>
+          <td class="td-warn">中〜高</td>
+          <td>フルスケールのホットスタンバイ。フェイルオーバーでDNS切り替え</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-Region Active-Active</strong></td>
+          <td class="td-good">≈0秒</td>
+          <td class="td-good">≈0秒</td>
+          <td class="td-bad">最高</td>
+          <td>複数リージョンで同時にトラフィックを処理。最高レベルの可用性</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">バックアップ戦略</h3>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">フルバックアップ</div>
+      <p>全データを毎回バックアップ。復元が最もシンプル。ストレージ・時間コストが高い。週次が一般的。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">増分バックアップ</div>
+      <p>前回のバックアップ以降に変更されたデータのみ保存。日次で実施。フル+増分の組み合わせが標準的。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">連続バックアップ（CDC）</div>
+      <p>WAL（Write-Ahead Log）やChange Data Captureを使い変更をリアルタイムでストリーミング。RPO≈0を実現。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">Active-Passive vs Active-Active</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>観点</th><th>Active-Passive</th><th>Active-Active（Multi-Region）</th></tr></thead>
+      <tbody>
+        <tr><td>トラフィック</td><td>プライマリのみ処理。セカンダリは待機</td><td>全リージョンが同時にトラフィックを処理</td></tr>
+        <tr><td>RTO</td><td class="td-warn">フェイルオーバー時間（数分〜数十分）</td><td class="td-good">ほぼ0（ロードバランサーが即切り替え）</td></tr>
+        <tr><td>データ整合性</td><td class="td-good">プライマリのみ書き込み、管理しやすい</td><td class="td-bad">コンフリクト解決が必要（最終的一貫性）</td></tr>
+        <tr><td>コスト</td><td class="td-warn">セカンダリは遊休リソースが発生</td><td class="td-bad">全リージョンのフルキャパシティ費用</td></tr>
+        <tr><td>複雑度</td><td class="td-good">低（シンプルなレプリケーション）</td><td class="td-bad">高（コンフリクト解決・グローバルルーティング）</td></tr>
+        <tr><td>適するケース</td><td>多くの一般的なWebサービス</td><td>グローバル金融・ゲーム・通信</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== INTERVIEW TIPS ===== -->
+<div class="interview-section">
+  <h3>面接でよく出る質問</h3>
+  <div class="interview-q">Q. サーキットブレーカーとリトライの違いを説明してください。また、両者を組み合わせる場合の設計上の注意点は何ですか？</div>
+  <div class="interview-q">Q. Saga パターンを選ぶ場合、Choreography と Orchestration をどのように使い分けますか？</div>
+  <div class="interview-q">Q. 冪等性が必要な場面と、冪等性キーを実装する際の具体的なアプローチを説明してください。</div>
+  <div class="interview-q">Q. RTO=15分、RPO=5分の要件を満たすDRアーキテクチャをAWS上で設計してください。</div>
+  <div class="interview-q">Q. カオスエンジニアリングを本番環境で始める際、最初にすべきことは何ですか？リスクをどう最小化しますか？</div>
+  <div class="interview-q">Q. バルクヘッドパターンのスレッドプール分離とセマフォ分離、それぞれをどのような場面で使いますか？</div>
+  <div class="interview-q">Q. 99.99%の可用性を達成するためのアーキテクチャ設計のポイントを説明してください（年間ダウンタイムは52分）。</div>
+
+  <h3 style="margin-top:1.5rem;font-size:1rem;color:var(--text2);">重要キーワード一覧</h3>
+  <div class="keyword-list">
+    <span class="kw">MTBF / MTTR</span>
+    <span class="kw">SLA / SLO / SLI</span>
+    <span class="kw">Circuit Breaker</span>
+    <span class="kw">Exponential Backoff</span>
+    <span class="kw">Jitter（Full/Equal/Decorrelated）</span>
+    <span class="kw">Thundering Herd</span>
+    <span class="kw">Bulkhead Pattern</span>
+    <span class="kw">Saga Pattern</span>
+    <span class="kw">Choreography</span>
+    <span class="kw">Orchestration</span>
+    <span class="kw">補償トランザクション</span>
+    <span class="kw">冪等性（Idempotency）</span>
+    <span class="kw">Idempotency Key</span>
+    <span class="kw">Graceful Degradation</span>
+    <span class="kw">Feature Flag</span>
+    <span class="kw">Chaos Engineering</span>
+    <span class="kw">Blast Radius</span>
+    <span class="kw">Game Day</span>
+    <span class="kw">RTO / RPO</span>
+    <span class="kw">Active-Active</span>
+    <span class="kw">Warm Standby</span>
+    <span class="kw">Pilot Light</span>
+    <span class="kw">デッドライン伝播</span>
+    <span class="kw">カスケード障害</span>
+    <span class="kw">Resilience4j</span>
+    <span class="kw">Chaos Monkey</span>
+    <span class="kw">WAL / CDC</span>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ===== DEEP DIVE & EXERCISES ===== -->
+<div class="container">
+
+<!-- ===== DEEP DIVE 1: Circuit Breaker Full Implementation ===== -->
+<section id="deepdive-cb">
+  <div class="section-header">
+    <div class="section-num">深1</div>
+    <h2>深掘り: サーキットブレーカーの完全実装詳細</h2>
+  </div>
+
+  <div class="card card-orange">
+    <div class="card-title">スライディングウィンドウ: Count-based vs Time-based</div>
+    <p>Resilience4j はCLOSED状態でのエラー率評価に2種類のスライディングウィンドウをサポートします。</p>
+  </div>
+
+  <pre>import time, threading
+from collections import deque
+from enum import Enum
+
+class WindowType(Enum):
+    COUNT_BASED = "count"
+    TIME_BASED = "time"
+
+class SlidingWindow:
+    """
+    Count-based: 直近N回の結果を評価
+    Time-based:  直近N秒間の結果を評価
+    """
+    def __init__(self, window_type: WindowType, size: int):
+        self.window_type = window_type
+        self.size = size          # COUNT_BASED: 件数、TIME_BASED: 秒数
+        self._results = deque()   # (timestamp, is_success) のタプル
+        self._lock = threading.Lock()
+
+    def record(self, is_success: bool):
+        with self._lock:
+            now = time.time()
+            self._results.append((now, is_success))
+            self._trim()
+
+    def _trim(self):
+        """ウィンドウ外のエントリを除去"""
+        if self.window_type == WindowType.COUNT_BASED:
+            while len(self._results) > self.size:
+                self._results.popleft()
+        else:  # TIME_BASED
+            cutoff = time.time() - self.size
+            while self._results and self._results[0][0] < cutoff:
+                self._results.popleft()
+
+    def get_failure_rate(self) -> float:
+        """エラー率（0.0〜1.0）を返す。件数が最小値に満たなければ-1"""
+        with self._lock:
+            self._trim()
+            if len(self._results) == 0:
+                return 0.0
+            failures = sum(1 for _, ok in self._results if not ok)
+            return failures / len(self._results)
+
+    def get_call_count(self) -> int:
+        with self._lock:
+            self._trim()
+            return len(self._results)
+
+
+class AdvancedCircuitBreaker:
+    """
+    スライディングウィンドウ + HALF-OPEN試験リクエスト管理
+    + メトリクス収集
+    """
+    def __init__(
+        self,
+        name: str,
+        failure_rate_threshold: float = 0.5,    # 50%超でOPEN
+        minimum_calls: int = 10,                  # 最小評価呼び出し数
+        wait_duration_open: float = 30.0,         # OPEN継続秒数
+        half_open_permitted: int = 5,             # HALF-OPENで通す試験数
+        window_type: WindowType = WindowType.COUNT_BASED,
+        window_size: int = 20,
+    ):
+        self.name = name
+        self.failure_rate_threshold = failure_rate_threshold
+        self.minimum_calls = minimum_calls
+        self.wait_duration_open = wait_duration_open
+        self.half_open_permitted = half_open_permitted
+
+        self._state = "CLOSED"
+        self._window = SlidingWindow(window_type, window_size)
+        self._open_time = None
+        self._half_open_calls = 0
+        self._lock = threading.Lock()
+
+        # メトリクス
+        self._metrics = {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "failed_calls": 0,
+            "not_permitted_calls": 0,  # OPEN時の拒否数
+            "state_transitions": [],
+        }
+
+    def _transition_to(self, new_state: str):
+        old_state = self._state
+        self._state = new_state
+        self._metrics["state_transitions"].append({
+            "from": old_state,
+            "to": new_state,
+            "at": time.time(),
+        })
+        print(f"[CircuitBreaker:{self.name}] {old_state} → {new_state}")
+
+    def call(self, func, *args, **kwargs):
+        with self._lock:
+            state = self._check_state()
+
+        if state == "OPEN":
+            self._metrics["not_permitted_calls"] += 1
+            raise Exception(f"CircuitBreaker '{self.name}' is OPEN")
+
+        if state == "HALF_OPEN":
+            with self._lock:
+                if self._half_open_calls >= self.half_open_permitted:
+                    self._metrics["not_permitted_calls"] += 1
+                    raise Exception(f"CircuitBreaker '{self.name}' HALF_OPEN limit reached")
+                self._half_open_calls += 1
+
+        self._metrics["total_calls"] += 1
+        try:
+            result = func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise
+
+    def _check_state(self) -> str:
+        if self._state == "OPEN":
+            if time.time() - self._open_time >= self.wait_duration_open:
+                self._half_open_calls = 0
+                self._transition_to("HALF_OPEN")
+        return self._state
+
+    def _on_success(self):
+        with self._lock:
+            self._metrics["successful_calls"] += 1
+            self._window.record(True)
+            if self._state == "HALF_OPEN":
+                # HALF_OPEN中に成功: CLOSEDに戻る
+                self._window = SlidingWindow(
+                    WindowType.COUNT_BASED, 20)  # ウィンドウリセット
+                self._transition_to("CLOSED")
+
+    def _on_failure(self):
+        with self._lock:
+            self._metrics["failed_calls"] += 1
+            self._window.record(False)
+
+            if self._state == "HALF_OPEN":
+                # HALF_OPEN中に失敗: 再度OPEN
+                self._open_time = time.time()
+                self._transition_to("OPEN")
+                return
+
+            # CLOSED: エラー率チェック
+            if (self._window.get_call_count() >= self.minimum_calls and
+                    self._window.get_failure_rate() >= self.failure_rate_threshold):
+                self._open_time = time.time()
+                self._transition_to("OPEN")
+
+    def get_metrics(self) -> dict:
+        return {
+            **self._metrics,
+            "current_state": self._state,
+            "current_failure_rate": self._window.get_failure_rate(),
+        }</pre>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Bulkheadとの組み合わせ（Semaphore方式）</div>
+      <pre>import threading
+
+class BulkheadCircuitBreaker:
+    """
+    セマフォBulkhead + CircuitBreaker の組み合わせ
+    同時実行数を制限しつつ障害時は遮断
+    """
+    def __init__(self, cb: AdvancedCircuitBreaker,
+                 max_concurrent: int = 10):
+        self.cb = cb
+        self._semaphore = threading.BoundedSemaphore(max_concurrent)
+
+    def call(self, func, *args, **kwargs):
+        acquired = self._semaphore.acquire(blocking=False)
+        if not acquired:
+            raise Exception("Bulkhead full: too many concurrent calls")
+        try:
+            return self.cb.call(func, *args, **kwargs)
+        finally:
+            self._semaphore.release()</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">メトリクスのエクスポート（Prometheus形式）</div>
+      <pre>def export_metrics_prometheus(cb: AdvancedCircuitBreaker) -> str:
+    """Prometheus テキスト形式でメトリクスを出力"""
+    m = cb.get_metrics()
+    name = cb.name.replace("-", "_")
+    lines = [
+        f'# HELP cb_{name}_calls_total 累積呼び出し数',
+        f'# TYPE cb_{name}_calls_total counter',
+        f'cb_{name}_calls_total{{result="success"}} {m["successful_calls"]}',
+        f'cb_{name}_calls_total{{result="failure"}} {m["failed_calls"]}',
+        f'cb_{name}_calls_total{{result="not_permitted"}} {m["not_permitted_calls"]}',
+        f'# HELP cb_{name}_state 現在の状態（0=CLOSED,1=HALF_OPEN,2=OPEN）',
+        f'# TYPE cb_{name}_state gauge',
+        f'cb_{name}_state {{"CLOSED":0,"HALF_OPEN":1,"OPEN":2}[m["current_state"]]}',
+        f'cb_{name}_failure_rate {m["current_failure_rate"]:.4f}',
+    ]
+    return "\n".join(lines)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ===== DEEP DIVE 2: Google SRE ===== -->
+<section id="deepdive-sre">
+  <div class="section-header">
+    <div class="section-num">深2</div>
+    <h2>深掘り: GoogleのSRE（サイトリライアビリティエンジニアリング）</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-green">
+      <div class="card-title">Error Budget Policy</div>
+      <p>SLO（例: 99.9%）を満たせなかった場合、残りのError Budgetに応じて開発速度を調整するポリシーです。</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Error Budget残量</th><th>アクション</th></tr></thead>
+          <tbody>
+            <tr><td>&gt;100%（余裕あり）</td><td>機能追加・リスクある変更を許可</td></tr>
+            <tr><td>50〜100%</td><td>通常のリリースペース</td></tr>
+            <tr><td>10〜50%</td><td>リリース頻度を下げる。信頼性改善を優先</td></tr>
+            <tr><td>&lt;10%</td><td>リリース凍結。信頼性作業のみ許可</td></tr>
+            <tr><td>0%（使い切り）</td><td>次の期間まで新機能リリース禁止</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tip-box">
+        <p><strong>Error Budgetの計算：</strong>月間ダウンタイム許容量 = (1 - SLO) × 月間分数。SLO=99.9%なら月43.8分がError Budget。</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Postmortem文化: 非難しない根本原因分析</div>
+      <p>Googleのpostmortemの基本姿勢は <strong>Blameless（非難なし）</strong>。障害は個人の失敗ではなくシステムの失敗と捉え、再発防止に集中します。</p>
+      <h4>5 Whys（なぜなぜ分析）の例</h4>
+      <ol style="color:var(--text2);margin-left:1.2rem;font-size:0.88rem;line-height:2;">
+        <li>なぜサービスが停止した？→ DBコネクションが枯渇した</li>
+        <li>なぜ枯渇した？→ コネクションプールが小さすぎた</li>
+        <li>なぜ小さかった？→ トラフィック増加を想定していなかった</li>
+        <li>なぜ想定しなかった？→ キャパシティプランニングプロセスがなかった</li>
+        <li>なぜなかった？→ <strong>根本原因: SREとDev間でキャパシティレビュープロセスが未整備</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Toil削減: 手動作業の自動化</div>
+    <p>Toilとは「手動で繰り返し行う、自動化できるはずの作業」です。GoogleのSREはToilが業務時間の50%を超えないよう管理し、残り50%をシステム改善・自動化に充てます。</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-weight:600;color:var(--red);">Toilの例</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li>• 毎朝手動でログを確認してアラートを処理</li>
+          <li>• デプロイのたびに手動でコマンド実行</li>
+          <li>• ディスクがフルになるたびに手動でクリーンアップ</li>
+          <li>• 週次でユーザーデータをCSVで手動エクスポート</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-weight:600;color:var(--green);">Toil削減の自動化例</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li>• Runbook → Ansible Playbookに自動化</li>
+          <li>• CI/CDパイプラインでデプロイ完全自動化</li>
+          <li>• ディスク使用量アラート + 自動ログローテーション</li>
+          <li>• ETLパイプラインでデータ自動エクスポート</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Production Readiness Review (PRR) チェックリスト</div>
+    <p>新しいサービスを本番に投入する前に、SREチームが行うレビューです。</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-weight:600;color:var(--accent2);">設計・信頼性</p>
+        <ul class="styled">
+          <li>単一障害点がないか（SPOF排除）</li>
+          <li>依存サービスのSLOを把握しているか</li>
+          <li>サーキットブレーカーが設定されているか</li>
+          <li>グレースフルシャットダウンが実装されているか</li>
+          <li>ローリングデプロイ/カナリアリリースが可能か</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-weight:600;color:var(--accent2);">運用・オブザーバビリティ</p>
+        <ul class="styled">
+          <li>4 Golden Signals（Latency/Traffic/Errors/Saturation）が計測されているか</li>
+          <li>SLO/SLIが定義されアラートが設定されているか</li>
+          <li>Runbook（障害対応手順）が整備されているか</li>
+          <li>カパシティプランニングが完了しているか</li>
+          <li>ロールバック手順が確立されているか</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Chaos Monkey: 実際の実行コードと判断基準</div>
+    <p>NetflixはAWS上でランダムにEC2インスタンスをシャットダウンする「Chaos Monkey」を本番常時稼働させています。その思想は「コントロールされた障害の方が、予期しない障害より良い」です。</p>
+    <pre>import random, boto3, time, logging
+from datetime import datetime, time as dt_time
+
+logger = logging.getLogger("ChaosMonkey")
+
+class ChaosMonkey:
+    """
+    Netflixの Chaos Monkey を模した本番インスタンス自動停止
+    ビジネス時間内のみ実行（意図的に対応力を鍛える）
+    """
+    def __init__(self,
+                 aws_region: str = "ap-northeast-1",
+                 kill_probability: float = 0.02,   # 2%: 1日1台程度
+                 safe_hours: tuple = (9, 17),       # 9〜17時のみ実行
+                 excluded_groups: list = None):
+        self.ec2 = boto3.client("ec2", region_name=aws_region)
+        self.kill_probability = kill_probability
+        self.safe_hours = safe_hours
+        self.excluded_groups = excluded_groups or ["critical-db", "kafka"]
+
+    def _is_safe_hour(self) -> bool:
+        """ビジネスアワー内かどうか"""
+        now = datetime.now().time()
+        return dt_time(self.safe_hours[0]) <= now <= dt_time(self.safe_hours[1])
+
+    def _get_eligible_instances(self) -> list:
+        """停止候補のインスタンスを取得（除外グループ以外）"""
+        response = self.ec2.describe_instances(
+            Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
+        )
+        instances = []
+        for reservation in response["Reservations"]:
+            for inst in reservation["Instances"]:
+                tags = {t["Key"]: t["Value"] for t in inst.get("Tags", [])}
+                group = tags.get("chaos-monkey-group", "default")
+                if group not in self.excluded_groups:
+                    instances.append(inst)
+        return instances
+
+    def run(self, dry_run: bool = True):
+        """メインループ: 確率的にインスタンスを停止"""
+        if not self._is_safe_hour():
+            logger.info("Outside safe hours, skipping chaos injection")
+            return
+
+        instances = self._get_eligible_instances()
+        if not instances:
+            logger.info("No eligible instances found")
+            return
+
+        for instance in instances:
+            if random.random() < self.kill_probability:
+                instance_id = instance["InstanceId"]
+                logger.warning(f"CHAOS: Terminating {instance_id}")
+                if not dry_run:
+                    self.ec2.terminate_instances(InstanceIds=[instance_id])
+                # Blast Radius制御: 1回の実行で停止するのは最大1台
+                break
+
+# スケジュール実行（Lambda等で毎時実行）
+# chaos = ChaosMonkey(kill_probability=0.05)
+# chaos.run(dry_run=False)  # 本番では dry_run=False</pre>
+    <div class="highlight-box">
+      <p><strong>Blast Radius制御の原則：</strong>最初は dry_run=True で確認 → Staging環境で実行 → 本番の1%トラフィックで → 段階的に拡大。Stop条件（エラー率急上昇）を必ず事前定義。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== DEEP DIVE 3: Data Consistency Patterns ===== -->
+<section id="deepdive-consistency">
+  <div class="section-header">
+    <div class="section-num">深3</div>
+    <h2>深掘り: 分散システムでのデータ整合性パターン</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Two-Phase Locking (2PL) vs Optimistic Concurrency Control (OCC)</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>観点</th><th>2PL（悲観的）</th><th>OCC（楽観的）</th></tr></thead>
+          <tbody>
+            <tr><td>前提</td><td>競合が頻繁に起きると仮定</td><td>競合が稀と仮定</td></tr>
+            <tr><td>ロック取得</td><td>読み取り前にロック取得</td><td>ロックなしで読み取り</td></tr>
+            <tr><td>競合時</td><td>他のTxがロックを解放するまで待機</td><td>コミット時に競合検知→アボート＆リトライ</td></tr>
+            <tr><td>デッドロック</td><td>発生しうる（検知＆アボート必要）</td><td>発生しない</td></tr>
+            <tr><td>スループット</td><td>競合多→低下</td><td>競合少→高スループット</td></tr>
+            <tr><td>採用例</td><td>MySQL InnoDB（SELECT FOR UPDATE）</td><td>DynamoDB 条件付き書き込み、CockroachDB SSI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Serializable Snapshot Isolation (SSI)</div>
+      <p>PostgreSQL 9.1以降が実装するSSIは、MVCCのSnapshotをベースにしつつ直列化可能性（Serializability）を保証する手法です。</p>
+      <ul class="styled">
+        <li>読み取りロックなしでSerializableを実現（2PLより高スループット）</li>
+        <li>「Anti-dependency（読み書きサイクル）」を検知しアボートで解決</li>
+        <li>PostgreSQLでは <code>isolation_level='SERIALIZABLE'</code> で有効化</li>
+        <li>CockroachDBもSSIをデフォルトトランザクション分離レベルとして採用</li>
+      </ul>
+      <pre style="font-size:0.78rem;"># PostgreSQL SSI
+conn = psycopg2.connect(dsn)
+conn.set_isolation_level(
+    psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE
+)
+# 直列化可能性違反時に serialization_failure が発生
+# → アプリ側でリトライが必要</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Fencing Token: Split Brain防止</div>
+    <p>分散ロックを使ってリソースを保護する際、ロック保持者がGCポーズやネットワーク遅延でロックの期限切れに気付かずに処理を続けると <strong>Split Brain</strong>（2つのノードが同時にリソースを操作）が発生します。Fencing Tokenはこれを防ぐ手法です。</p>
+    <pre>"""
+Fencing Tokenの仕組み:
+
+1. クライアントAがロック取得: token=100 を受け取る
+2. クライアントAがGCポーズ（数十秒）でロックが期限切れ
+3. クライアントBがロック取得: token=101 を受け取る
+4. クライアントBがtoken=101でDBに書き込み（成功）
+5. クライアントAが復帰し古いtoken=100でDBに書き込もうとする
+   → DBがtoken=100 < current_token(101) を検知して拒否！
+"""
+
+class FencedStorage:
+    """Fencing Tokenを検証するストレージ"""
+
+    def __init__(self):
+        self._data = {}
+        self._fencing_tokens = {}  # key → 最後に書き込んだtoken
+
+    def write(self, key: str, value, fencing_token: int) -> bool:
+        current_token = self._fencing_tokens.get(key, -1)
+        if fencing_token <= current_token:
+            raise Exception(
+                f"Stale write rejected: token={fencing_token}, "
+                f"current={current_token}"
+            )
+        self._data[key] = value
+        self._fencing_tokens[key] = fencing_token
+        return True
+
+
+# ZooKeeperでのFencing Token取得例
+import kazoo.client as kz
+
+def acquire_lock_with_fencing(zk: kz.KazooClient, lock_path: str):
+    # ZooKeeperのzxid（単調増加するトランザクションID）をTokenとして使用
+    lock = zk.Lock(lock_path)
+    if lock.acquire(timeout=5):
+        stat = zk.exists(lock_path)
+        fencing_token = stat.mzxid  # ZooKeeper Transaction ID（常に増加）
+        return lock, fencing_token
+    raise Exception("Failed to acquire lock")</pre>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Compare-and-Swap (CAS)</div>
+      <p>「現在の値が期待値と一致する場合のみ新しい値に更新する」原子操作です。分散ロックや楽観的ロックの基盤となります。</p>
+      <pre style="font-size:0.78rem;"># Redis での CAS（WATCH + MULTI/EXEC）
+import redis
+r = redis.Redis()
+
+def cas_update(key: str, expected: str, new_val: str) -> bool:
+    with r.pipeline() as pipe:
+        try:
+            pipe.watch(key)
+            current = pipe.get(key)
+            if current and current.decode() != expected:
+                return False  # 値が変わっていた
+            pipe.multi()
+            pipe.set(key, new_val)
+            pipe.execute()
+            return True
+        except redis.WatchError:
+            return False  # 競合: 別クライアントが変更
+
+# DynamoDB条件付き書き込み（同等）
+dynamodb.update_item(
+    Key={"id": "user:42"},
+    UpdateExpression="SET balance = :new",
+    ConditionExpression="balance = :expected",
+    ExpressionAttributeValues={
+        ":new": 900, ":expected": 1000
+    }
+)</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Increment-and-Fetch vs Compare-and-Swap</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>操作</th><th>使うべき場面</th><th>注意点</th></tr></thead>
+          <tbody>
+            <tr><td>Increment-and-Fetch（INCR）</td><td>カウンター・シーケンスID・いいね数</td><td>単調増加のみ。「残高を1000に設定」はできない</td></tr>
+            <tr><td>Compare-and-Swap（CAS）</td><td>楽観的ロック・在庫の原子的減算・設定の条件更新</td><td>競合時はアボート＆リトライが必要。競合多発時はスループット低下</td></tr>
+            <tr><td>Fetch-and-Add</td><td>バッチ処理のオフセット確保</td><td>加算量が決まっている場合のみ</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre style="font-size:0.78rem;"># Redis: 在庫の原子的減算（在庫が0以下にならない）
+LUA_SCRIPT = """
+local current = tonumber(redis.call('GET', KEYS[1]))
+if current == nil then return -1 end
+if current < tonumber(ARGV[1]) then return -2 end
+return redis.call('DECRBY', KEYS[1], ARGV[1])
+"""
+r.eval(LUA_SCRIPT, 1, "stock:item:42", 5)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ===== EXERCISES ===== -->
+<section id="exercises">
+  <div class="section-header">
+    <div class="section-num">演</div>
+    <h2>実践演習</h2>
+  </div>
+
+  <!-- Exercise 1: Postmortem -->
+  <div class="card" style="border-left:4px solid var(--red);">
+    <div class="card-title">演習1: 本番インシデントのPostmortemを書く</div>
+
+    <h3 class="sub">シナリオ</h3>
+    <p>ECサービスのキャッシュTTLを商品データ・カテゴリデータ・レコメンドデータすべてで同じ値（3600秒）に設定していたため、1時間ごとに大量のキャッシュが同時に期限切れを起こし、DBへの大量クエリが発生。3時間にわたりAPIのレスポンスタイムが10倍に悪化した。</p>
+
+    <div class="card" style="border-color:rgba(239,68,68,0.4);">
+      <h4 style="color:var(--red);">Postmortem 模範解答</h4>
+
+      <h4>インシデント概要</h4>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>項目</th><th>内容</th></tr>
+          <tr><td>発生日時</td><td>2026-06-25 03:00:00 JST（深夜バッチのRedisリスタート後）</td></tr>
+          <tr><td>検知方法</td><td>Datadogアラート（p99レイテンシ 2000ms超 → SLO違反）</td></tr>
+          <tr><td>影響範囲</td><td>全ユーザーのAPIレスポンスが10倍遅延。商品ページのTTFBが300ms→3000ms</td></tr>
+          <tr><td>影響期間</td><td>3時間（03:00〜06:00 JST）</td></tr>
+          <tr><td>影響ユーザー数</td><td>推定15万ユーザー（深夜帯のアクティブユーザー全員）</td></tr>
+          <tr><td>売上影響</td><td>推定 ¥850万 の機会損失</td></tr>
+        </table>
+      </div>
+
+      <h4>Timeline（時系列）</h4>
+      <ol style="color:var(--text2);font-size:0.9rem;padding-left:1.5rem;line-height:2.2;">
+        <li><strong>02:50</strong>: 予定通りRedisクラスターのバージョンアップメンテナンス開始</li>
+        <li><strong>02:58</strong>: Redisリスタート完了（キャッシュ全消去）</li>
+        <li><strong>03:00</strong>: Datadogアラート発火。p99レイテンシが2000msを超過</li>
+        <li><strong>03:05</strong>: On-callエンジニア（担当者A）が気づき調査開始</li>
+        <li><strong>03:15</strong>: DBの接続数が上限（max_connections=500）に到達していることを確認</li>
+        <li><strong>03:20</strong>: RDSのCPU使用率が95%以上で張り付いていることを確認</li>
+        <li><strong>03:30</strong>: キャッシュヒット率が0%であることを確認。Cold Start が原因と判断</li>
+        <li><strong>03:40</strong>: DB接続プールのmax_connectionsを一時的に1000に引き上げ（緩和策）</li>
+        <li><strong>03:45</strong>: DBのCPUが70%に低下。レイテンシが緩やかに改善開始</li>
+        <li><strong>05:00</strong>: キャッシュヒット率が70%に回復。レイテンシがSLO内（300ms）に戻る</li>
+        <li><strong>06:00</strong>: 完全回復を確認。インシデントクローズ</li>
+      </ol>
+
+      <h4>根本原因</h4>
+      <ol style="color:var(--text2);font-size:0.9rem;padding-left:1.5rem;line-height:2.2;">
+        <li><strong>直接原因：</strong>全キャッシュキーのTTLが同一値（3600秒）で設定されており、Redisリスタート後に全キーが同時にCold Startを起こした（<strong>Thundering Herd / Cache Stampede</strong>）。</li>
+        <li><strong>設計上の問題：</strong>Redisリスタートによるキャッシュ全消去のリスクをメンテナンス計画に含めていなかった。</li>
+        <li><strong>監視の問題：</strong>キャッシュヒット率のアラートが設定されておらず、問題の根本原因特定に30分かかった。</li>
+      </ol>
+
+      <h4>対策</h4>
+      <div class="grid-2">
+        <div>
+          <p style="color:var(--red);font-weight:600;">即時対応（当日実施）</p>
+          <ul class="styled">
+            <li>DB接続プールの一時的拡大</li>
+            <li>キャッシュウォームアップスクリプトの手動実行（人気商品のプリロード）</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--accent3);font-weight:600;">短期対応（1週間以内）</p>
+          <ul class="styled">
+            <li>TTLにランダムジッター追加（±20%）: <code>TTL = base_ttl + random(0, base_ttl * 0.2)</code></li>
+            <li>Redisメンテナンス時の自動キャッシュウォームアップ手順を追加</li>
+            <li>キャッシュヒット率アラートを追加（&lt;80%でWarning、&lt;50%でCritical）</li>
+          </ul>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:0.5rem;">
+        <div>
+          <p style="color:var(--green);font-weight:600;">長期対応（1ヶ月以内）</p>
+          <ul class="styled">
+            <li>Stale-While-Revalidate パターンの導入（期限切れキャッシュをバックグラウンドで更新、古い値はしばらく返す）</li>
+            <li>Cache-Aside → Read-Through への移行検討（ミスオープンをライブラリ側でシリアライズ）</li>
+            <li>Probability-based early expiration: <code>prob = exp(-delta * beta * log(remaining_ttl))</code>で期限前に確率的に更新</li>
+            <li>Redisメンテナンス手順書の更新とリハーサル実施</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--accent2);font-weight:600;">将来検討（四半期以内）</p>
+          <ul class="styled">
+            <li>マルチ層キャッシュ（ローカルメモリキャッシュ → Redis → DB）の導入でRedis単点依存を解消</li>
+            <li>GameDayの実施（意図的なRedis停止訓練）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise 2: Chaos Experiment -->
+  <div class="card" style="border-left:4px solid var(--accent3);">
+    <div class="card-title">演習2: Chaos Experimentを設計する</div>
+
+    <h4>仮説1: 「データベースへの接続が30%失敗しても、キャッシュで90%のリクエストは処理できる」</h4>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <p style="font-weight:600;color:var(--accent2);">実験手順</p>
+          <ol style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;line-height:2;">
+            <li><strong>準備：</strong>キャッシュヒット率のベースラインを計測（目標: 通常時80%以上）</li>
+            <li><strong>障害注入：</strong><code>tc qdisc add dev eth0 netem loss 30%</code> でDB向けトラフィックの30%をドロップ</li>
+            <li><strong>観測：</strong>5分間、1分ごとにキャッシュヒット率・エラー率・レイテンシを記録</li>
+            <li><strong>回復：</strong><code>tc qdisc del dev eth0 root</code> で障害を除去し回復を確認</li>
+          </ol>
+        </div>
+        <div>
+          <p style="font-weight:600;color:var(--accent2);">測定指標・期待結果・ブラストラディウス</p>
+          <div class="tbl-wrap">
+            <table>
+              <tr><th>指標</th><th>期待値</th><th>Stop条件</th></tr>
+              <tr><td>エラー率</td><td>&lt;10%</td><td>&gt;20%でAbort</td></tr>
+              <tr><td>p99レイテンシ</td><td>&lt;500ms</td><td>&gt;2000msでAbort</td></tr>
+              <tr><td>キャッシュヒット率</td><td>&gt;90%</td><td>&lt;70%でAbort</td></tr>
+            </table>
+          </div>
+          <p style="color:var(--red);font-size:0.85rem;margin-top:0.5rem;"><strong>ブラストラディウス制御：</strong>最初はStaging環境で実施。本番の場合はトラフィックの5%のみをカナリアインスタンスで実施し、全体への影響を最小化。</p>
+        </div>
+      </div>
+    </div>
+
+    <h4>仮説2: 「メッセージキューが5分間停止しても、バッファリングで注文は失われない」</h4>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <p style="font-weight:600;color:var(--accent2);">実験手順</p>
+          <ol style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;line-height:2;">
+            <li><strong>準備：</strong>キューの深さ（backlog）とコンシューマーのLag（遅延）のベースラインを計測</li>
+            <li><strong>障害注入：</strong>Kafkaブローカー1台を停止（<code>docker stop kafka-broker-1</code>）</li>
+            <li><strong>待機：</strong>5分間、プロデューサーが継続してメッセージを送信し続ける</li>
+            <li><strong>回復：</strong>Kafkaを再起動し、停止中のメッセージが消費されるか確認</li>
+            <li><strong>検証：</strong>送信メッセージ数 = 受信メッセージ数 であることを確認（at-least-once）</li>
+          </ol>
+        </div>
+        <div>
+          <p style="font-weight:600;color:var(--accent2);">測定指標・期待結果</p>
+          <div class="tbl-wrap">
+            <table>
+              <tr><th>指標</th><th>期待値</th><th>Stop条件</th></tr>
+              <tr><td>メッセージ損失数</td><td>0件</td><td>1件でもLossでAbort</td></tr>
+              <tr><td>プロデューサーエラー率</td><td>&lt;5%（ブローカー1台停止でも他2台が継続）</td><td>&gt;20%でAbort</td></tr>
+              <tr><td>回復後のLag消化時間</td><td>&lt;10分</td><td>—</td></tr>
+            </table>
+          </div>
+          <p style="color:var(--accent2);font-size:0.85rem;margin-top:0.5rem;"><strong>バッファリングの確認ポイント：</strong>プロデューサーのretry設定（<code>retries=10, acks=all</code>）とKafkaのmin.insync.replicas設定が正しいか検証する。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise 3: RTO/RPO -->
+  <div class="card" style="border-left:4px solid var(--green);">
+    <div class="card-title">演習3: RTO/RPO設計問題（3シナリオ）</div>
+    <p>各シナリオのRTO/RPO要件に最適なDR（Disaster Recovery）戦略を設計します。</p>
+
+    <div class="formula">
+      <div class="formula-label">RPO（Recovery Point Objective）= データ損失の許容上限時間</div>
+      <div class="formula-label">RTO（Recovery Time Objective）= サービス復旧までの許容時間</div>
+    </div>
+
+    <h4>シナリオA: 金融決済システム（RTO=15分, RPO=0秒）</h4>
+    <div class="card" style="border-color:rgba(16,185,129,0.4);">
+      <div class="grid-2">
+        <div>
+          <p style="font-weight:600;color:var(--green);">DR戦略: Active-Active マルチリージョン</p>
+          <ul class="styled">
+            <li>2リージョン（例: ap-northeast-1, ap-northeast-3）でActive-Active構成</li>
+            <li>DBは同期レプリケーション（Amazon Aurora Global Database / Google Spanner）</li>
+            <li>RPO=0秒を達成するには、書き込みが両リージョンに同期コミットされるまで成功を返さない</li>
+            <li>Route53 ヘルスチェック + フェイルオーバールーティングで自動切り替え（RTO: 数分）</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:600;color:var(--green);">バックアップ戦略・インフラ</p>
+          <ul class="styled">
+            <li>RDS Aurora: 同期レプリケーション + 継続的バックアップ（PITR: Point-in-Time Recovery）</li>
+            <li>S3 Cross-Region Replication（CRR）+ Versioning</li>
+            <li>コスト: 通常の約2倍（2リージョン全稼働）</li>
+            <li>レイテンシトレードオフ: 同期書き込みで数ms増加</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h4>シナリオB: SNSのタイムライン（RTO=1時間, RPO=1時間）</h4>
+    <div class="card" style="border-color:rgba(245,158,11,0.4);">
+      <div class="grid-2">
+        <div>
+          <p style="font-weight:600;color:var(--accent3);">DR戦略: Warm Standby（温スタンバイ）</p>
+          <ul class="styled">
+            <li>DR リージョンに最小構成（1/4スケール）でスタンバイ環境を常時起動</li>
+            <li>DBは非同期レプリケーション（MySQL Binlog Replication / DynamoDB Global Table）</li>
+            <li>フェイルオーバー時に DR リージョンのスケールアウトを実行（Auto Scaling）</li>
+            <li>タイムライン・いいね数は Eventual Consistency でOK（SNSは厳密整合性不要）</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:600;color:var(--accent3);">バックアップ頻度・コスト</p>
+          <ul class="styled">
+            <li>DB スナップショット: 1時間ごと（RPO=1時間を満たす）</li>
+            <li>S3: 同期レプリケーション（メディアファイルはデータロスが大きい）</li>
+            <li>コスト: 本番の約30〜40%追加（スタンバイの最小構成）</li>
+            <li>RTO=1時間: スタンバイ起動（既に起動済み）+ スケールアウト（15〜30分） + ヘルスチェック（10分）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h4>シナリオC: ログ分析システム（RTO=24時間, RPO=24時間）</h4>
+    <div class="card" style="border-color:rgba(99,102,241,0.4);">
+      <div class="grid-2">
+        <div>
+          <p style="font-weight:600;color:var(--accent);">DR戦略: Backup & Restore（コールドスタンバイ）</p>
+          <ul class="styled">
+            <li>DR環境は常時起動不要（コールド）。障害時に初めてインスタンスを起動</li>
+            <li>DBは日次フルバックアップ + WAL/Binlogを S3に保存</li>
+            <li>インフラは Terraform/CloudFormation として IaC 化し、緊急時にコマンド一発で再構築</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:600;color:var(--accent);">バックアップ頻度・コスト</p>
+          <ul class="styled">
+            <li>Redshift/BigQuery スナップショット: 日次（RPO=24時間を満たす）</li>
+            <li>S3 Glacier（低コストアーカイブ）: 長期保存（30日〜7年）</li>
+            <li>コスト: S3ストレージのみ（本番の5〜10%追加）</li>
+            <li>RTO=24時間: インスタンス起動（30分）+ DBリストア（数時間〜24時間）+ 検証</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>DR戦略</th><th>RTO</th><th>RPO</th><th>コスト比</th><th>適用例</th></tr></thead>
+        <tbody>
+          <tr><td><span style="color:var(--green);">Active-Active</span></td><td class="td-good">秒〜分</td><td class="td-good">0〜秒</td><td class="td-bad">200%（2倍）</td><td>金融・医療・決済</td></tr>
+          <tr><td><span style="color:var(--accent3);">Warm Standby</span></td><td class="td-warn">分〜1時間</td><td class="td-warn">分〜1時間</td><td class="td-warn">130〜150%</td><td>SNS・ECサイト・SaaS</td></tr>
+          <tr><td><span style="color:var(--purple);">Pilot Light</span></td><td class="td-warn">1〜4時間</td><td class="td-warn">1〜数時間</td><td class="td-good">110〜120%</td><td>社内システム・CMS</td></tr>
+          <tr><td><span style="color:var(--accent);">Backup & Restore</span></td><td class="td-bad">数時間〜24時間</td><td class="td-bad">24時間</td><td class="td-good">105〜110%</td><td>ログ分析・アーカイブ</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</div><!-- /deep dive & exercises container -->
+
+<!-- FOOTER NAV -->
+<div class="footer-nav">
+  <div class="footer-nav-inner">
+    <a href="10_scalability.html">← Ch10 スケーラビリティパターン</a>
+    <a href="00_index.html">🏠 目次に戻る</a>
+    <a href="12_security.html">Ch12 セキュリティ →</a>
+  </div>
+</div>
+
+</body>
+</html>

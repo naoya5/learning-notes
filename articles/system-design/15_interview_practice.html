@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch15 面接対策・模擬面接 | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  --chapter-color:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;font-size:15px;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+code{font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px;background:var(--surface2);padding:0.1em 0.4em;border-radius:4px;}
+pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:'Fira Code',monospace;font-size:0.85rem;color:#93c5fd;margin:1rem 0;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.96);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0.6rem 1.5rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;font-size:0.85rem;}
+.nav-inner span{color:var(--text3);}
+.nav-badge{background:var(--chapter-color);color:#000;padding:0.2rem 0.7rem;border-radius:999px;font-size:0.8rem;font-weight:700;}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#1a1500 50%,#141008 100%);padding:5rem 1.5rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);}
+.hero-tag{display:inline-block;background:rgba(245,158,11,0.12);color:var(--accent3);border:1px solid rgba(245,158,11,0.35);padding:0.3rem 1rem;border-radius:999px;font-size:0.8rem;letter-spacing:0.1em;margin-bottom:1rem;}
+.hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;background:linear-gradient(135deg,#f59e0b,#fbbf24,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.8rem;}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:700px;margin:0 auto 2rem;}
+.hero-stats{display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;}
+.stat{text-align:center;}
+.stat-num{font-size:2.2rem;font-weight:800;color:var(--accent3);}
+.stat-label{font-size:0.8rem;color:var(--text3);margin-top:2px;}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:2rem 1.5rem;}
+
+/* SECTION */
+.section{margin-bottom:4rem;}
+.section-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.section-num{background:var(--chapter-color);color:#000;width:2.2rem;height:2.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;}
+.section-header h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;}
+.card-title::before{content:'';width:3px;height:1em;background:var(--accent2);border-radius:2px;display:inline-block;}
+.card p{color:var(--text2);font-size:0.93rem;margin-bottom:0.6rem;}
+.card p:last-child{margin-bottom:0;}
+.card ul{color:var(--text2);font-size:0.9rem;padding-left:1.3rem;}
+.card li{margin-bottom:5px;}
+
+/* INTERVIEW CARD */
+.interview-card{background:var(--surface);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:1.8rem;margin-bottom:2rem;}
+.interview-card .problem-num{font-size:0.75rem;font-weight:700;color:var(--accent3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem;}
+.interview-card .problem-title{font-size:1.25rem;font-weight:800;margin-bottom:1rem;}
+.interview-card .tab-header{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.tab-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:0.35rem 0.9rem;border-radius:6px;font-size:0.82rem;cursor:pointer;transition:all 0.2s;}
+.tab-btn.active{background:var(--chapter-color);border-color:var(--chapter-color);color:#000;font-weight:700;}
+
+/* GRIDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto;margin:1rem 0;}
+table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+th{background:var(--surface2);color:var(--text2);font-weight:600;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:0.65rem 1rem;border-bottom:1px solid rgba(42,45,62,0.7);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(99,102,241,0.04);}
+
+/* CALLOUT */
+.callout{border-radius:10px;padding:1rem 1.2rem;margin:1rem 0;border-left:3px solid;}
+.callout.good{background:rgba(16,185,129,0.06);border-color:var(--green);}
+.callout.good .callout-title{color:var(--green);}
+.callout.bad{background:rgba(239,68,68,0.06);border-color:var(--red);}
+.callout.bad .callout-title{color:var(--red);}
+.callout.tip{background:rgba(245,158,11,0.06);border-color:var(--accent3);}
+.callout.tip .callout-title{color:var(--accent3);}
+.callout.info{background:rgba(34,211,238,0.05);border-color:var(--accent2);}
+.callout.info .callout-title{color:var(--accent2);}
+.callout-title{font-size:0.78rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:0.3rem;}
+.callout p{color:var(--text2);font-size:0.88rem;margin:0;}
+
+/* BADGE */
+.badge{display:inline-block;padding:0.15rem 0.6rem;border-radius:999px;font-size:0.72rem;font-weight:700;}
+.badge-green{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);}
+.badge-red{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+.badge-amber{background:rgba(245,158,11,0.15);color:var(--accent3);border:1px solid rgba(245,158,11,0.3);}
+.badge-blue{background:rgba(34,211,238,0.15);color:var(--accent2);border:1px solid rgba(34,211,238,0.3);}
+.badge-purple{background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid rgba(167,139,250,0.3);}
+
+/* TIME TABLE */
+.time-table{display:grid;grid-template-columns:auto 1fr auto;gap:0;margin:1rem 0;}
+.tt-time{background:var(--chapter-color);color:#000;padding:0.4rem 0.8rem;font-weight:700;font-size:0.85rem;border-radius:6px 0 0 6px;}
+.tt-action{background:var(--surface2);padding:0.4rem 1rem;color:var(--text);font-size:0.88rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.tt-key{background:var(--surface);padding:0.4rem 0.8rem;color:var(--accent2);font-size:0.82rem;border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;}
+.tt-sep{grid-column:1/-1;height:4px;}
+
+/* Q&A ACCORDION */
+.qa-item{border:1px solid var(--border);border-radius:10px;margin-bottom:0.7rem;overflow:hidden;}
+.qa-question{padding:0.9rem 1.2rem;background:var(--surface);cursor:pointer;font-weight:600;font-size:0.92rem;display:flex;justify-content:space-between;align-items:center;}
+.qa-question:hover{background:var(--surface2);}
+.qa-question::after{content:'▼';font-size:0.7rem;color:var(--text3);transition:transform 0.2s;}
+.qa-item.open .qa-question::after{transform:rotate(180deg);}
+.qa-answer{display:none;padding:1rem 1.2rem;background:var(--surface2);border-top:1px solid var(--border);}
+.qa-item.open .qa-answer{display:block;}
+.qa-answer p,.qa-answer li{color:var(--text2);font-size:0.88rem;}
+.qa-answer ul{padding-left:1.2rem;}
+
+/* SENIOR TIPS */
+.senior-tip{background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(99,102,241,0.08));border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem;}
+.senior-tip .tip-num{background:var(--accent3);color:#000;width:1.6rem;height:1.6rem;border-radius:4px;font-weight:800;font-size:0.8rem;display:inline-flex;align-items:center;justify-content:center;margin-bottom:0.5rem;}
+.senior-tip .tip-title{font-size:1rem;font-weight:700;margin-bottom:0.5rem;}
+.senior-tip p{color:var(--text2);font-size:0.88rem;margin-bottom:0.4rem;}
+.senior-tip .example{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-top:0.8rem;font-size:0.85rem;}
+.senior-tip .example .label{font-size:0.72rem;color:var(--text3);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.05em;}
+.senior-tip .example .bad{color:var(--red);margin-bottom:0.5rem;}
+.senior-tip .example .good{color:var(--green);}
+
+/* GLOSSARY */
+.glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:0.7rem;}
+.glossary-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;}
+.glossary-term{font-size:0.9rem;font-weight:700;color:var(--accent2);margin-bottom:0.3rem;}
+.glossary-def{font-size:0.82rem;color:var(--text2);}
+
+/* TOC */
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:3rem;}
+.toc h2{font-size:0.85rem;color:var(--text3);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.08em;}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.5rem;}
+.toc-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.83rem;color:var(--text2);transition:all 0.2s;}
+.toc-item:hover{border-color:var(--accent3);color:var(--text);text-decoration:none;}
+.toc-num{color:var(--accent3);font-weight:700;margin-right:0.4rem;}
+
+/* FOOTER */
+.footer-nav{background:var(--surface);border-top:1px solid var(--border);padding:2rem 1.5rem;margin-top:4rem;}
+.footer-nav-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-nav a{color:var(--text2);display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:8px;transition:all 0.2s;}
+.footer-nav a:hover{border-color:var(--accent3);color:var(--accent3);text-decoration:none;}
+
+.divider{border:none;border-top:1px solid var(--border);margin:3rem 0;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="00_index.html">ホーム</a>
+    <span>/</span>
+    <a href="14_case_studies.html">← Ch14 ケーススタディ</a>
+    <span>/</span>
+    <span class="nav-badge">Ch15 面接対策</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Chapter 15 — 総合演習</div>
+  <h1>システムデザイン<br>面接対策 完全ガイド</h1>
+  <p>評価軸の理解から模擬面接10問、深掘り質問50問、Senior Engineerが差をつけるポイント集まで。面接の全てを網羅する最終章。</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">模擬面接問題</div></div>
+    <div class="stat"><div class="stat-num">50</div><div class="stat-label">深掘り質問</div></div>
+    <div class="stat"><div class="stat-num">150</div><div class="stat-label">用語集</div></div>
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">Senior Tips</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- TOC -->
+<div class="toc">
+  <h2>目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#guide"><span class="toc-num">1</span> 面接攻略完全ガイド</a>
+    <a class="toc-item" href="#timing"><span class="toc-num">2</span> 時間配分テンプレート</a>
+    <a class="toc-item" href="#goodbad"><span class="toc-num">3</span> 良い回答 vs 悪い回答</a>
+    <a class="toc-item" href="#mock"><span class="toc-num">4</span> 模擬面接10問（完全解答）</a>
+    <a class="toc-item" href="#deepdive"><span class="toc-num">5</span> 深掘り質問50問</a>
+    <a class="toc-item" href="#senior"><span class="toc-num">6</span> Senior Engineerが差をつけるポイント</a>
+    <a class="toc-item" href="#glossary"><span class="toc-num">7</span> システムデザイン用語集（150語）</a>
+  </div>
+</div>
+
+<!-- ===== 1. 面接攻略完全ガイド ===== -->
+<div class="section" id="guide">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2>面接攻略完全ガイド</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">面接の評価軸</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>評価軸</th><th>配点イメージ</th><th>何を見ているか</th><th>対策</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>コミュニケーション</strong></td>
+            <td><span class="badge badge-amber">25%</span></td>
+            <td>思考プロセスを声に出せるか。質問を適切に整理できるか。不明な点を確認できるか</td>
+            <td>沈黙を避け「〜を考えています」と常に口に出す。仮定は明示する</td>
+          </tr>
+          <tr>
+            <td><strong>技術知識</strong></td>
+            <td><span class="badge badge-amber">25%</span></td>
+            <td>適切な技術（DB、キャッシュ、MQ等）の選択肢を知っているか</td>
+            <td>各技術の特性と使い所を暗記より理解として持つ</td>
+          </tr>
+          <tr>
+            <td><strong>設計力</strong></td>
+            <td><span class="badge badge-amber">30%</span></td>
+            <td>要件を分解して構造化できるか。コンポーネント間の関係を整理できるか</td>
+            <td>必ずホワイトボードorメモで図を書きながら説明する</td>
+          </tr>
+          <tr>
+            <td><strong>トレードオフ分析</strong></td>
+            <td><span class="badge badge-amber">20%</span></td>
+            <td>なぜその設計を選んだか。代替案の長所短所を語れるか</td>
+            <td>「〜を選んだ理由は〜だからで、デメリットは〜です」と必ずセットで</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout tip">
+      <div class="callout-title">重要な視点</div>
+      <p>面接官は「完璧な設計」ではなく「問題への取り組みプロセス」を見ている。間違えても良いが、間違いを自分で気づいて修正できることが大切。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 2. 時間配分テンプレート ===== -->
+<div class="section" id="timing">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2>面接時間配分テンプレート</h2>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">45分面接</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>時間</th><th>フェーズ</th></tr></thead>
+          <tbody>
+            <tr><td>0〜5分</td><td>要件定義・スコープ確認</td></tr>
+            <tr><td>5〜10分</td><td>見積もり（QPS/ストレージ）</td></tr>
+            <tr><td>10〜25分</td><td>高レベル設計（コア）</td></tr>
+            <tr><td>25〜40分</td><td>詳細設計（1〜2コンポーネント）</td></tr>
+            <tr><td>40〜45分</td><td>深掘り・質疑応答</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">60分面接（標準）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>時間</th><th>フェーズ</th></tr></thead>
+          <tbody>
+            <tr><td>0〜8分</td><td>要件定義・仮定の確認</td></tr>
+            <tr><td>8〜15分</td><td>見積もり（QPS/DB/帯域）</td></tr>
+            <tr><td>15〜35分</td><td>高レベル設計（全体アーキ）</td></tr>
+            <tr><td>35〜52分</td><td>詳細設計（深掘りコンポーネント）</td></tr>
+            <tr><td>52〜60分</td><td>ボトルネック・改善・Q&A</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">90分面接（上級職）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>時間</th><th>フェーズ</th></tr></thead>
+          <tbody>
+            <tr><td>0〜10分</td><td>要件定義（詳細・エッジケース含む）</td></tr>
+            <tr><td>10〜20分</td><td>見積もり（詳細計算）</td></tr>
+            <tr><td>20〜45分</td><td>高レベル設計（代替案比較込み）</td></tr>
+            <tr><td>45〜75分</td><td>詳細設計（3〜4コンポーネント）</td></tr>
+            <tr><td>75〜90分</td><td>スケール・コスト・セキュリティ・Q&A</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">各フェーズの具体的な進め方</div>
+    <div class="grid-2">
+      <div>
+        <h4 style="color:var(--accent3);margin-bottom:10px;">フェーズ1: 要件定義（最重要）</h4>
+        <ul style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;">
+          <li>ユーザー数（DAU/MAU）</li>
+          <li>主要機能（3〜5つに絞る）</li>
+          <li>規模感（QPS、データサイズ）</li>
+          <li>SLA（可用性・レイテンシ要件）</li>
+          <li>スコープ外（「〜は今回対象外とします」）</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:var(--accent3);margin-bottom:10px;">フェーズ2: 見積もりの鉄板計算</h4>
+        <ul style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;">
+          <li>QPS = DAU × リクエスト/日 ÷ 86,400</li>
+          <li>ピークQPS = 平均QPS × 2〜10</li>
+          <li>1億ユーザー × 100バイト = 10GB/日</li>
+          <li>5年間ストレージ = 日次 × 1,825</li>
+          <li>帯域幅 = QPS × 平均レスポンスサイズ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. 良い回答 vs 悪い回答 ===== -->
+<div class="section" id="goodbad">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2>良い回答 vs 悪い回答の対比</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">「どのDBを使いますか？」</div>
+    <div class="callout bad">
+      <div class="callout-title">悪い回答</div>
+      <p>「MySQLを使います」</p>
+      <p style="margin-top:6px;color:var(--text3);font-size:0.82rem;">理由: 根拠なし。代替案なし。要件との対応なし。面接官は「なぜ？」を知りたい。</p>
+    </div>
+    <div class="callout good">
+      <div class="callout-title">良い回答</div>
+      <p>「ユーザーデータと注文データは構造化されており、ACID準拠のトランザクションが必要なため、PostgreSQLを選びます。ただし、ユーザーの活動ログのように高書き込み・大容量のデータにはCassandraが適しています。セッションキャッシュはRedisを使い、レイテンシを削減します。」</p>
+      <p style="margin-top:6px;color:var(--text3);font-size:0.82rem;">理由: 3種類のデータを特性別に分類し、各技術の選定根拠が明確。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">「スケールアップの方法は？」</div>
+    <div class="callout bad">
+      <div class="callout-title">悪い回答</div>
+      <p>「サーバーを増やします。あとはキャッシュを使います。」</p>
+    </div>
+    <div class="callout good">
+      <div class="callout-title">良い回答</div>
+      <p>「まずボトルネックを特定します。現在の設計では読み取りが多いのでRead Replicaを追加し、DBの負荷を分散します。それでも不十分であれば、ユーザーIDでシャーディングします。APIサーバーはステートレスなので水平スケールが容易です。ただしセッション管理はRedisに移行する必要があります。将来的に書き込みQPSが限界に達したら、user_id mod Nでシャーディングキーを設計します。ここでのトレードオフはクロスシャードJOINが難しくなることです。」</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">「可用性をどう担保しますか？」</div>
+    <div class="callout bad">
+      <div class="callout-title">悪い回答</div>
+      <p>「リダンダンシーを持たせます。バックアップを取ります。」</p>
+    </div>
+    <div class="callout good">
+      <div class="callout-title">良い回答</div>
+      <p>「99.99%のSLAを目標とします（月間52.6分のダウンタイム許容）。達成のために、APIサーバーはAuto ScalingグループでAZ（アベイラビリティゾーン）をまたいだ冗長化、DBはマルチAZフェイルオーバー（RPO 30秒/RTO 1分）、CDNでEdgeキャッシュによるアクセス継続を実装します。障害時はCircuit Breakerで依存サービスへの連鎖障害を防ぎます。SLOに違反しそうな場合はError Budgetベースのアラートでエスカレーションします。」</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 4. 模擬面接10問 ===== -->
+<div class="section" id="mock">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2>模擬面接問題 10問（完全解答付き）</h2>
+  </div>
+
+  <!-- 問題1: 分散ファイルシステム -->
+  <div class="interview-card" id="q1">
+    <div class="problem-num">問題 01</div>
+    <div class="problem-title">分散ファイルシステムの設計（Google Drive風）</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="border-color:rgba(245,158,11,.3);">
+          <div class="card-title">要件定義</div>
+          <ul>
+            <li>DAU: 5,000万人。ファイルアップロード/ダウンロード/共有</li>
+            <li>ファイルサイズ: 最大5GB。平均500KB</li>
+            <li>総ストレージ: ユーザー当たり15GB無料</li>
+            <li>Strong Consistency（ファイル更新後すぐ反映）</li>
+            <li>可用性 99.99%</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">見積もり</div>
+          <p>アップロードQPS: 5,000万 × 2ファイル/日 ÷ 86,400 ≈ 1,157 QPS</p>
+          <p>ダウンロードQPS: アップロードの10倍 ≈ 11,574 QPS</p>
+          <p>ストレージ: 5,000万 × 15GB = 750 PB（5年）</p>
+          <p>帯域幅(上り): 1,157 × 500KB ≈ 578 MB/s</p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(34,211,238,.3);">
+          <div class="card-title">高レベル設計のポイント</div>
+          <ul>
+            <li><strong>メタデータDB:</strong> PostgreSQL（ファイルメタ、権限）</li>
+            <li><strong>ブロックストレージ:</strong> S3互換オブジェクトストレージ</li>
+            <li><strong>チャンク分割:</strong> 大ファイルを4MBブロックに分割。重複排除（コンテンツハッシュ）</li>
+            <li><strong>デルタ同期:</strong> 変更ブロックのみ転送</li>
+            <li><strong>CDN:</strong> 頻繁にアクセスされるファイルをエッジキャッシュ</li>
+            <li><strong>通知:</strong> Long Polling or WebSocketで変更通知</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">深掘り質問への回答</div>
+          <p><strong>Q: ファイルの整合性をどう保証するか？</strong><br>アップロード時にクライアントがチャンクごとのSHA-256を計算し、サーバーが検証。メタデータDBにハッシュを記録。</p>
+          <p style="margin-top:8px;"><strong>Q: 大ファイルのアップロードが途中で失敗したら？</strong><br>チャンク単位でアップロード状態をRedisに保存（Resumable Upload）。再開時は未完了チャンクから再開。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 問題2: Web Crawler -->
+  <div class="interview-card" id="q2">
+    <div class="problem-num">問題 02</div>
+    <div class="problem-title">Web Crawlerの設計（Googleの検索インデックス）</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="border-color:rgba(245,158,11,.3);">
+          <div class="card-title">要件定義</div>
+          <ul>
+            <li>1ヶ月で10億ページをクロール</li>
+            <li>各ページの最新版を毎月クロール</li>
+            <li>HTML/PDF/テキスト対応</li>
+            <li>重複URLの除外</li>
+            <li>robots.txtの遵守</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">見積もり</div>
+          <p>QPS = 10億 ÷ (30日 × 86,400秒) ≈ 385 QPS</p>
+          <p>ピーク: ≈ 1,000 QPS</p>
+          <p>ストレージ: 10億 × 平均500KB = 500 TB/月</p>
+          <p>帯域幅: 1,000 × 500KB = 500 MB/s</p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(34,211,238,.3);">
+          <div class="card-title">アーキテクチャの核心</div>
+          <ul>
+            <li><strong>URL Frontier（優先度付きキュー）:</strong> 新鮮度×PageRankで優先度付け。Kafkaで管理</li>
+            <li><strong>重複URL除外:</strong> Bloom Filter（高速・低メモリ）+ DBで確認</li>
+            <li><strong>DNS Resolver:</strong> DNSルックアップをキャッシュしてボトルネック回避</li>
+            <li><strong>Robots.txt Parser:</strong> サイトごとにキャッシュ</li>
+            <li><strong>Content Parser:</strong> HTMLからURLを抽出してURL Frontierへ</li>
+            <li><strong>重複コンテンツ:</strong> SimHash で類似ページを検出</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">深掘り質問への回答</div>
+          <p><strong>Q: 同じサーバーへの過剰リクエストを防ぐ方法は？</strong><br>同一ドメインへのリクエスト間隔を最低1秒以上（Politeness Delay）。ドメインごとにキューを分離。</p>
+          <p style="margin-top:8px;"><strong>Q: クロールの無限ループを防ぐには？</strong><br>URLの正規化（大文字小文字、末尾スラッシュ、パラメータ順序を統一）とBloom Filterで既訪問URLを除外。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 問題3: 決済システム -->
+  <div class="interview-card" id="q3">
+    <div class="problem-num">問題 03</div>
+    <div class="problem-title">決済システムの設計（Stripe風）</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="border-color:rgba(245,158,11,.3);">
+          <div class="card-title">要件定義</div>
+          <ul>
+            <li>1日100万件の決済処理</li>
+            <li>Strong Consistency（二重請求は絶対に防止）</li>
+            <li>可用性 99.99%</li>
+            <li>べき等性（ネットワーク再試行による重複防止）</li>
+            <li>不正検知（異常な取引パターンの検知）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">核心設計: べき等性の実装</div>
+          <pre>POST /v1/payments
+X-Idempotency-Key: uuid-v4  ← クライアントが生成
+
+# サーバーサイド
+1. idempotency_keyをDBにUNIQUE制約で保存
+2. 同じキーで再リクエスト → 前回の結果を返す
+3. 鍵の有効期限: 24時間
+4. 処理中は pending 状態でロック</pre>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(34,211,238,.3);">
+          <div class="card-title">分散トランザクションの設計</div>
+          <ul>
+            <li><strong>2フェーズコミット:</strong> ユーザー残高の引き落とし + 加盟店への入金を原子的に実行</li>
+            <li><strong>Saga パターン:</strong> 補償トランザクション（ロールバック）で整合性を保つ</li>
+            <li><strong>Outbox パターン:</strong> DBとKafkaへの書き込みを原子化</li>
+            <li><strong>レコンシリエーション:</strong> 翌日バッチで外部決済プロバイダーとの突合確認</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">深掘り質問への回答</div>
+          <p><strong>Q: 決済サービスが途中でクラッシュしたらどうなるか？</strong><br>Outbox Patternで状態をDBに記録。クラッシュリカバリ時にpending状態のトランザクションを再処理。冪等性キーで重複排除。</p>
+          <p style="margin-top:8px;"><strong>Q: 不正検知はどう設計するか？</strong><br>決済イベントをKafkaに流し、Flink等のストリーム処理で短時間の連続失敗・異常金額・地理的異常を検知。スコアリングしてリアルタイムでブロック。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 問題4: リアルタイム協調編集 -->
+  <div class="interview-card" id="q4">
+    <div class="problem-num">問題 04</div>
+    <div class="problem-title">リアルタイム協調編集の設計（Google Docs風）</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="border-color:rgba(245,158,11,.3);">
+          <div class="card-title">核心の技術課題</div>
+          <ul>
+            <li>複数人が同時編集したとき、最終状態を一致させる</li>
+            <li>ネットワーク遅延があっても操作が競合しない</li>
+            <li>リアルタイム: 変更が他ユーザーに即時反映</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">解決策: OT vs CRDT</div>
+          <p><strong>Operational Transformation (OT):</strong> Google Docsが採用。操作を変換して競合を解消。中央サーバーが操作の順序を管理。</p>
+          <p><strong>CRDT（Conflict-free Replicated Data Types）:</strong> Figma, Notion等。サーバーレスで競合解消。順序保証が難しい。</p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(34,211,238,.3);">
+          <div class="card-title">アーキテクチャ設計</div>
+          <ul>
+            <li><strong>WebSocket:</strong> 各クライアントとの双方向通信</li>
+            <li><strong>Collaboration Server:</strong> 操作の受付・変換・ブロードキャスト</li>
+            <li><strong>操作ログ:</strong> Cassandraに全操作を記録（バージョン履歴）</li>
+            <li><strong>スナップショット:</strong> 100操作ごとにドキュメント全体をS3に保存</li>
+            <li><strong>Cursor同期:</strong> カーソル位置もWebSocketでブロードキャスト</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">深掘り質問への回答</div>
+          <p><strong>Q: 1つのドキュメントに1000人が同時編集したら？</strong><br>1ドキュメント＝1 Collaboration Serverインスタンスに固定。このインスタンスがボトルネックになるため、1ドキュメント当たりの上限（例: 100人）を設け、超過はキューで管理。</p>
+          <p style="margin-top:8px;"><strong>Q: オフライン編集をどう扱うか？</strong><br>クライアントがオフライン中の操作をローカルキューに保存。再接続時にサーバーと操作を同期し、OTで競合を解消。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 問題5: マッチメイキング -->
+  <div class="interview-card" id="q5">
+    <div class="problem-num">問題 05</div>
+    <div class="problem-title">ゲームのマッチメイキングシステム設計</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="border-color:rgba(245,158,11,.3);">
+          <div class="card-title">要件定義</div>
+          <ul>
+            <li>DAU: 1,000万人。ピーク同時接続: 100万人</li>
+            <li>マッチング条件: レーティング差100以内、レイテンシ50ms以内、同チームサイズ</li>
+            <li>マッチング待ち時間: 平均30秒以内</li>
+            <li>マッチング後、ゲームサーバーのIPを返す</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">マッチング戦略</div>
+          <p><strong>Elo スコアでソート済みキューをRedis Sorted Setで管理</strong></p>
+          <pre>ZADD matchqueue {elo_score} "{player_id}:{timestamp}"
+# レーティング差100以内のプレイヤーを検索
+ZRANGEBYSCORE matchqueue {elo-100} {elo+100}</pre>
+          <p>待ち時間が長くなるにつれレーティング許容差を広げる（Progressive Relaxation）</p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(34,211,238,.3);">
+          <div class="card-title">アーキテクチャ</div>
+          <ul>
+            <li><strong>リージョン分割:</strong> 日本/北米/欧州でマッチキューを分離（レイテンシ最小化）</li>
+            <li><strong>マッチメーカー:</strong> 100msごとにキューをスキャンしてマッチングを試みるワーカー</li>
+            <li><strong>ゲームサーバープール:</strong> 事前起動したゲームサーバーをプール管理</li>
+            <li><strong>通知:</strong> マッチング成立をWebSocket or long pollで通知</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">深掘り質問への回答</div>
+          <p><strong>Q: チームマッチングはどう実装するか？</strong><br>パーティー（グループ）を1つのエンティティとして扱う。パーティーの平均Eloでマッチング。人数が合わない場合はソロプレイヤーで補完。</p>
+          <p style="margin-top:8px;"><strong>Q: ゲームサーバーが満杯になったら？</strong><br>Auto ScalingでEC2 Spot Instanceを追加。プールに空きがない場合はキューを一時停止。プリウォームで需要予測に基づき事前起動。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 問題6〜10: コンパクト形式 -->
+  <div class="grid-2">
+    <div class="interview-card" id="q6" style="margin-bottom:0;">
+      <div class="problem-num">問題 06</div>
+      <div class="problem-title">プッシュ通知システム（→ Ch14 CS7 参照）</div>
+      <div class="card" style="background:var(--surface2);">
+        <div class="card-title">追加の深掘りポイント</div>
+        <p><strong>デバイストークン管理:</strong> iOSはAPNS、AndroidはFCMが発行。ユーザーとデバイスはN:Mの関係（複数デバイス）。トークンの無効化（アプリ削除）を検知しDB更新。</p>
+        <p style="margin-top:8px;"><strong>Silent Push vs Visible Push:</strong> Silentはアプリをバックグラウンドで起動してデータ同期。頻度制限あり（iOS: 1日3回）。</p>
+      </div>
+    </div>
+    <div class="interview-card" id="q7" style="margin-bottom:0;">
+      <div class="problem-num">問題 07</div>
+      <div class="problem-title">分散メッセージシステム（Slack風）</div>
+      <div class="card" style="background:var(--surface2);">
+        <div class="card-title">核心設計</div>
+        <ul>
+          <li><strong>メッセージストレージ:</strong> Cassandra（高書き込み、チャンネルIDでパーティション）</li>
+          <li><strong>リアルタイム配信:</strong> WebSocket。接続ユーザー管理はRedis（user_id→server_ip）</li>
+          <li><strong>オフラインユーザー:</strong> 未読メッセージをDB保存、再接続時に送信</li>
+          <li><strong>ファイル共有:</strong> S3アップロード後、署名付きURLをメッセージに添付</li>
+          <li><strong>既読状態:</strong> 最後に読んだメッセージIDをDBに保存（カーソル方式）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:1rem;">
+    <div class="interview-card" id="q8" style="margin-bottom:0;">
+      <div class="problem-num">問題 08</div>
+      <div class="problem-title">検索オートコンプリート</div>
+      <div class="card" style="background:var(--surface2);">
+        <div class="card-title">核心設計</div>
+        <p><strong>Trie（トライ木）:</strong> プレフィックスを高速検索。"goo"→"google","google maps","google translate"の候補を高速返却。各ノードにTop-K候補をキャッシュ。</p>
+        <p style="margin-top:8px;"><strong>スケール:</strong> Trieをアルファベット別にシャーディング。レイテンシ要件が厳しいのでRedis上にTrie全体をロード（メモリ常駐）。1日1回バッチでログから頻度を集計し更新。</p>
+      </div>
+    </div>
+    <div class="interview-card" id="q9" style="margin-bottom:0;">
+      <div class="problem-num">問題 09</div>
+      <div class="problem-title">分散ジョブスケジューラー（Airflow風）</div>
+      <div class="card" style="background:var(--surface2);">
+        <div class="card-title">核心設計</div>
+        <ul>
+          <li><strong>Scheduler:</strong> DB内のジョブを定期スキャン、実行時刻になったらキューに送信</li>
+          <li><strong>ジョブキュー:</strong> Kafkaで優先度別トピック。Worker が消費</li>
+          <li><strong>冪等性:</strong> job_execution_idで重複実行を防止</li>
+          <li><strong>依存関係:</strong> DAG（有向非巡回グラフ）で前後依存を管理</li>
+          <li><strong>タイムゾーン:</strong> UTCで統一管理</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="interview-card" id="q10" style="margin-top:1rem;">
+    <div class="problem-num">問題 10</div>
+    <div class="problem-title">ニュース集約・フィードランキングシステム</div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="background:var(--surface2);">
+          <div class="card-title">アーキテクチャの核心</div>
+          <ul>
+            <li><strong>Push Model（Fanout on Write）:</strong> 投稿時にフォロワー全員のFeedキャッシュに書き込む。読み取り高速だが書き込みコスト高。セレブリティ（数百万フォロワー）には不向き</li>
+            <li><strong>Pull Model（Fanout on Read）:</strong> 閲覧時にフォロイー全員の投稿を集約。書き込み安価だが読み取り重い</li>
+            <li><strong>ハイブリッド:</strong> 通常ユーザーはPush、有名人（フォロワー100万超）はPullで混合</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="background:var(--surface2);">
+          <div class="card-title">ランキングアルゴリズム</div>
+          <p><strong>スコア = (エンゲージメント × 鮮度) × ユーザー関連性</strong></p>
+          <pre>score = (
+  likes * 1.0 + comments * 3.0 + shares * 5.0
+) * time_decay(hours_ago)
+  * relationship_weight(user_id, author_id)</pre>
+          <p style="margin-top:8px;"><strong>リランキング:</strong> スコアで並び替えた上で、多様性確保（同一ユーザーの連続表示を避ける）とパーソナライズを適用。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5. 深掘り質問50問 ===== -->
+<div class="section" id="deepdive">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2>よく出る深掘り質問 50問 + 回答ガイド</h2>
+  </div>
+
+  <!-- DB カテゴリ -->
+  <div class="card">
+    <div class="card-title">データベース (DB) カテゴリ (Q1-10)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>質問</th><th>回答のポイント</th></tr></thead>
+        <tbody>
+          <tr><td>Q1</td><td>SQLとNoSQLをどう使い分けるか？</td><td>ACID必要なら SQL。スキーマレス/高スループット/スケールアウト優先なら NoSQL。実際は両方を目的別に使い分ける</td></tr>
+          <tr><td>Q2</td><td>インデックスの種類と使い所は？</td><td>B-Tree（範囲検索）, Hash（等値検索）, GiST（地理/全文）, Covering Index（クエリをインデックスのみで完結）</td></tr>
+          <tr><td>Q3</td><td>N+1問題とは何か、どう解決するか？</td><td>1件ずつDBクエリを投げる問題。Eager Loading（JOIN or IN句）、DataLoader（GraphQL）、バッチ取得で解決</td></tr>
+          <tr><td>Q4</td><td>シャーディングキーはどう選ぶべきか？</td><td>均一分散（ホットスポット回避）、クロスシャードクエリを最小化、将来のスケールを見越した選定</td></tr>
+          <tr><td>Q5</td><td>CAP定理とは？実際のシステムへの影響は？</td><td>C/A/Pの3つを同時には満たせない。ネットワーク分断（P）は避けられないため、CPかAPかを選ぶ。PostgreSQL=CP、Cassandra=AP</td></tr>
+          <tr><td>Q6</td><td>DBのロック戦略（楽観的 vs 悲観的）の違いは？</td><td>楽観的（更新時にバージョン番号チェック）vs 悲観的（SELECT FOR UPDATE）。競合が少ない場合は楽観的が高性能</td></tr>
+          <tr><td>Q7</td><td>マイグレーションで本番DBが止まらないようにするには？</td><td>Expand-Contract Pattern: まず新カラムを追加（Expand）→デプロイ→旧カラムを削除（Contract）</td></tr>
+          <tr><td>Q8</td><td>Cassandraのデータモデリングの原則は？</td><td>クエリパターンからモデリング（逆正規化OK）。Partition Keyでデータ分散。1パーティション = 1ノードにアクセス</td></tr>
+          <tr><td>Q9</td><td>ウォームスタンバイとホットスタンバイの違いは？</td><td>ホット: 常時起動・即時切替（RTO≒0）、コスト高。ウォーム: 縮小スタンバイ、数分でフルスケール。コールド: バックアップから復元（RTO数時間）</td></tr>
+          <tr><td>Q10</td><td>全文検索をRDBMSで実装する問題点は？</td><td>LIKE '%keyword%'は全件スキャン。Elasticsearch/Solrの転置インデックスを使用。関連度スコアリングも可能</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cache カテゴリ -->
+  <div class="card">
+    <div class="card-title">キャッシュ (Cache) カテゴリ (Q11-20)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>質問</th><th>回答のポイント</th></tr></thead>
+        <tbody>
+          <tr><td>Q11</td><td>キャッシュの無効化戦略は何があるか？</td><td>TTL（時間切れ）、Write-Through（書き込み時更新）、Write-Behind（非同期更新）、Event-Driven（DBイベントでパージ）</td></tr>
+          <tr><td>Q12</td><td>Cache Stampede（Thundering Herd）とは何か、防止策は？</td><td>キャッシュ失効時に大量リクエストがDBに殺到。対策: Probabilistic Early Expiration、Mutex（最初の1リクエストだけDBアクセス）、Stale-While-Revalidate</td></tr>
+          <tr><td>Q13</td><td>Redisのデータ永続化方式（RDB vs AOF）の違いは？</td><td>RDB: スナップショット（圧縮・高速リカバリ・データロスあり）。AOF: 全操作ログ（耐久性高・ファイル大）。本番は両方を有効化</td></tr>
+          <tr><td>Q14</td><td>Redisのクラスタリング戦略は？</td><td>Sentinel（マスター監視・フェイルオーバー）vs Cluster（16384スロットで自動シャーディング）。大規模はCluster推奨</td></tr>
+          <tr><td>Q15</td><td>Cache Aside vs Read-Through の違いは？</td><td>Cache Aside: アプリがキャッシュを管理（キャッシュミス時にDBからロード）。Read-Through: キャッシュがDBから自動ロード</td></tr>
+          <tr><td>Q16</td><td>Hot Key問題（ホットスポット）をRedisでどう対処するか？</td><td>キーにサフィックスを追加してシャーディング（key:0〜key:N）、ローカルキャッシュ（in-process）でRedisへのアクセスを削減</td></tr>
+          <tr><td>Q17</td><td>どのデータをキャッシュすべきか（判断基準）？</td><td>読み取り頻度高い、変更頻度低い、再計算コスト高い、多くのユーザーが共有。パーソナライズデータはキャッシュ効率が低い</td></tr>
+          <tr><td>Q18</td><td>分散キャッシュとローカルキャッシュはどう使い分けるか？</td><td>ローカルキャッシュ: 超低レイテンシ（ns）、インスタンス間で一貫性なし。分散キャッシュ: ms単位、全インスタンスで一貫。層を組み合わせが最善</td></tr>
+          <tr><td>Q19</td><td>セッションデータをRedisに保存する際の注意点は？</td><td>TTLでセッション期限管理、シリアライズ形式（JSON vs MessagePack）、Redisダウン時のフォールバック設計</td></tr>
+          <tr><td>Q20</td><td>MemcachedではなくRedisを選ぶ理由は？</td><td>RedisはString以外のデータ構造（List/Set/ZSet/Hash）、永続化、Pub/Sub、Luaスクリプト、Cluster対応。単純KVキャッシュのみならMemcached</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- API カテゴリ -->
+  <div class="card">
+    <div class="card-title">API設計 カテゴリ (Q21-30)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>質問</th><th>回答のポイント</th></tr></thead>
+        <tbody>
+          <tr><td>Q21</td><td>APIのバージョニング方法は？</td><td>URLパス（/v1/）、クエリパラメータ（?version=2）、ヘッダー（Accept: application/vnd.api+json;version=2）。URLパスが最も明確</td></tr>
+          <tr><td>Q22</td><td>APIゲートウェイの役割は？</td><td>認証・認可の集約、レートリミット、SSLターミネーション、ロギング、リクエスト変換、サービスディスカバリ。単一エントリポイント</td></tr>
+          <tr><td>Q23</td><td>gRPCを選ぶ場面は？RESTとの違いは？</td><td>サービス間通信（内部API）、双方向ストリーミング、Protocol Buffers（コンパクト・型安全）。RESTはブラウザ対応・シンプル。外部APIはREST、内部はgRPC</td></tr>
+          <tr><td>Q24</td><td>GraphQLのN+1問題とDataLoaderとは？</td><td>1クエリで複数の子リソースを取得する際にN+1回DBアクセスが発生。DataLoaderでリクエストをバッチにまとめてINクエリで解決</td></tr>
+          <tr><td>Q25</td><td>WebSocketとSSE（Server-Sent Events）の違いは？</td><td>WebSocket: 双方向（全二重）、チャットに適す。SSE: 一方向（サーバー→クライアント）、ニュースフィードに適す。SSEはHTTP/2で効率良</td></tr>
+          <tr><td>Q26</td><td>Long PollingとWebSocketをどう使い分けるか？</td><td>Long Polling: 実装シンプル、接続ごとにHTTPオーバーヘッド、低頻度更新向け。WebSocket: 高頻度リアルタイム通信に適す。インフラが複雑</td></tr>
+          <tr><td>Q27</td><td>べき等APIの設計方法は？</td><td>GET/PUT/DELETEは自然にべき等。POSTにはべき等性キー（Idempotency-Key）を追加。キーとレスポンスをDBに保存し再試行時に返す</td></tr>
+          <tr><td>Q28</td><td>APIのレート制限をどうクライアントに伝えるか？</td><td>X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset ヘッダを使用。429 Too Many RequestsにはRetry-Afterヘッダを付ける</td></tr>
+          <tr><td>Q29</td><td>Webhook vs Polling の違いと使い所は？</td><td>Polling: クライアントが定期問い合わせ（シンプルだが無駄なリクエスト）。Webhook: イベント発生時にサーバーがクライアントのURL を呼ぶ（リアルタイム・効率的）</td></tr>
+          <tr><td>Q30</td><td>APIドキュメントを自動生成する方法は？</td><td>OpenAPI/Swagger Specification。コードからスキーマを生成（FastAPI/Spring Doc等）。SwaggerUIでインタラクティブなドキュメント</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scale/Reliability/Security カテゴリ -->
+  <div class="card">
+    <div class="card-title">スケール・信頼性・セキュリティ カテゴリ (Q31-50)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>質問</th><th>回答のポイント</th></tr></thead>
+        <tbody>
+          <tr><td>Q31</td><td>コンシステントハッシングとは？なぜ使うか？</td><td>ノード追加/削除時に再割り当てをK/N（移動する最小限）に抑える。通常のモジュロハッシュはノード変更で全データ移動。Cassandra, DynamoDB, CDNで採用</td></tr>
+          <tr><td>Q32</td><td>Gossip Protocolとは？</td><td>ノード間でランダムにヘルス情報を交換。全ノードが互いを監視しなくても整合性が取れる。Cassandra, Bitcoin で採用</td></tr>
+          <tr><td>Q33</td><td>Leader Electionはどうやって実装するか？</td><td>ZooKeeper/etcdのDistributed Lock、Raft/Paxosコンセンサスアルゴリズム。Kubernetes etcdがRaftを採用</td></tr>
+          <tr><td>Q34</td><td>冪等性と exactly-once の違いは？</td><td>冪等性: 同じ操作を複数回実行しても結果が変わらない。exactly-once: メッセージが必ず1回だけ処理される。実装コスト順: at-most-once < at-least-once < exactly-once</td></tr>
+          <tr><td>Q35</td><td>分散システムのタイムスタンプ問題とは？</td><td>各サーバーのクロックにズレがある。Logical Clock（Lamport Timestamps）やVector Clockで因果関係を表現。TrueTimeはGPSで±7ms</td></tr>
+          <tr><td>Q36</td><td>サービスメッシュ（Istio等）の利点と欠点は？</td><td>利点: mTLS、トレーシング、リトライ/サーキットブレーカーが自動化。欠点: Sidecar（Envoy）のCPU/メモリオーバーヘッド。運用複雑性増大</td></tr>
+          <tr><td>Q37</td><td>コールドスタート問題はどう対策するか？</td><td>Lambda: Provisioned Concurrency（常時起動）、Warm-up Lambda（定期呼び出し）。コンテナ: 最小レプリカ数を1以上に設定</td></tr>
+          <tr><td>Q38</td><td>Graceful Shutdownとは何か、なぜ重要か？</td><td>シャットダウン前に進行中のリクエストを完了させる（SIGTERMシグナル受信→新規受付停止→処理完了待機→シャットダウン）。ロールアウト時のリクエスト損失防止</td></tr>
+          <tr><td>Q39</td><td>Blue/Greenデプロイとローリングアップデートの違いは？</td><td>Blue/Green: 新環境（Green）を完全作成し一括切替。ロールバックが即時。コスト2倍。Rolling: 少しずつ入れ替え。コスト効率良いが途中でバージョン混在</td></tr>
+          <tr><td>Q40</td><td>Feature Flagはどう設計するか？</td><td>ユーザー属性（メール、国）やパーセンテージでフラグをON/OFF。LaunchDarkly, Unleash等のサービスを使用。古いフラグは定期削除（技術的負債化防止）</td></tr>
+          <tr><td>Q41</td><td>DDos攻撃の種類と対策は？</td><td>Volume（帯域幅枯渇）→Cloudflare anycast。Protocol（TCP SYN flood）→SYN cookie。Application（HTTP flood）→WAF+レートリミット。多層防御が基本</td></tr>
+          <tr><td>Q42</td><td>データのマスキングと匿名化の違いは？</td><td>マスキング: 元データから生成（元に戻せる場合あり）。匿名化: 識別不能にする（GDPR準拠）。仮名化: 識別子を偽名に置換（再識別のリスクあり）</td></tr>
+          <tr><td>Q43</td><td>TLS 1.3とTLS 1.2の主な違いは？</td><td>TLS 1.3はハンドシェイクが1 RTT（1.2は2 RTT）に短縮。0-RTT再開も可能。弱い暗号スイート（RSA鍵交換など）を廃止。完全前方秘匿（PFS）が必須</td></tr>
+          <tr><td>Q44</td><td>マルチテナントアーキテクチャの分離戦略は？</td><td>完全分離（テナントごとに独立DB/インフラ）: 最高のセキュリティ・コスト高。スキーマ分離（共有DBで別スキーマ）: 中間。行レベル分離（共有テーブルにtenant_id）: 最低コスト・漏洩リスク</td></tr>
+          <tr><td>Q45</td><td>Chaos Engineeringで何を壊してテストするか？</td><td>ランダムなポッドキル（Chaos Monkey）、ネットワーク遅延注入、CPU/メモリ枯渇、依存サービス停止、クロックスキュー。本番でも実施（ゲームデーとして計画的に）</td></tr>
+          <tr><td>Q46</td><td>「スプリットブレイン」問題とは何か？</td><td>ネットワーク分断でマスターが2つになること。ゼロのデータ不整合が起きる。対策: クォーラム（多数決）、フェンシング（古いマスターを強制シャットダウン）</td></tr>
+          <tr><td>Q47</td><td>ヘルスチェックはどう設計するか？</td><td>Liveness Probe（生死確認、失敗でPod再起動）vs Readiness Probe（トラフィック受付可否、失敗でLBから除外）。DBやRedisへの接続確認まで含めた Deep Health Check</td></tr>
+          <tr><td>Q48</td><td>コスト最適化のためにどんな戦略を取るか？</td><td>Spot/Preemptible Instanceで最大80%削減、Auto Scalingで過剰プロビジョニング削減、データライフサイクル（S3 Intelligent-Tiering）、CDNでオリジン転送削減</td></tr>
+          <tr><td>Q49</td><td>マイクロサービスのテスト戦略は？</td><td>Consumer-Driven Contract Testing（Pact）でサービス間APIの互換性確認。E2Eテストはコスト高なので最小限に。Chaos EngineeringでResilienceをテスト</td></tr>
+          <tr><td>Q50</td><td>ゼロダウンタイムDBマイグレーションの手順は？</td><td>①新カラムを追加（NULLABLEで）②新旧両方に書くようアプリ更新③古いデータをバックグラウンドでバックフィル④新カラムのみ読むようアプリ更新⑤古いカラムを削除</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. Senior Engineerが差をつけるポイント ===== -->
+<div class="section" id="senior">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2>Senior Engineer が差をつけるポイント集 TOP 10</h2>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">01</div>
+    <div class="tip-title">数字で語る（見積もりを自発的に行う）</div>
+    <p>Junior: 「キャッシュを使います」。Senior: 「DAU 5,000万 × 1リクエスト/日 ÷ 86,400 ≈ 578 QPS。P99レイテンシ100ms要件でDBのみでは対応不可能。キャッシュで95%のヒット率を達成すれば、DB QPS は約29まで削減できます」</p>
+    <div class="example">
+      <div class="label">アクションアイテム</div>
+      <div class="good">見積もりを計算用紙に書きながら声に出す。数字に根拠をもたせる。</div>
+    </div>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">02</div>
+    <div class="tip-title">トレードオフを「コスト」で語る</div>
+    <p>設計の選択肢を提示する際に、パフォーマンス・可用性・コスト・運用複雑度の4軸で比較する。「データの整合性を強化するとレイテンシが上がります。今回のSLAではどちらを優先すべきですか？」と面接官に確認する。</p>
+    <div class="example">
+      <div class="label">悪い例</div>
+      <div class="bad">「Aが良いと思います」</div>
+      <div class="label" style="margin-top:8px;">良い例</div>
+      <div class="good">「AはXの点で優れますが、Yの問題があります。今回の要件ではXを重視すべきと考えるのでAを選びますが、Yについては〜で対策します」</div>
+    </div>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">03</div>
+    <div class="tip-title">ボトルネックを先回りして特定する</div>
+    <p>設計を提示した後「この設計で最初のボトルネックはDBの書き込みで、QPS 10,000超でシャーディングが必要になります」と自ら弱点を指摘する。これは強さの証明。隠す必要はない。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">04</div>
+    <div class="tip-title">「Happy Path」だけでなくエッジケースを語る</div>
+    <p>「正常系だけでなく、ネットワーク障害/DBダウン/リクエストスパイク/悪意あるリクエストのケースも考慮します」と宣言する。具体的なエラーハンドリング（Circuit Breaker、Retry with Backoff、Graceful Degradation）を述べる。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">05</div>
+    <div class="tip-title">データの一貫性レベルを明示する</div>
+    <p>「このデータは結果整合性（Eventual Consistency）で許容できますか、それともStrong Consistencyが必要ですか？」と確認する。「ユーザーアカウント残高は Strong、タイムラインは Eventual で十分です」のように使い分けを示す。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">06</div>
+    <div class="tip-title">運用・監視の設計も含める</div>
+    <p>多くの候補者は機能設計だけ語るが、Senior Engineerは「このサービスのメトリクスはP99レイテンシとエラーレートを追跡し、SLO違反でPagerDutyを発火させます。障害時のプレイブックとして〜があります」と運用視点も含める。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">07</div>
+    <div class="tip-title">段階的な成長計画を示す</div>
+    <p>「フェーズ1（ユーザー数10万）: シンプルなモノリス + RDS。フェーズ2（100万）: 読み取りレプリカ + キャッシュ追加。フェーズ3（1,000万）: サービス分割 + シャーディング」のように、過剰設計をせずに段階的に発展させる計画を示す。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">08</div>
+    <div class="tip-title">コスト意識を示す</div>
+    <p>「EC2 On-Demand よりSpot Instanceで70%削減できます」「S3のログは30日後にGlacierへ移行でコスト90%削減」のように、高性能だけでなくコスト効率も語れる候補者は印象が良い。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">09</div>
+    <div class="tip-title">実際のシステムを例として挙げる</div>
+    <p>「これはNetflixがHystrixで採用したCircuit Breakerパターンと同じアプローチです」「DiscordがCassandraに移行した理由と同様の課題です」のように実例を挙げることで技術の深さを示す。</p>
+  </div>
+
+  <div class="senior-tip">
+    <div class="tip-num">10</div>
+    <div class="tip-title">面接の最後に「改善点」を自ら挙げる</div>
+    <p>「時間の制約上対応できなかった改善点として、①グローバルへの展開時のGeo-routing設計、②データプライバシー規制（GDPR）への対応、③A/Bテスト基盤があります」と言える候補者は実務経験の深さを証明できる。</p>
+  </div>
+</div>
+
+<!-- ===== 7. 用語集（150語） ===== -->
+<div class="section" id="glossary">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2>システムデザイン用語集（150語）</h2>
+  </div>
+
+  <h3 style="color:var(--accent3);font-size:1rem;margin-bottom:1rem;">A - C</h3>
+  <div class="glossary-grid" style="margin-bottom:1.5rem;">
+    <div class="glossary-item"><div class="glossary-term">ACID</div><div class="glossary-def">Atomicity/Consistency/Isolation/Durability。RDBMSが保証するトランザクション特性</div></div>
+    <div class="glossary-item"><div class="glossary-term">API Gateway</div><div class="glossary-def">マイクロサービスへの単一エントリポイント。認証・ルーティング・レートリミットを集約</div></div>
+    <div class="glossary-item"><div class="glossary-term">At-least-once</div><div class="glossary-def">メッセージが最低1回は配信される保証。重複の可能性あり。冪等性と組み合わせる</div></div>
+    <div class="glossary-item"><div class="glossary-term">Auto Scaling</div><div class="glossary-def">負荷に応じてサーバー台数を自動増減する仕組み</div></div>
+    <div class="glossary-item"><div class="glossary-term">BASE</div><div class="glossary-def">Basically Available, Soft-state, Eventually consistent。NoSQLのトランザクション特性</div></div>
+    <div class="glossary-item"><div class="glossary-term">Bloom Filter</div><div class="glossary-def">確率的データ構造。要素の存在を高速判定。偽陽性あり、偽陰性なし</div></div>
+    <div class="glossary-item"><div class="glossary-term">CAP定理</div><div class="glossary-def">分散システムはConsistency/Availability/Partition toleranceのうち2つしか同時に保証できない</div></div>
+    <div class="glossary-item"><div class="glossary-term">Cardinality</div><div class="glossary-def">ラベルやカラムの取りうる値の種類数。高カーディナリティはインデックスやTSDBに悪影響</div></div>
+    <div class="glossary-item"><div class="glossary-term">CDN (Content Delivery Network)</div><div class="glossary-def">地理的に分散したエッジサーバーで静的コンテンツをユーザー近くにキャッシュ配信</div></div>
+    <div class="glossary-item"><div class="glossary-term">Circuit Breaker</div><div class="glossary-def">失敗率が閾値を超えるとリクエストをブロックし、依存サービスへの連鎖障害を防ぐパターン</div></div>
+    <div class="glossary-item"><div class="glossary-term">Compaction</div><div class="glossary-def">LSM-TreeやTSDBで古いデータブロックを統合してスペース効率を高める処理</div></div>
+    <div class="glossary-item"><div class="glossary-term">Consistent Hashing</div><div class="glossary-def">ノード追加/削除時のデータ移動を最小化するハッシュアルゴリズム</div></div>
+    <div class="glossary-item"><div class="glossary-term">CORS</div><div class="glossary-def">Cross-Origin Resource Sharing。ブラウザが異なるオリジンへのリクエストを許可するポリシー</div></div>
+    <div class="glossary-item"><div class="glossary-term">CQRS</div><div class="glossary-def">Command Query Responsibility Segregation。読み取りと書き込みのモデルを分離するパターン</div></div>
+    <div class="glossary-item"><div class="glossary-term">CRDT</div><div class="glossary-def">Conflict-free Replicated Data Types。競合なしに分散環境で更新を統合できるデータ構造</div></div>
+  </div>
+
+  <h3 style="color:var(--accent3);font-size:1rem;margin-bottom:1rem;">D - G</h3>
+  <div class="glossary-grid" style="margin-bottom:1.5rem;">
+    <div class="glossary-item"><div class="glossary-term">DAG</div><div class="glossary-def">Directed Acyclic Graph。有向非巡回グラフ。Airflow等のジョブ依存関係管理に使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Data Sharding</div><div class="glossary-def">データを複数DBに分割して書き込み/ストレージをスケールアウトする手法</div></div>
+    <div class="glossary-item"><div class="glossary-term">Dead Letter Queue</div><div class="glossary-def">処理失敗したメッセージを隔離するキュー。調査・再処理のために使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">DDoS</div><div class="glossary-def">Distributed Denial of Service。大量リクエストでサービスを妨害する攻撃</div></div>
+    <div class="glossary-item"><div class="glossary-term">Denormalization</div><div class="glossary-def">JOINを避けるためにデータを意図的に重複させる設計。読み取り性能向上、更新が複雑</div></div>
+    <div class="glossary-item"><div class="glossary-term">DNS</div><div class="glossary-def">Domain Name System。ドメイン名をIPアドレスに変換する階層型分散システム</div></div>
+    <div class="glossary-item"><div class="glossary-term">Edge Computing</div><div class="glossary-def">ユーザーに近いネットワークエッジで処理を行い、レイテンシとバンド帯域を削減</div></div>
+    <div class="glossary-item"><div class="glossary-term">Envelope Encryption</div><div class="glossary-def">データをDEKで暗号化し、DEK自体をKEKで暗号化する2層暗号化。AWS KMSが採用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Error Budget</div><div class="glossary-def">SLOで許容される障害時間・エラー数の予算。開発速度と信頼性のトレードオフを管理</div></div>
+    <div class="glossary-item"><div class="glossary-term">Eventual Consistency</div><div class="glossary-def">更新後、時間が経てば全ノードで同じ値になる整合性モデル。Strong Consistencyより可用性高</div></div>
+    <div class="glossary-item"><div class="glossary-term">Exemplars</div><div class="glossary-def">Prometheusメトリクスに埋め込まれたトレースIDへの参照。スパイク時のトレースへのジャンプを可能に</div></div>
+    <div class="glossary-item"><div class="glossary-term">Fanout</div><div class="glossary-def">1つのイベントを複数の宛先に配信すること。SNSのタイムライン生成などで使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Feature Flag</div><div class="glossary-def">コードを再デプロイせずに機能をON/OFFできる機能トグル</div></div>
+    <div class="glossary-item"><div class="glossary-term">Gossip Protocol</div><div class="glossary-def">P2Pでノード間情報を交換する分散合意プロトコル。Cassandraがクラスター状態管理に採用</div></div>
+    <div class="glossary-item"><div class="glossary-term">gRPC</div><div class="glossary-def">GoogleのRPCフレームワーク。Protocol Buffersで型安全な高性能サービス間通信</div></div>
+  </div>
+
+  <h3 style="color:var(--accent3);font-size:1rem;margin-bottom:1rem;">H - L</h3>
+  <div class="glossary-grid" style="margin-bottom:1.5rem;">
+    <div class="glossary-item"><div class="glossary-term">Health Check</div><div class="glossary-def">サービスの稼働状態を確認するエンドポイント。LBがトラフィック切り離しの判断に使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Heartbeat</div><div class="glossary-def">定期的な生存確認メッセージ。途絶えるとノード障害と判断</div></div>
+    <div class="glossary-item"><div class="glossary-term">Hot Spot</div><div class="glossary-def">特定のDBシャードやキャッシュキーに負荷が集中する状態</div></div>
+    <div class="glossary-item"><div class="glossary-term">Horizontal Scaling</div><div class="glossary-def">サーバーの台数を増やすスケールアウト。ステートレスアプリに適す</div></div>
+    <div class="glossary-item"><div class="glossary-term">Idempotency</div><div class="glossary-def">同じ操作を複数回実行しても結果が変わらない性質。決済・メッセージ処理で必須</div></div>
+    <div class="glossary-item"><div class="glossary-term">Index</div><div class="glossary-def">DBの検索高速化のためのデータ構造。B-Tree/Hash/GiST等。書き込みオーバーヘッドあり</div></div>
+    <div class="glossary-item"><div class="glossary-term">JIT (Just-In-Time)</div><div class="glossary-def">リクエスト時に初めて計算・生成すること。事前計算（precompute）の対義語</div></div>
+    <div class="glossary-item"><div class="glossary-term">JWT</div><div class="glossary-def">JSON Web Token。署名付きの自己完結型トークン。ステートレス認証に使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Kafka</div><div class="glossary-def">Apache Kafkaの高スループット分散メッセージキュー。イベントストリーミングに広く採用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Lamport Clock</div><div class="glossary-def">分散システムで因果関係を表す論理クロック。物理時刻に依存しない</div></div>
+    <div class="glossary-item"><div class="glossary-term">Latency</div><div class="glossary-def">リクエストから応答までの時間。P50/P99/P99.9で計測。P99は99%のリクエストが収まる値</div></div>
+    <div class="glossary-item"><div class="glossary-term">Leader Election</div><div class="glossary-def">分散システムで1つのリーダーノードを選出するプロセス。Raft/Paxos等で実装</div></div>
+    <div class="glossary-item"><div class="glossary-term">Load Balancer</div><div class="glossary-def">複数サーバーへトラフィックを分散。L4（TCP/UDP）とL7（HTTP）がある</div></div>
+    <div class="glossary-item"><div class="glossary-term">Long Polling</div><div class="glossary-def">サーバーがレスポンスを保留し、更新があるか一定時間が経過したら返す擬似リアルタイム手法</div></div>
+    <div class="glossary-item"><div class="glossary-term">LSM-Tree</div><div class="glossary-def">Log-Structured Merge Tree。書き込みを高速化するためCassandra/LevelDB等が採用</div></div>
+  </div>
+
+  <h3 style="color:var(--accent3);font-size:1rem;margin-bottom:1rem;">M - R</h3>
+  <div class="glossary-grid" style="margin-bottom:1.5rem;">
+    <div class="glossary-item"><div class="glossary-term">Message Queue</div><div class="glossary-def">非同期通信のためのメッセージバッファ。Producer/Consumer間の疎結合化</div></div>
+    <div class="glossary-item"><div class="glossary-term">Microservice</div><div class="glossary-def">単一責務の小さなサービスの集合体。独立デプロイ・スケール可能</div></div>
+    <div class="glossary-item"><div class="glossary-term">mTLS</div><div class="glossary-def">Mutual TLS。クライアント・サーバー双方が証明書で認証。ゼロトラストの基盤</div></div>
+    <div class="glossary-item"><div class="glossary-term">MVCC</div><div class="glossary-def">Multi-Version Concurrency Control。書き込みが読み取りをブロックしない同時実行制御</div></div>
+    <div class="glossary-item"><div class="glossary-term">Object Storage</div><div class="glossary-def">S3のようなフラットなキーバリュー型ストレージ。ファイル・画像・バックアップに適す</div></div>
+    <div class="glossary-item"><div class="glossary-term">OIDC</div><div class="glossary-def">OpenID Connect。OAuth 2.0の上に構築された認証レイヤー。IDトークン（JWT）を発行</div></div>
+    <div class="glossary-item"><div class="glossary-term">OpenTelemetry</div><div class="glossary-def">Metrics/Logs/Tracesの計装・収集・エクスポートの標準フレームワーク</div></div>
+    <div class="glossary-item"><div class="glossary-term">Outbox Pattern</div><div class="glossary-def">DBへの書き込みとメッセージ発行を原子的に行うパターン。At-least-once配信を保証</div></div>
+    <div class="glossary-item"><div class="glossary-term">P99 Latency</div><div class="glossary-def">100リクエストのうち99番目（最後から2番目）のレスポンスタイム。末端ユーザー体験を示す</div></div>
+    <div class="glossary-item"><div class="glossary-term">PKCE</div><div class="glossary-def">Proof Key for Code Exchange。SPAやモバイルアプリでのOAuth認可コード横取り防止</div></div>
+    <div class="glossary-item"><div class="glossary-term">PromQL</div><div class="glossary-def">Prometheusのクエリ言語。時系列データの集計・フィルタリングに使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Pub/Sub</div><div class="glossary-def">Publisher/Subscriber モデル。TopicにPublishされたメッセージをSubscriberに配信</div></div>
+    <div class="glossary-item"><div class="glossary-term">Rate Limiting</div><div class="glossary-def">単位時間あたりのリクエスト数を制限する機能。Token Bucket/Fixed Window等のアルゴリズム</div></div>
+    <div class="glossary-item"><div class="glossary-term">Raft</div><div class="glossary-def">分散合意アルゴリズム。PaxosよりわかりやすくetcdやCockroachDBが採用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Read Replica</div><div class="glossary-def">プライマリDBのレプリカ。読み取りクエリを分散して負荷を軽減</div></div>
+    <div class="glossary-item"><div class="glossary-term">Recording Rules</div><div class="glossary-def">Prometheusで重い集計クエリを定期的に事前計算し、軽量メトリクスとして保存</div></div>
+    <div class="glossary-item"><div class="glossary-term">RPO</div><div class="glossary-def">Recovery Point Objective。障害時に許容できるデータロスの最大時間（例: 5分）</div></div>
+    <div class="glossary-item"><div class="glossary-term">RTO</div><div class="glossary-def">Recovery Time Objective。障害から復旧までの目標時間（例: 1時間以内）</div></div>
+  </div>
+
+  <h3 style="color:var(--accent3);font-size:1rem;margin-bottom:1rem;">S - Z</h3>
+  <div class="glossary-grid">
+    <div class="glossary-item"><div class="glossary-term">Saga Pattern</div><div class="glossary-def">マイクロサービス間の分散トランザクションを補償トランザクションで管理するパターン</div></div>
+    <div class="glossary-item"><div class="glossary-term">Service Discovery</div><div class="glossary-def">動的に変わるサービスのIPアドレスを検索する仕組み。ConsulやKubernetes DNS</div></div>
+    <div class="glossary-item"><div class="glossary-term">Service Mesh</div><div class="glossary-def">マイクロサービス間通信をサイドカーProxy（Envoy等）で管理。mTLS/トレーシング/LBを自動化</div></div>
+    <div class="glossary-item"><div class="glossary-term">SimHash</div><div class="glossary-def">テキストの類似度を高速計算するハッシュ。Web Crawlerの重複コンテンツ検出に使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">SLA</div><div class="glossary-def">Service Level Agreement。顧客との可用性・性能に関する契約。SLOより緩い目標を設定</div></div>
+    <div class="glossary-item"><div class="glossary-term">SLI</div><div class="glossary-def">Service Level Indicator。SLOを測定するメトリクス（例: エラーレート、レイテンシ）</div></div>
+    <div class="glossary-item"><div class="glossary-term">SLO</div><div class="glossary-def">Service Level Objective。SLIの目標値（例: P99レイテンシ < 200ms）</div></div>
+    <div class="glossary-item"><div class="glossary-term">Split Brain</div><div class="glossary-def">ネットワーク分断により複数のマスターが出現する問題。クォーラムで防止</div></div>
+    <div class="glossary-item"><div class="glossary-term">Tail Latency</div><div class="glossary-def">P99/P99.9などの高パーセンタイルのレイテンシ。クラウドサービスでは外れ値が問題になりやすい</td></tr></div>
+    <div class="glossary-item"><div class="glossary-term">Thundering Herd</div><div class="glossary-def">キャッシュ失効時に大量リクエストが一斉にDBに殺到するキャッシュスタンピード現象</div></div>
+    <div class="glossary-item"><div class="glossary-term">Time-series DB</div><div class="glossary-def">タイムスタンプ付きデータを効率的に格納・クエリするDB。Prometheus TSDB, InfluxDB</div></div>
+    <div class="glossary-item"><div class="glossary-term">Token Bucket</div><div class="glossary-def">レートリミットアルゴリズム。一定速度でトークンを補充し、リクエストごとに消費</div></div>
+    <div class="glossary-item"><div class="glossary-term">Two-Phase Commit (2PC)</div><div class="glossary-def">分散トランザクションを原子的にコミットするプロトコル。ブロッキング問題あり</div></div>
+    <div class="glossary-item"><div class="glossary-term">Vector Clock</div><div class="glossary-def">分散システムで因果関係を追跡するための論理クロック。DynamoDBが採用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Vertical Scaling</div><div class="glossary-def">サーバーのCPU/メモリを増強するスケールアップ。上限あり。コスト高</div></div>
+    <div class="glossary-item"><div class="glossary-term">WAL</div><div class="glossary-def">Write-Ahead Log。データ書き込み前にログに記録する耐久性確保の仕組み</div></div>
+    <div class="glossary-item"><div class="glossary-term">WebSocket</div><div class="glossary-def">HTTP接続をアップグレードして確立する双方向通信プロトコル。チャット・ゲームに使用</div></div>
+    <div class="glossary-item"><div class="glossary-term">Write-Ahead Log (WAL)</div><div class="glossary-def">PostgreSQL, Kafka等が採用。クラッシュリカバリとレプリケーションの基盤</div></div>
+    <div class="glossary-item"><div class="glossary-term">XADD/XREAD</div><div class="glossary-def">Redisのストリーム操作コマンド。Kafkaライクな永続ストリームをRedisで実現</div></div>
+    <div class="glossary-item"><div class="glossary-term">Zero Trust</div><div class="glossary-def">「信頼はせず、常に検証する」セキュリティモデル。ネットワーク境界に依存しない</div></div>
+    <div class="glossary-item"><div class="glossary-term">Zookeeper</div><div class="glossary-def">分散システムの設定管理・リーダー選出・分散ロックを提供するサービス。Kafkaが採用</div></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- FOOTER NAV -->
+<footer class="footer-nav">
+  <div class="footer-nav-inner">
+    <a href="14_case_studies.html">← Ch14 ケーススタディ</a>
+    <a href="00_index.html">ホーム</a>
+    <span style="color:var(--accent3);font-weight:700;">Ch15 完 — 全章制覇！</span>
+  </div>
+</footer>
+
+<script>
+// Q&A Accordion
+document.querySelectorAll('.qa-item').forEach(item => {
+  item.querySelector('.qa-question').addEventListener('click', () => {
+    item.classList.toggle('open');
+  });
+});
+</script>
+
+</body>
+</html>

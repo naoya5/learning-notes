@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャッシュ戦略 | システムデザイン学習</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.nav-links{display:flex;gap:24px;font-size:14px;}
+.nav-links a{color:var(--text2);padding:6px 14px;border-radius:6px;border:1px solid transparent;transition:all .2s;}
+.nav-links a:hover{color:var(--text);border-color:var(--border);background:var(--surface2);text-decoration:none;}
+.nav-title{font-size:15px;font-weight:600;color:var(--accent);}
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#13151f 50%,#1a1040 100%);padding:72px 32px 56px;text-align:center;border-bottom:1px solid var(--border);}
+.hero-badge{display:inline-block;background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:4px 16px;font-size:13px;margin-bottom:20px;}
+.hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;background:linear-gradient(135deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;}
+.hero p{font-size:18px;color:var(--text2);max-width:680px;margin:0 auto 32px;}
+.hero-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 28px;text-align:center;}
+.stat-val{font-size:28px;font-weight:700;color:var(--accent2);}
+.stat-label{font-size:12px;color:var(--text3);margin-top:4px;}
+.container{max-width:1100px;margin:0 auto;padding:0 32px;}
+section{padding:64px 0;border-bottom:1px solid var(--border);}
+h2{font-size:2rem;font-weight:700;margin-bottom:8px;}
+h2 .num{color:var(--accent);font-size:1.2rem;display:block;margin-bottom:8px;font-weight:600;}
+.section-lead{color:var(--text2);font-size:16px;margin-bottom:40px;max-width:720px;}
+h3{font-size:1.25rem;font-weight:600;color:var(--accent2);margin:32px 0 12px;}
+h4{font-size:1rem;font-weight:600;color:var(--accent3);margin:20px 0 8px;}
+p{color:var(--text2);margin-bottom:16px;}
+ul,ol{color:var(--text2);padding-left:24px;margin-bottom:16px;}
+li{margin-bottom:6px;}
+strong{color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:24px;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-bottom:32px;}
+.card h4{margin-top:0;}
+.highlight{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-left:3px solid var(--accent);border-radius:8px;padding:16px 20px;margin:16px 0;}
+.highlight.green{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);border-left-color:var(--green);}
+.highlight.amber{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);border-left-color:var(--accent3);}
+.highlight.red{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);border-left-color:var(--red);}
+.highlight.cyan{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.2);border-left-color:var(--accent2);}
+pre{background:#0d0f1a;border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto;margin:16px 0;font-size:13.5px;line-height:1.6;}
+code{font-family:'Fira Code','Cascadia Code',monospace;}
+pre code{color:#e2e8f0;}
+.cm{color:#475569;}
+.str{color:#10b981;}
+.kw{color:#a78bfa;}
+.fn{color:#22d3ee;}
+.num-c{color:#f59e0b;}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+th{background:var(--surface2);color:var(--text);padding:12px 16px;text-align:left;border:1px solid var(--border);}
+td{padding:11px 16px;border:1px solid var(--border);color:var(--text2);}
+tr:hover td{background:var(--surface2);}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;}
+.badge.green{background:rgba(16,185,129,.15);color:var(--green);}
+.badge.red{background:rgba(239,68,68,.15);color:var(--red);}
+.badge.amber{background:rgba(245,158,11,.15);color:var(--accent3);}
+.badge.blue{background:rgba(99,102,241,.15);color:var(--accent);}
+.svg-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin:24px 0;overflow-x:auto;}
+.svg-caption{text-align:center;font-size:13px;color:var(--text3);margin-top:12px;}
+.tip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+.tip-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.tip-card .tip-num{font-size:32px;font-weight:800;color:rgba(99,102,241,.3);line-height:1;}
+.tip-card h4{color:var(--accent);margin:8px 0 8px;}
+.tip-card p{font-size:14px;margin:0;}
+footer{padding:40px 32px;text-align:center;color:var(--text3);font-size:14px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-title">&#x26A1; システムデザイン</div>
+  <div class="nav-links">
+    <a href="00_index.html">&#x1F3E0; ホーム</a>
+    <a href="04_api_design.html">&larr; API設計</a>
+    <a href="06_load_balancing.html">負荷分散 &rarr;</a>
+  </div>
+</nav>
+<div class="hero">
+  <div class="hero-badge">Chapter 05</div>
+  <h1>キャッシュ戦略</h1>
+  <p>キャッシュはシステム性能を劇的に改善する最も重要な技術の一つ。正しい戦略を選択することが高性能システムの鍵。</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-val">100x</div><div class="stat-label">メモリ vs ディスク 速度差</div></div>
+    <div class="stat"><div class="stat-val">99%</div><div class="stat-label">理想キャッシュヒット率</div></div>
+    <div class="stat"><div class="stat-val">&lt;1ms</div><div class="stat-label">Redis 応答時間</div></div>
+    <div class="stat"><div class="stat-val">8種</div><div class="stat-label">主要キャッシュパターン</div></div>
+  </div>
+</div>
+<div class="container">
+
+<section id="what-is-cache">
+  <h2><span class="num">01</span>キャッシュとは &amp; なぜ重要か</h2>
+  <p class="section-lead">キャッシュは高速なストレージに頻繁にアクセスされるデータを一時保存することで、レイテンシを削減しスループットを向上させる技術です。</p>
+
+  <h3>レイテンシ改善の原理</h3>
+  <p>コンピュータシステムにおける記憶階層では、速度と容量はトレードオフの関係にあります。CPUレジスタは超高速ですが容量は数バイト、HDDは大容量ですがアクセスに数十ミリ秒かかります。キャッシュはこのギャップを埋める役割を果たします。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:820px;display:block;margin:0 auto;">
+      <rect width="820" height="280" fill="#0d0f1a" rx="12"/>
+      <text x="410" y="26" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">各ストレージ層のアクセスレイテンシ比較</text>
+      <rect x="140" y="42" width="4" height="26" rx="2" fill="#10b981"/>
+      <text x="136" y="60" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">L1キャッシュ</text>
+      <text x="150" y="60" fill="#10b981" font-size="12" font-family="sans-serif">0.5ns</text>
+      <rect x="140" y="80" width="8" height="26" rx="2" fill="#10b981"/>
+      <text x="136" y="98" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">L2キャッシュ</text>
+      <text x="154" y="98" fill="#10b981" font-size="12" font-family="sans-serif">7ns</text>
+      <rect x="140" y="118" width="26" height="26" rx="2" fill="#22d3ee"/>
+      <text x="136" y="136" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">メインメモリ</text>
+      <text x="172" y="136" fill="#22d3ee" font-size="12" font-family="sans-serif">100ns</text>
+      <rect x="140" y="156" width="70" height="26" rx="2" fill="#a78bfa"/>
+      <text x="136" y="174" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">Redis (ネットワーク)</text>
+      <text x="216" y="174" fill="#a78bfa" font-size="12" font-family="sans-serif">~0.5ms</text>
+      <rect x="140" y="194" width="200" height="26" rx="2" fill="#f59e0b"/>
+      <text x="136" y="212" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">SSD</text>
+      <text x="346" y="212" fill="#f59e0b" font-size="12" font-family="sans-serif">~0.1ms</text>
+      <rect x="140" y="232" width="450" height="26" rx="2" fill="#ef4444"/>
+      <text x="136" y="250" text-anchor="end" fill="#94a3b8" font-size="12" font-family="sans-serif">DBクエリ</text>
+      <text x="596" y="250" fill="#ef4444" font-size="12" font-family="sans-serif">~10ms</text>
+      <text x="410" y="272" text-anchor="middle" fill="#475569" font-size="11" font-family="sans-serif">&larr; 高速　　　　　　　　　　　　　　　低速 &rarr;</text>
+    </svg>
+    <div class="svg-caption">各記憶層のアクセスレイテンシ（対数スケール的に可視化）</div>
+  </div>
+
+  <h3>キャッシュヒット率の重要性</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>ヒット率 95% の場合</h4>
+      <p>100リクエストのうち95件がキャッシュから返る。残り5件はDBアクセス（10ms）が発生。</p>
+      <pre><code>平均レイテンシ =
+  0.95 x 1ms  (キャッシュ)
++ 0.05 x 10ms (DB)
+= 1.45ms</code></pre>
+    </div>
+    <div class="card">
+      <h4>ヒット率 99% の場合</h4>
+      <p>100リクエストのうち99件がキャッシュから返る。DBアクセスは1件のみ。</p>
+      <pre><code>平均レイテンシ =
+  0.99 x 1ms  (キャッシュ)
++ 0.01 x 10ms (DB)
+= 1.09ms</code></pre>
+    </div>
+  </div>
+  <div class="highlight amber">
+    <strong>重要:</strong> ヒット率を95%から99%に改善するだけで平均レイテンシが約25%改善。さらに重要なのはDBへの負荷が1/5に削減されること。高トラフィック環境ではこの差がシステムの生死を分けます。
+  </div>
+
+  <h3>キャッシュに適するデータ・不適なデータ</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--green)">&#x2713; キャッシュに向くデータ</h4>
+      <ul>
+        <li>読み取り頻度が高く書き込みが少ないデータ（商品カタログ、ユーザープロフィール）</li>
+        <li>計算コストが高い結果（集計クエリ結果、レコメンデーション）</li>
+        <li>複数リクエストで共有されるデータ（設定情報、静的コンテンツ）</li>
+        <li>一時的なセッション情報</li>
+        <li>レート制限カウンター</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--red)">&#x2717; キャッシュに向かないデータ</h4>
+      <ul>
+        <li>リアルタイム性が求められるデータ（残高、在庫数）</li>
+        <li>ユーザー固有で共有されないデータ（個人の下書き）</li>
+        <li>頻繁に変更されるデータ（株価、スポーツスコア）</li>
+        <li>機密性が高くキャッシュから漏洩リスクがあるデータ</li>
+        <li>書き込みが読み取りより多いデータ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="cache-hierarchy">
+  <h2><span class="num">02</span>キャッシュの階層</h2>
+  <p class="section-lead">現代のシステムはCPUからブラウザまで複数の層でキャッシュを活用しています。各層の特性を理解することが設計の基本です。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 780 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;display:block;margin:0 auto;">
+      <rect width="780" height="420" fill="#0d0f1a" rx="12"/>
+      <text x="390" y="26" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">キャッシュ階層（上が高速・小容量、下が低速・大容量）</text>
+      <rect x="290" y="40" width="200" height="48" rx="8" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="2"/>
+      <text x="390" y="60" text-anchor="middle" fill="#10b981" font-size="13" font-weight="bold" font-family="sans-serif">CPU L1/L2/L3 キャッシュ</text>
+      <text x="390" y="78" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">KB〜MB | &lt;10ns | ハードウェア管理</text>
+      <line x1="390" y1="88" x2="390" y2="104" stroke="#2a2d3e" stroke-width="2"/>
+      <rect x="245" y="106" width="290" height="48" rx="8" fill="rgba(99,102,241,0.1)" stroke="#6366f1" stroke-width="2"/>
+      <text x="390" y="126" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold" font-family="sans-serif">アプリ内キャッシュ (In-Process)</text>
+      <text x="390" y="144" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">MB単位 | &lt;1ms | Guava Cache, Caffeine, HashMap</text>
+      <line x1="390" y1="154" x2="390" y2="170" stroke="#2a2d3e" stroke-width="2"/>
+      <rect x="200" y="172" width="380" height="48" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="390" y="192" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold" font-family="sans-serif">分散キャッシュ (Distributed Cache)</text>
+      <text x="390" y="210" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">GB単位 | 0.5〜5ms | Redis, Memcached</text>
+      <line x1="390" y1="220" x2="390" y2="236" stroke="#2a2d3e" stroke-width="2"/>
+      <rect x="155" y="238" width="470" height="48" rx="8" fill="rgba(245,158,11,0.1)" stroke="#f59e0b" stroke-width="2"/>
+      <text x="390" y="258" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="bold" font-family="sans-serif">CDNキャッシュ (Content Delivery Network)</text>
+      <text x="390" y="276" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">TB単位 | ~10ms (地理的近接) | Cloudflare, CloudFront</text>
+      <line x1="390" y1="286" x2="390" y2="302" stroke="#2a2d3e" stroke-width="2"/>
+      <rect x="110" y="304" width="560" height="48" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="390" y="324" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold" font-family="sans-serif">ブラウザキャッシュ (Browser Cache)</text>
+      <text x="390" y="342" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">MB〜GB | &lt;1ms | HTTP Cache-Control, Service Worker</text>
+      <line x1="390" y1="352" x2="390" y2="368" stroke="#2a2d3e" stroke-width="2"/>
+      <rect x="250" y="370" width="280" height="32" rx="8" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="2"/>
+      <text x="390" y="390" text-anchor="middle" fill="#ef4444" font-size="12" font-weight="bold" font-family="sans-serif">データベース (最終ストレージ)</text>
+    </svg>
+    <div class="svg-caption">キャッシュ階層 — ユーザーに近いほど高速・小容量、データソースに近いほど低速・大容量</div>
+  </div>
+
+  <h3>各層の特性比較</h3>
+  <table>
+    <tr><th>キャッシュ層</th><th>レイテンシ</th><th>容量</th><th>スコープ</th><th>管理</th></tr>
+    <tr><td>CPU L1/L2/L3</td><td>0.5〜40ns</td><td>KB〜MB</td><td>CPU単体</td><td>ハードウェア自動</td></tr>
+    <tr><td>アプリ内キャッシュ</td><td>&lt;1ms</td><td>数百MB</td><td>プロセス内</td><td>アプリ実装</td></tr>
+    <tr><td>分散キャッシュ</td><td>0.5〜5ms</td><td>GB〜TB</td><td>全サーバー共有</td><td>Redis/Memcached</td></tr>
+    <tr><td>CDNキャッシュ</td><td>5〜50ms</td><td>無制限</td><td>エッジノード</td><td>CDNプロバイダー</td></tr>
+    <tr><td>ブラウザキャッシュ</td><td>&lt;1ms</td><td>数GB</td><td>ブラウザ</td><td>HTTPヘッダー</td></tr>
+  </table>
+
+  <div class="highlight">
+    <strong>設計のポイント:</strong> 可能な限り「ユーザーに近い層」でキャッシュすることが重要です。ブラウザキャッシュがヒットすれば、ネットワーク通信自体が不要になります。一方、分散キャッシュは複数サーバー間でデータを共有できるため、水平スケーリング環境では必須です。
+  </div>
+</section>
+
+<section id="write-strategies">
+  <h2><span class="num">03</span>書き込み戦略 (Write Strategies)</h2>
+  <p class="section-lead">データを書き込む際、キャッシュとデータベースの間にどのような整合性ポリシーを取るかが重要な設計上の決定です。</p>
+
+  <h3>Write-Through (同時書き込み)</h3>
+  <div class="card">
+    <p>書き込みリクエストが来たとき、<strong>キャッシュとDBに同時に書き込む</strong>戦略。データの一貫性が高いが、書き込みレイテンシはDBのレイテンシに依存する。</p>
+    <div class="svg-wrap" style="margin:16px 0;">
+      <svg viewBox="0 0 700 170" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="wt1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/></marker>
+          <marker id="wt2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981"/></marker>
+          <marker id="wt3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/></marker>
+          <marker id="wt4" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#64748b"/></marker>
+        </defs>
+        <rect width="700" height="170" fill="#0d0f1a" rx="8"/>
+        <rect x="20" y="65" width="100" height="40" rx="6" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="70" y="89" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">クライアント</text>
+        <line x1="120" y1="85" x2="195" y2="85" stroke="#6366f1" stroke-width="1.5" marker-end="url(#wt1)"/>
+        <text x="158" y="76" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">&#x2460;書き込み</text>
+        <rect x="197" y="65" width="90" height="40" rx="6" fill="rgba(34,211,238,0.2)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="242" y="89" text-anchor="middle" fill="#22d3ee" font-size="12" font-family="sans-serif">アプリ</text>
+        <line x1="287" y1="75" x2="388" y2="52" stroke="#10b981" stroke-width="1.5" marker-end="url(#wt2)"/>
+        <text x="338" y="52" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">&#x2461;キャッシュ更新</text>
+        <line x1="287" y1="95" x2="388" y2="118" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#wt3)"/>
+        <text x="338" y="120" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="sans-serif">&#x2462;DB書き込み(同時)</text>
+        <rect x="390" y="30" width="90" height="40" rx="6" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="1.5"/>
+        <text x="435" y="54" text-anchor="middle" fill="#10b981" font-size="12" font-family="sans-serif">キャッシュ</text>
+        <rect x="390" y="96" width="90" height="40" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="435" y="120" text-anchor="middle" fill="#f59e0b" font-size="12" font-family="sans-serif">DB</text>
+        <line x1="480" y1="85" x2="578" y2="85" stroke="#64748b" stroke-width="1.5" marker-end="url(#wt4)"/>
+        <text x="529" y="76" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">&#x2463;完了応答</text>
+        <rect x="580" y="65" width="100" height="40" rx="6" fill="rgba(99,102,241,0.15)" stroke="#2a2d3e" stroke-width="1"/>
+        <text x="630" y="89" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">クライアント</text>
+        <text x="350" y="158" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">キャッシュとDBを同時に更新 &#x2192; 常に一貫性が保たれる</text>
+      </svg>
+    </div>
+  </div>
+
+  <h3>Write-Behind / Write-Back (遅延書き込み)</h3>
+  <div class="card">
+    <p>書き込みをまずキャッシュに行い、<strong>DBへの書き込みは非同期で後から</strong>行う戦略。書き込みスループットが高いが、DBへの反映前にシステム障害が起きるとデータを失う可能性がある。</p>
+    <div class="highlight amber">
+      <strong>リスク:</strong> キャッシュサーバーがクラッシュした場合、未反映データが失われる。金融取引などには不向き。ゲームのスコアや分析ログなど、多少の欠損が許容される用途に適する。
+    </div>
+  </div>
+
+  <h3>Write-Around (キャッシュスキップ)</h3>
+  <div class="card">
+    <p>書き込みは<strong>DBに直接書き込み、キャッシュはスキップ</strong>する戦略。書き込まれたデータへの読み取りは、最初にキャッシュミスが発生してDBから読み込まれる。一度しか書き込まれないような大量データの取り込み時に有効。</p>
+  </div>
+
+  <h3>書き込み戦略比較表</h3>
+  <table>
+    <tr><th>戦略</th><th>一貫性</th><th>書き込み速度</th><th>データ損失リスク</th><th>適用場面</th></tr>
+    <tr><td>Write-Through</td><td><span class="badge green">高</span></td><td><span class="badge amber">中</span></td><td><span class="badge green">低</span></td><td>ECサイト商品情報、ユーザーデータ</td></tr>
+    <tr><td>Write-Behind</td><td><span class="badge amber">中</span></td><td><span class="badge green">高</span></td><td><span class="badge red">高</span></td><td>SNSいいね数、ゲームスコア、ログ</td></tr>
+    <tr><td>Write-Around</td><td><span class="badge green">高</span></td><td><span class="badge green">高</span></td><td><span class="badge green">低</span></td><td>バッチ取り込み、一度限りの大量書き込み</td></tr>
+  </table>
+</section>
+
+<section id="eviction">
+  <h2><span class="num">04</span>キャッシュ立ち退きポリシー (Eviction Policies)</h2>
+  <p class="section-lead">キャッシュの容量に上限があるとき、何のデータを削除するかを決定するアルゴリズムです。選択を誤るとヒット率が大きく低下します。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>LRU (Least Recently Used)</h4>
+      <p>最後にアクセスされた時刻が最も古いエントリを削除。<strong>最もよく使われるポリシー</strong>。時間的局所性（最近使ったものはまた使われる）の前提に基づく。</p>
+      <div class="highlight green" style="margin-top:12px;"><strong>適用場面:</strong> ほとんどのユースケース。Webアプリのセッション、APIレスポンスキャッシュ。</div>
+      <pre><code><span class="cm"># Redis での LRU 設定</span>
+maxmemory-policy allkeys-lru</code></pre>
+    </div>
+    <div class="card">
+      <h4>LFU (Least Frequently Used)</h4>
+      <p>アクセス頻度が最も低いエントリを削除。頻度カウンターを維持するため実装コストが高い。頻度の低いがたまに使われるアイテムも保持できる。</p>
+      <div class="highlight green" style="margin-top:12px;"><strong>適用場面:</strong> コンテンツ配信、人気楽曲/動画のキャッシュ。アクセスパターンが安定している場合に有効。</div>
+      <pre><code><span class="cm"># Redis での LFU 設定</span>
+maxmemory-policy allkeys-lfu</code></pre>
+    </div>
+    <div class="card">
+      <h4>FIFO (First In, First Out)</h4>
+      <p>最初にキャッシュに追加されたエントリを削除。シンプルな実装だが、古くても頻繁に使われるデータも削除してしまう問題がある。</p>
+      <div class="highlight amber" style="margin-top:12px;"><strong>適用場面:</strong> アクセスパターンが均一で予測可能な場合。バッファキュー的な用途。</div>
+    </div>
+    <div class="card">
+      <h4>Random (ランダム削除)</h4>
+      <p>ランダムにエントリを選択して削除。実装が最もシンプル。特定のパターンに対してはLRUより良い場合もあるが、一般的には最悪ケースの保証がない。</p>
+      <div class="highlight amber" style="margin-top:12px;"><strong>適用場面:</strong> アクセスパターンが完全にランダムな場合。LRUのオーバーヘッドを避けたい組み込みシステム。</div>
+    </div>
+  </div>
+
+  <h3>Redisで使用できるポリシー一覧</h3>
+  <table>
+    <tr><th>ポリシー</th><th>対象キー</th><th>説明</th></tr>
+    <tr><td>noeviction</td><td>全キー</td><td>メモリ上限到達時にエラーを返す（デフォルト）</td></tr>
+    <tr><td>allkeys-lru</td><td>全キー</td><td>全キーからLRUで削除（最も推奨）</td></tr>
+    <tr><td>volatile-lru</td><td>TTL付きキー</td><td>TTL設定済みキーからLRUで削除</td></tr>
+    <tr><td>allkeys-lfu</td><td>全キー</td><td>全キーからLFUで削除</td></tr>
+    <tr><td>volatile-lfu</td><td>TTL付きキー</td><td>TTL設定済みキーからLFUで削除</td></tr>
+    <tr><td>allkeys-random</td><td>全キー</td><td>全キーからランダムで削除</td></tr>
+    <tr><td>volatile-ttl</td><td>TTL付きキー</td><td>TTLが最も近いキーを優先削除</td></tr>
+  </table>
+</section>
+
+<section id="cache-patterns">
+  <h2><span class="num">05</span>キャッシュパターン</h2>
+  <p class="section-lead">読み書きの観点からキャッシュをどのように扱うかの設計パターンです。それぞれトレードオフがあり、用途に応じて選択します。</p>
+
+  <h3>Cache-Aside (Lazy Loading)</h3>
+  <div class="card">
+    <p>最もシンプルで広く使われるパターン。<strong>アプリケーションがキャッシュを直接操作</strong>する。キャッシュミス時のみDBにアクセスし結果をキャッシュに格納する。</p>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 700 210" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="ca1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/></marker>
+          <marker id="ca2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981"/></marker>
+          <marker id="ca3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ef4444"/></marker>
+          <marker id="ca4" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/></marker>
+        </defs>
+        <rect width="700" height="210" fill="#0d0f1a" rx="8"/>
+        <rect x="30" y="85" width="110" height="40" rx="6" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="85" y="109" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">アプリ</text>
+        <rect x="290" y="40" width="110" height="40" rx="6" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="1.5"/>
+        <text x="345" y="64" text-anchor="middle" fill="#10b981" font-size="12" font-family="sans-serif">キャッシュ</text>
+        <rect x="290" y="128" width="110" height="40" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="345" y="152" text-anchor="middle" fill="#f59e0b" font-size="12" font-family="sans-serif">DB</text>
+        <line x1="140" y1="97" x2="288" y2="67" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ca1)"/>
+        <text x="210" y="72" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">&#x2460;キャッシュ確認</text>
+        <line x1="290" y1="75" x2="142" y2="103" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ca2)"/>
+        <text x="210" y="100" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">HIT&#x2192;即返却</text>
+        <line x1="140" y1="113" x2="288" y2="140" stroke="#ef4444" stroke-width="1.5" marker-end="url(#ca3)"/>
+        <text x="210" y="140" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">&#x2461;MISS&#x2192;DB取得</text>
+        <line x1="290" y1="155" x2="142" y2="127" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ca4)"/>
+        <text x="440" y="64" fill="#94a3b8" font-size="11" font-family="sans-serif">HIT: キャッシュから即座に返却</text>
+        <text x="440" y="82" fill="#64748b" font-size="11" font-family="sans-serif">レイテンシ &lt;1ms</text>
+        <text x="440" y="130" fill="#94a3b8" font-size="11" font-family="sans-serif">MISS: DBから取得</text>
+        <text x="440" y="148" fill="#64748b" font-size="11" font-family="sans-serif">&#x2462;結果をキャッシュに保存</text>
+        <text x="350" y="195" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">アプリがキャッシュとDBを直接制御するシンプルな構成</text>
+      </svg>
+    </div>
+    <pre><code><span class="kw">async function</span> <span class="fn">getUser</span>(userId) {
+  <span class="cm">// 1. キャッシュを確認</span>
+  <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(`user:${userId}`);
+  <span class="kw">if</span> (cached) {
+    <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);  <span class="cm">// キャッシュヒット</span>
+  }
+  <span class="cm">// 2. DBから取得</span>
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">findUser</span>(userId);
+  <span class="cm">// 3. キャッシュに保存（TTL: 1時間）</span>
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(`user:${userId}`, <span class="num-c">3600</span>, JSON.<span class="fn">stringify</span>(user));
+  <span class="kw">return</span> user;
+}</code></pre>
+    <table>
+      <tr><th>メリット</th><th>デメリット</th></tr>
+      <tr><td>シンプルな実装、疎結合</td><td>最初のリクエストでキャッシュミス（Cold Start）</td></tr>
+      <tr><td>不要なデータをキャッシュしない</td><td>TTL期限切れ直後に負荷集中の可能性</td></tr>
+    </table>
+  </div>
+
+  <h3>Read-Through</h3>
+  <div class="card">
+    <p>アプリはキャッシュのみと通信し、<strong>キャッシュがDBの前段に位置してデータ取得を担当</strong>する。Cache-Asideとの違いは、キャッシュミス時のDB取得をキャッシュ層が自動的に行う点。</p>
+    <div class="highlight cyan">
+      <strong>適用場面:</strong> AWS ElastiCache (DAX for DynamoDB) など、DBとキャッシュが密結合したマネージドサービス。アプリロジックを単純化できる。
+    </div>
+  </div>
+
+  <h3>Write-Behind (書き込みパターン)</h3>
+  <div class="card">
+    <p>大量の書き込みがある場合、キャッシュに書いてバッチでDBに反映することでDBへの書き込み負荷を大幅に削減できる。</p>
+    <pre><code><span class="cm"># Redis リストを使った Write-Behind キュー</span>
+<span class="cm"># 書き込み時: キューに追加</span>
+LPUSH write_queue '{"id":1,"action":"update","data":...}'
+
+<span class="cm"># バッチワーカー: 定期的にキューを処理</span>
+LRANGE write_queue 0 99    <span class="cm"># 100件取得</span>
+<span class="cm"># DB バルク INSERT/UPDATE 後</span>
+LTRIM write_queue 100 -1   <span class="cm"># 処理済みを削除</span></code></pre>
+  </div>
+</section>
+
+<section id="redis">
+  <h2><span class="num">06</span>Redis の特徴と使い方</h2>
+  <p class="section-lead">Redis (Remote Dictionary Server) は高速なインメモリデータストアで、多様なデータ型を提供します。単純なキャッシュを超えた幅広いユースケースに対応します。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>String — 基本の文字列型</h4>
+      <p>バイナリセーフな文字列。JSON、カウンター、フラグなどに最適。</p>
+      <pre><code><span class="cm"># セット / 取得</span>
+SET user:123 '{"name":"田中"}' EX 3600
+GET user:123
+
+<span class="cm"># アトミックカウンター（ページビュー）</span>
+INCR pageview:article:456
+INCRBY pageview:article:456 10
+
+<span class="cm"># NX: 分散ロックの実装</span>
+SET lock:resource 1 NX EX 30</code></pre>
+    </div>
+    <div class="card">
+      <h4>Hash — フィールドと値のマップ</h4>
+      <p>オブジェクトの部分更新に最適。全体をJSON文字列で保存するより効率的。</p>
+      <pre><code><span class="cm"># ユーザープロフィールをHashで保存</span>
+HSET user:123 name "田中太郎"
+HSET user:123 email "t@example.com"
+HSET user:123 age 30
+
+<span class="cm"># 特定フィールドのみ更新</span>
+HSET user:123 age 31
+
+<span class="cm"># 全フィールド取得</span>
+HGETALL user:123</code></pre>
+    </div>
+    <div class="card">
+      <h4>List — 順序付きリスト</h4>
+      <p>最新N件の取得、メッセージキュー、アクティビティフィードに活用。</p>
+      <pre><code><span class="cm"># アクティビティフィード</span>
+LPUSH feed:user:123 "アクション1"
+LPUSH feed:user:123 "アクション2"
+
+<span class="cm"># 最新10件取得</span>
+LRANGE feed:user:123 0 9
+
+<span class="cm"># リストを最新100件に保つ</span>
+LTRIM feed:user:123 0 99
+
+<span class="cm"># ブロッキングデキュー（キュー用）</span>
+BLPOP queue:jobs 0</code></pre>
+    </div>
+    <div class="card">
+      <h4>Set — 重複なし集合</h4>
+      <p>ユニークユーザー追跡、タグ管理、集合演算（和・積・差）に活用。</p>
+      <pre><code><span class="cm"># 記事のタグ管理</span>
+SADD article:456:tags "tech" "redis" "cache"
+SMEMBERS article:456:tags
+
+<span class="cm"># アクティブユーザー数（重複なし）</span>
+SADD active:2024-01-15 user:123
+SCARD active:2024-01-15
+
+<span class="cm"># 共通フォロワーを集合積で取得</span>
+SINTER followers:user1 followers:user2</code></pre>
+    </div>
+    <div class="card">
+      <h4>Sorted Set — スコア付き順序集合</h4>
+      <p>ランキング・リーダーボード実装に最適。O(log N)で挿入・取得が可能。</p>
+      <pre><code><span class="cm"># ゲームランキング</span>
+ZADD leaderboard 9850 "player:tanaka"
+ZADD leaderboard 12400 "player:suzuki"
+ZADD leaderboard 8200 "player:sato"
+
+<span class="cm"># TOP3取得（降順）</span>
+ZREVRANGE leaderboard 0 2 WITHSCORES
+
+<span class="cm"># 自分の順位確認</span>
+ZREVRANK leaderboard "player:tanaka"
+
+<span class="cm"># スコア加算</span>
+ZINCRBY leaderboard 150 "player:tanaka"</code></pre>
+    </div>
+    <div class="card">
+      <h4>Pub/Sub — メッセージングパターン</h4>
+      <p>リアルタイム通知、チャット、イベント駆動アーキテクチャに活用。</p>
+      <pre><code><span class="cm"># パブリッシャー</span>
+redis.publish('notifications:user:123',
+  JSON.stringify({
+    type: 'new_message',
+    from: 'user:456'
+  }))
+
+<span class="cm"># サブスクライバー</span>
+<span class="kw">const</span> sub = redis.subscribe('notifications:user:123');
+sub.on('message', (channel, msg) => {
+  ws.send(msg);  <span class="cm">// WebSocketで通知</span>
+});</code></pre>
+    </div>
+  </div>
+
+  <h3>セッション管理の実装例</h3>
+  <pre><code><span class="cm"># セッション作成</span>
+HSET session:abc123 user_id 123 role "admin" created_at "2024-01-15T10:00:00Z"
+EXPIRE session:abc123 1800  <span class="cm"># 30分TTL</span>
+
+<span class="cm"># セッション確認とスライディングウィンドウ延長（アクティブ中は延長）</span>
+HGETALL session:abc123
+EXPIRE session:abc123 1800  <span class="cm"># リクエストのたびにリセット</span>
+
+<span class="cm"># セッション削除（ログアウト）</span>
+DEL session:abc123</code></pre>
+
+  <div class="highlight">
+    <strong>RedisとMemcachedの選択基準:</strong> RedisはList/Set/SortedSet/Hashなどのデータ型、永続化（AOF/RDB）、Pub/Sub、Lua スクリプト、クラスタ構成をサポート。単純なキーバリューのみ必要でシンプルさを優先するならMemcached、それ以外は基本的にRedisを選択。
+  </div>
+</section>
+
+<section id="problems">
+  <h2><span class="num">07</span>キャッシュの問題と解決策</h2>
+  <p class="section-lead">キャッシュは強力ですが、適切に設計しないと深刻な問題を引き起こします。面接でも頻出の4大問題を理解しましょう。</p>
+
+  <div class="card" style="border-color:rgba(239,68,68,0.4);">
+    <h3 style="margin-top:0;color:var(--red);">&#x26A1; Cache Stampede (キャッシュスタンピード)</h3>
+    <p>人気のキャッシュエントリのTTLが切れた瞬間、<strong>大量のリクエストが同時にDBへ殺到</strong>する問題。DBに数百倍の負荷がかかり、最悪の場合クラッシュする。</p>
+
+    <div class="svg-wrap">
+      <svg viewBox="0 0 680 170" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:680px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="sarr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ef4444"/></marker>
+        </defs>
+        <rect width="680" height="170" fill="#0d0f1a" rx="8"/>
+        <line x1="40" y1="130" x2="640" y2="130" stroke="#2a2d3e" stroke-width="1.5"/>
+        <text x="360" y="148" text-anchor="middle" fill="#475569" font-size="11" font-family="sans-serif">時間 &#x2192;</text>
+        <line x1="280" y1="36" x2="280" y2="130" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="280" y="30" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">TTL期限切れ</text>
+        <line x1="285" y1="75" x2="478" y2="58" stroke="#ef4444" stroke-width="1.5" marker-end="url(#sarr)"/>
+        <line x1="285" y1="85" x2="478" y2="75" stroke="#ef4444" stroke-width="1.5" marker-end="url(#sarr)"/>
+        <line x1="285" y1="95" x2="478" y2="95" stroke="#ef4444" stroke-width="1.5" marker-end="url(#sarr)"/>
+        <line x1="285" y1="105" x2="478" y2="112" stroke="#ef4444" stroke-width="1.5" marker-end="url(#sarr)"/>
+        <text x="383" y="52" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">大量リクエストがDB直撃!</text>
+        <rect x="480" y="50" width="80" height="76" rx="6" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="2"/>
+        <text x="520" y="92" text-anchor="middle" fill="#ef4444" font-size="12" font-family="sans-serif">DB</text>
+        <text x="520" y="110" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">過負荷!</text>
+        <text x="160" y="85" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">通常: キャッシュがヒット</text>
+        <text x="160" y="101" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">リクエスト &#x2192; キャッシュ &#x2714;</text>
+      </svg>
+    </div>
+
+    <h4>解決策 1: Mutex Lock (ミューテックスロック)</h4>
+    <pre><code><span class="kw">async function</span> <span class="fn">getWithMutex</span>(key) {
+  <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(key);
+  <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+
+  <span class="cm">// ロック取得を試みる（NX: 存在しない時のみ、EX: 10秒TTL）</span>
+  <span class="kw">const</span> locked = <span class="kw">await</span> redis.<span class="fn">set</span>(`lock:${key}`, 1, 'NX', 'EX', 10);
+
+  <span class="kw">if</span> (locked) {
+    <span class="cm">// ロック取得成功 → DBから取得してキャッシュ更新</span>
+    <span class="kw">const</span> data = <span class="kw">await</span> db.<span class="fn">fetch</span>(key);
+    <span class="kw">await</span> redis.<span class="fn">setex</span>(key, <span class="num-c">3600</span>, JSON.<span class="fn">stringify</span>(data));
+    <span class="kw">await</span> redis.<span class="fn">del</span>(`lock:${key}`);
+    <span class="kw">return</span> data;
+  } <span class="kw">else</span> {
+    <span class="cm">// ロック取得失敗 → 少し待って再試行</span>
+    <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num-c">50</span>);
+    <span class="kw">return</span> <span class="fn">getWithMutex</span>(key);
+  }
+}</code></pre>
+
+    <h4>解決策 2: Probabilistic Early Expiration (確率的早期更新)</h4>
+    <pre><code><span class="cm">// XFetch アルゴリズム: 期限が近づくほど更新確率が上がる</span>
+<span class="kw">function</span> <span class="fn">shouldRecompute</span>(expireAt, beta = <span class="num-c">1.0</span>) {
+  <span class="kw">const</span> delta = -beta * Math.<span class="fn">log</span>(Math.<span class="fn">random</span>());
+  <span class="kw">return</span> (Date.<span class="fn">now</span>() / <span class="num-c">1000</span> + delta) >= expireAt;
+}
+<span class="cm">// TTL残り時間が少なくなるにつれて確率的に早期更新を行い</span>
+<span class="cm">// 全リクエストが同時に期限切れを検出することを防ぐ</span></code></pre>
+
+    <h4>解決策 3: Background Refresh (バックグラウンド更新)</h4>
+    <pre><code><span class="cm">// 古いデータを返しながらバックグラウンドで更新</span>
+<span class="kw">async function</span> <span class="fn">getWithStaleWhileRevalidate</span>(key) {
+  <span class="kw">const</span> entry = <span class="kw">await</span> redis.<span class="fn">hgetall</span>(key);  <span class="cm">// {data, expire_at}</span>
+
+  <span class="kw">const</span> isExpired = Date.<span class="fn">now</span>() > entry.expire_at;
+  <span class="kw">const</span> isSoftExpired = Date.<span class="fn">now</span>() > (entry.expire_at - <span class="num-c">60000</span>); <span class="cm">// 1分前</span>
+
+  <span class="kw">if</span> (isSoftExpired && !isExpired) {
+    <span class="cm">// まだ有効だが古い: バックグラウンドで更新しつつ古いデータを返す</span>
+    <span class="fn">refreshInBackground</span>(key);  <span class="cm">// 非同期、awaitしない</span>
+  }
+  <span class="kw">return</span> entry.data;  <span class="cm">// 古くても即返却</span>
+}</code></pre>
+  </div>
+
+  <div class="card" style="border-color:rgba(245,158,11,0.4);margin-top:24px;">
+    <h3 style="margin-top:0;color:var(--accent3);">&#x2744;&#xFE0F; Cache Avalanche (キャッシュ雪崩)</h3>
+    <p>多数のキャッシュエントリが<strong>同時刻に一斉に期限切れ</strong>になり、大量のDBリクエストが同時に発生する問題。同じTTLを設定したバッチ処理後などに発生しやすい。</p>
+
+    <div class="highlight red">
+      <strong>具体的シナリオ:</strong> 毎朝5時に全商品情報をキャッシュに1時間TTLで格納 → 毎朝6時に全キャッシュが同時期限切れ → DBに数万件のクエリが同時に殺到
+    </div>
+
+    <h4>解決策: TTL Jitter (ジッター追加)</h4>
+    <pre><code><span class="cm">// 悪い例: 全エントリが同時に期限切れになる</span>
+products.<span class="fn">forEach</span>(p => redis.<span class="fn">setex</span>(`product:${p.id}`, <span class="num-c">3600</span>, p));
+
+<span class="cm">// 良い例: +/-10分のランダムジッターを追加</span>
+products.<span class="fn">forEach</span>(p => {
+  <span class="kw">const</span> jitter = Math.<span class="fn">floor</span>(Math.<span class="fn">random</span>() * <span class="num-c">600</span>);  <span class="cm">// 0〜600秒</span>
+  <span class="kw">const</span> ttl = <span class="num-c">3600</span> + jitter;  <span class="cm">// 3600〜4200秒</span>
+  redis.<span class="fn">setex</span>(`product:${p.id}`, ttl, p);
+});
+<span class="cm">// 期限切れが600秒間に分散し、DBへの負荷が平準化される</span></code></pre>
+
+    <h4>その他の解決策</h4>
+    <ul>
+      <li><strong>Circuit Breaker:</strong> DBへのリクエストが閾値を超えたら一時的にサーキットをオープンにしてエラーを返す</li>
+      <li><strong>多層キャッシュ:</strong> Redisが落ちてもアプリ内ローカルキャッシュが一次防衛線になる</li>
+      <li><strong>永続キャッシュ + バックグラウンド更新:</strong> TTLで削除する代わりに古いデータを返しつつバックグラウンドで更新</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-color:rgba(167,139,250,0.4);margin-top:24px;">
+    <h3 style="margin-top:0;color:var(--purple);">&#x1F50D; Cache Penetration (キャッシュ貫通)</h3>
+    <p>存在しないキーへのリクエストを大量に送り、<strong>キャッシュを完全にスキップしてDBへ負荷をかける</strong>攻撃または設計上の問題。</p>
+
+    <div class="highlight red">
+      <strong>攻撃例:</strong> GET /user/999999999, GET /user/888888888 ... 存在しないIDを次々にリクエスト → 全てキャッシュミス → 全てDBアクセス
+    </div>
+
+    <h4>解決策 1: Null Caching (null値のキャッシュ)</h4>
+    <pre><code><span class="kw">async function</span> <span class="fn">getUser</span>(userId) {
+  <span class="kw">const</span> cacheKey = `user:${userId}`;
+  <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(cacheKey);
+
+  <span class="kw">if</span> (cached !== <span class="kw">null</span>) {
+    <span class="kw">if</span> (cached === '__NULL__') <span class="kw">return null</span>;  <span class="cm">// 存在しないことをキャッシュ</span>
+    <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+  }
+
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">findUser</span>(userId);
+
+  <span class="kw">if</span> (!user) {
+    <span class="cm">// 存在しないユーザーも短いTTLでキャッシュ（5分）</span>
+    <span class="kw">await</span> redis.<span class="fn">setex</span>(cacheKey, <span class="num-c">300</span>, '__NULL__');
+    <span class="kw">return null</span>;
+  }
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(cacheKey, <span class="num-c">3600</span>, JSON.<span class="fn">stringify</span>(user));
+  <span class="kw">return</span> user;
+}</code></pre>
+
+    <h4>解決策 2: Bloom Filter (ブルームフィルター)</h4>
+    <p>確率的データ構造で、「そのキーがDBに存在するか」を非常に小さいメモリで判定（偽陰性なし、偽陽性あり）。</p>
+    <pre><code><span class="cm"># Redis Bloom Filter (RedisBloom モジュール)</span>
+<span class="cm"># 初期化（エラー率0.1%, 想定要素数100万）</span>
+BF.RESERVE users:bloom 0.001 1000000
+
+<span class="cm"># DBの全ユーザーIDをBloom Filterに追加</span>
+BF.MADD users:bloom 1 2 3 ... 999999
+
+<span class="cm"># リクエスト処理時</span>
+BF.EXISTS users:bloom 99999999  <span class="cm"># 0: 存在しない確定 → DBアクセス不要</span>
+BF.EXISTS users:bloom 123       <span class="cm"># 1: 存在する可能性あり → DBで確認</span></code></pre>
+  </div>
+
+  <div class="card" style="border-color:rgba(34,211,238,0.4);margin-top:24px;">
+    <h3 style="margin-top:0;color:var(--accent2);">&#x1F525; Hot Key Problem (ホットキー問題)</h3>
+    <p>特定のキーに<strong>極端にリクエストが集中</strong>し、そのキーを保持するRedisノードが過負荷になる問題。</p>
+
+    <div class="highlight amber">
+      <strong>具体例:</strong> 有名人のプロフィールページがバイラルし、特定ユーザーIDのキャッシュキーへのアクセスが毎秒10万件を超える
+    </div>
+
+    <h4>解決策 1: Local Cache (アプリ内ローカルキャッシュ)</h4>
+    <pre><code><span class="cm">// アプリサーバー内のメモリキャッシュ（5秒TTL）</span>
+<span class="kw">const</span> localCache = <span class="kw">new</span> <span class="fn">LRUCache</span>({ max: <span class="num-c">1000</span>, ttl: <span class="num-c">5000</span> });
+
+<span class="kw">async function</span> <span class="fn">getHotData</span>(key) {
+  <span class="cm">// 1. ローカルキャッシュを確認（ネットワーク不要）</span>
+  <span class="kw">const</span> local = localCache.<span class="fn">get</span>(key);
+  <span class="kw">if</span> (local) <span class="kw">return</span> local;
+
+  <span class="cm">// 2. Redisを確認</span>
+  <span class="kw">const</span> remote = <span class="kw">await</span> redis.<span class="fn">get</span>(key);
+  <span class="kw">if</span> (remote) {
+    localCache.<span class="fn">set</span>(key, remote);  <span class="cm">// ローカルにも保存</span>
+    <span class="kw">return</span> remote;
+  }
+  <span class="cm">// 3. DBから取得...</span>
+}
+<span class="cm">// 同一サーバーへの繰り返しアクセスはRedisにすら届かない</span></code></pre>
+
+    <h4>解決策 2: Key Sharding (キーのシャーディング)</h4>
+    <pre><code><span class="cm">// ホットキーを複数のキーに分散させる</span>
+<span class="cm">// user:viral_id → user:viral_id:0 〜 user:viral_id:9</span>
+
+<span class="kw">function</span> <span class="fn">getShardKey</span>(key, shards = <span class="num-c">10</span>) {
+  <span class="kw">const</span> shard = Math.<span class="fn">floor</span>(Math.<span class="fn">random</span>() * shards);
+  <span class="kw">return</span> `${key}:${shard}`;
+}
+
+<span class="cm">// 書き込み: 全シャードに書き込む</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num-c">0</span>; i < <span class="num-c">10</span>; i++) {
+  redis.<span class="fn">setex</span>(`user:viral_id:${i}`, <span class="num-c">3600</span>, data);
+}
+<span class="cm">// 読み取り: ランダムシャードから取得（10ノードに分散）</span>
+<span class="kw">const</span> val = <span class="kw">await</span> redis.<span class="fn">get</span>(<span class="fn">getShardKey</span>('user:viral_id'));</code></pre>
+  </div>
+
+  <h3>4大問題まとめ</h3>
+  <table>
+    <tr><th>問題</th><th>原因</th><th>主な解決策</th><th>重要度</th></tr>
+    <tr><td><strong>Cache Stampede</strong></td><td>人気エントリのTTL同時期限切れ</td><td>Mutex Lock, Early Expiration</td><td><span class="badge red">高</span></td></tr>
+    <tr><td><strong>Cache Avalanche</strong></td><td>大量エントリの同時TTL期限切れ</td><td>TTL Jitter, Circuit Breaker</td><td><span class="badge red">高</span></td></tr>
+    <tr><td><strong>Cache Penetration</strong></td><td>存在しないキーへの大量アクセス</td><td>Null Caching, Bloom Filter</td><td><span class="badge amber">中</span></td></tr>
+    <tr><td><strong>Hot Key Problem</strong></td><td>特定キーへの極端な集中</td><td>Local Cache, Key Sharding</td><td><span class="badge amber">中</span></td></tr>
+  </table>
+</section>
+
+<section id="cdn">
+  <h2><span class="num">08</span>CDNキャッシュ</h2>
+  <p class="section-lead">CDN (Content Delivery Network) は地理的に分散したエッジサーバーでコンテンツをキャッシュし、ユーザーに最も近いサーバーから高速配信する仕組みです。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 740 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:740px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="cdnarr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/></marker>
+        <marker id="cdnarr2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#22d3ee"/></marker>
+      </defs>
+      <rect width="740" height="220" fill="#0d0f1a" rx="12"/>
+      <text x="370" y="22" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">CDN グローバル配信の仕組み</text>
+      <!-- Origin Server -->
+      <rect x="300" y="80" width="140" height="50" rx="8" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="370" y="100" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">オリジンサーバー</text>
+      <text x="370" y="118" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">(東京データセンター)</text>
+      <!-- Edge nodes -->
+      <rect x="30" y="150" width="110" height="44" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="85" y="169" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">エッジノード</text>
+      <text x="85" y="185" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">北米</text>
+      <rect x="200" y="150" width="110" height="44" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="255" y="169" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">エッジノード</text>
+      <text x="255" y="185" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">欧州</text>
+      <rect x="430" y="150" width="110" height="44" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="485" y="169" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">エッジノード</text>
+      <text x="485" y="185" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">東南アジア</text>
+      <rect x="600" y="150" width="110" height="44" rx="6" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="655" y="169" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">エッジノード</text>
+      <text x="655" y="185" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">オーストラリア</text>
+      <!-- Lines from origin to edges -->
+      <line x1="330" y1="130" x2="130" y2="150" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#cdnarr)"/>
+      <line x1="350" y1="130" x2="270" y2="150" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#cdnarr)"/>
+      <line x1="400" y1="130" x2="475" y2="150" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#cdnarr)"/>
+      <line x1="420" y1="130" x2="640" y2="150" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#cdnarr)"/>
+      <text x="50" y="210" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">ユーザー</text>
+      <text x="220" y="210" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">ユーザー</text>
+      <text x="485" y="210" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">ユーザー</text>
+      <text x="640" y="210" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">ユーザー</text>
+    </svg>
+    <div class="svg-caption">CDNエッジノードが世界各地にコンテンツをキャッシュし、ユーザーに近い場所から配信</div>
+  </div>
+
+  <h3>静的コンテンツ vs 動的コンテンツ</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--green)">&#x2713; CDNキャッシュ向き（静的）</h4>
+      <ul>
+        <li>HTML/CSS/JS ファイル</li>
+        <li>画像・動画・フォント</li>
+        <li>全ユーザー共通のAPIレスポンス（商品一覧など）</li>
+        <li>ダウンロードファイル、PDF</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent3)">&#x25B3; 設定次第（動的）</h4>
+      <ul>
+        <li>パーソナライズされたAPIレスポンス（Varyヘッダーで分岐）</li>
+        <li>認証が必要なページ（Surrogate-Keyでのパージが必要）</li>
+        <li>A/Bテストコンテンツ</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Cache-Control ヘッダー設定</h3>
+  <pre><code><span class="cm"># 静的アセット（ハッシュ付きファイル名）: 永続キャッシュ</span>
+Cache-Control: public, max-age=31536000, immutable
+<span class="cm"># main.abc123.js は内容が変わらないので1年キャッシュ</span>
+
+<span class="cm"># HTMLページ: ブラウザキャッシュさせないがCDNは1時間</span>
+Cache-Control: public, max-age=0, s-maxage=3600
+<span class="cm"># max-age=0: ブラウザは毎回確認</span>
+<span class="cm"># s-maxage=3600: CDN（共有キャッシュ）は1時間保持</span>
+
+<span class="cm"># ユーザー固有データ: キャッシュ禁止</span>
+Cache-Control: private, no-cache
+
+<span class="cm"># APIレスポンス（全ユーザー共通）: stale-while-revalidate</span>
+Cache-Control: public, max-age=300, stale-while-revalidate=60
+<span class="cm"># 300秒間キャッシュ、期限切れ後60秒間は古いデータを返しつつバックグラウンドで更新</span></code></pre>
+
+  <h3>Vary ヘッダー</h3>
+  <p>同じURLでもリクエストの条件によって異なるレスポンスを返す場合、<code>Vary</code>ヘッダーでCDNがキャッシュを分岐させます。</p>
+  <pre><code><span class="cm"># 言語によってキャッシュを分岐</span>
+Vary: Accept-Language
+<span class="cm"># /api/products は Accept-Language: ja と en で別々にキャッシュ</span>
+
+<span class="cm"># エンコーディングで分岐（推奨）</span>
+Vary: Accept-Encoding
+
+<span class="cm"># 注意: User-Agentは無限パターンでヒット率激減</span>
+<span class="cm"># Vary: User-Agent  ← 使わない！レスポンシブデザインで対応する</span></code></pre>
+
+  <div class="highlight red">
+    <strong>注意:</strong> <code>Vary: User-Agent</code> はUser-Agentの組み合わせが無限にあるためキャッシュヒット率が激減します。モバイル対応はレスポンシブデザインや別URLで実現することを推奨。
+  </div>
+
+  <h3>Purge (キャッシュパージ) 戦略</h3>
+  <pre><code><span class="cm"># Cloudflare API でのキャッシュパージ</span>
+curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache" \
+  -H "Authorization: Bearer {api_token}" \
+  -H "Content-Type: application/json" \
+  --data '{"files":["https://example.com/products/123"]}'
+
+<span class="cm"># Surrogate-Key / Cache-Tag を使った効率的パージ</span>
+<span class="cm"># レスポンスヘッダーにタグを設定</span>
+Surrogate-Key: product-123 category-electronics
+
+<span class="cm"># 商品123が更新されたらタグで一括パージ</span>
+<span class="cm"># product-123 タグがついた全URLのキャッシュを削除</span></code></pre>
+
+  <h3>CDN設定のベストプラクティス</h3>
+  <table>
+    <tr><th>コンテンツ種別</th><th>推奨 Cache-Control</th><th>TTL</th><th>パージ方法</th></tr>
+    <tr><td>JS/CSS（ハッシュ付き）</td><td>public, max-age=31536000, immutable</td><td>1年</td><td>ファイル名変更で自動</td></tr>
+    <tr><td>画像（最適化済み）</td><td>public, max-age=86400</td><td>1日</td><td>URLバージョニング</td></tr>
+    <tr><td>HTMLページ</td><td>public, s-maxage=3600</td><td>1時間</td><td>デプロイ時にパージ</td></tr>
+    <tr><td>API (公開データ)</td><td>public, max-age=300, stale-while-revalidate=60</td><td>5分</td><td>更新時にパージ</td></tr>
+    <tr><td>認証済みAPI</td><td>private, no-cache</td><td>なし</td><td>不要</td></tr>
+  </table>
+</section>
+
+<section id="interview" style="border-bottom:none;">
+  <h2><span class="num">&#x1F4A1;</span>面接対策 — よく聞かれる質問</h2>
+  <p class="section-lead">システムデザイン面接でキャッシュについて聞かれる定番質問と、評価される回答のポイントです。</p>
+
+  <div class="tip-grid">
+    <div class="tip-card">
+      <div class="tip-num">01</div>
+      <h4>「キャッシュ戦略をどう選ぶか？」</h4>
+      <p>読み取り頻度 vs 書き込み頻度、データの一貫性要件、TTLの許容範囲を軸に説明。Cache-Asideが汎用的で最初の選択肢と述べた上で、要件に応じてWrite-Throughなどを組み合わせる方針を示す。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">02</div>
+      <h4>「StampedeとAvalancheの違いは？」</h4>
+      <p>Stampede = 1つの人気キーのTTL切れで多数のリクエストがDB直撃。Avalanche = 大量のキーが同時にTTL切れ。どちらも解決策（Lock, Jitter）とトレードオフを説明できると高評価。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">03</div>
+      <h4>「RedisとMemcachedの違いは？」</h4>
+      <p>Redisはデータ型が豊富（List/Set/SortedSet/Hash）、永続化対応、Pub/Sub機能あり、クラスタ構成が容易。Memcachedはシンプルなキーバリューのみ。通常はRedisを推奨。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">04</div>
+      <h4>「どのデータをキャッシュすべきか？」</h4>
+      <p>読み取り頻度が高く変更が少ないデータ。計算コストが高いクエリ結果。共有できるデータ（ユーザー固有でないもの）。80/20ルール: 20%のデータが80%のアクセスを受ける。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">05</div>
+      <h4>「キャッシュの整合性をどう保つか？」</h4>
+      <p>DBとキャッシュの同期方法: (1) TTLによる自然な期限切れ、(2) DB更新時に即座にキャッシュを無効化（Cache Invalidation）、(3) Write-ThroughでDB更新と同時にキャッシュ更新。"There are only two hard things in CS: cache invalidation and naming things"</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">06</div>
+      <h4>「適切なTTLをどう決める？」</h4>
+      <p>データの更新頻度（更新頻度 &lt; 1/TTL が目安）、整合性の許容範囲、メモリコストのバランスで決定。長すぎると古いデータ提供リスク、短すぎるとヒット率低下。Jitterも忘れずに言及。</p>
+    </div>
+  </div>
+
+  <div class="highlight" style="margin-top:32px;">
+    <strong>面接での加点ポイント:</strong> 「キャッシュを使うとメモリコスト、整合性リスク、複雑性が増す。これらのトレードオフを理解した上でキャッシュが必要かどうかから検討する」というスタンスを最初に示すと、経験豊富なエンジニアとして評価されます。
+  </div>
+
+  <h3>設計チェックリスト</h3>
+  <div class="card">
+    <ul>
+      <li>&#x2705; キャッシュすべきデータを特定した（読み取り多/書き込み少/共有可能）</li>
+      <li>&#x2705; 適切なキャッシュ層を選択した（アプリ内 / Redis / CDN）</li>
+      <li>&#x2705; 書き込み戦略を決定した（Write-Through / Write-Behind / Write-Around）</li>
+      <li>&#x2705; TTLとEviction Policyを設定した（Jitter追加も忘れずに）</li>
+      <li>&#x2705; Cache Stampede対策を実装した（Mutex Lock か Early Expiration）</li>
+      <li>&#x2705; Cache Penetration対策を実装した（Null Caching か Bloom Filter）</li>
+      <li>&#x2705; Hot Key対策を検討した（Local Cache か Key Sharding）</li>
+      <li>&#x2705; 整合性更新戦略を決定した（TTL自然期限切れ か 明示的Invalidation）</li>
+      <li>&#x2705; モニタリング指標を設定した（Hit Rate, Miss Rate, Eviction Count, Memory Usage）</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div style="display:flex;gap:24px;justify-content:center;margin-bottom:12px;">
+    <a href="00_index.html">&#x1F3E0; ホーム</a>
+    <a href="04_api_design.html">&larr; 04. API設計</a>
+    <a href="06_load_balancing.html">06. 負荷分散 &rarr;</a>
+  </div>
+  <p>システムデザイン学習シリーズ — Chapter 05: キャッシュ戦略</p>
+</footer>
+
+<!-- ============================================================ -->
+<!-- 深掘り & 実践演習セクション -->
+<!-- ============================================================ -->
+
+<section id="deep-redis-internals">
+  <h2><span class="num">10</span>深掘り: Redisの内部実装</h2>
+  <p class="section-lead">Redisが高速かつ多機能な理由は内部データ構造の最適化にある。面接で差をつける実装レベルの知識を押さえる。</p>
+
+  <h3>ziplist / listpack vs skiplist — ZSetの内部表現</h3>
+  <div class="card">
+    <p>Redis の Sorted Set (ZSet) は要素数とサイズに応じて内部表現を自動的に切り替える。小規模データは<strong>listpack（旧ziplist）</strong>、大規模データは<strong>skiplist + hash</strong>が使われる。</p>
+    <div class="highlight cyan">
+      <strong>切り替え閾値のデフォルト:</strong>
+      <ul style="margin-top:8px;">
+        <li>要素数が 128 以下 かつ 各要素が 64 バイト以下 → <strong>listpack</strong>（連続メモリ、キャッシュ効率◎）</li>
+        <li>いずれかを超えると → <strong>skiplist + hash</strong>（O(log N)検索）</li>
+      </ul>
+    </div>
+    <pre><code><span class="cm"># 閾値の確認・変更</span>
+CONFIG GET zset-max-listpack-entries  <span class="cm"># デフォルト: 128</span>
+CONFIG GET zset-max-listpack-value    <span class="cm"># デフォルト: 64 bytes</span>
+
+<span class="cm"># メモリ効率を優先する場合（listpack維持）</span>
+CONFIG SET zset-max-listpack-entries 256
+CONFIG SET zset-max-listpack-value 128
+
+<span class="cm"># 現在の内部表現を確認</span>
+OBJECT ENCODING leaderboard   <span class="cm"># "ziplist" / "skiplist"</span>
+
+<span class="cm"># skiplist の特徴</span>
+<span class="cm"># - レベル0: 全要素へのリンク（線形走査）</span>
+<span class="cm"># - レベルN: 確率的にスキップ（平均O(log N)）</span>
+<span class="cm"># - 探索・挿入・削除: 平均 O(log N)</span></code></pre>
+    <table>
+      <tr><th>内部表現</th><th>メモリ</th><th>検索速度</th><th>適用条件</th></tr>
+      <tr><td>listpack</td><td><span class="badge green">少ない</span></td><td><span class="badge amber">O(N)線形</span></td><td>≤128要素 かつ ≤64B/要素</td></tr>
+      <tr><td>skiplist+hash</td><td><span class="badge amber">多い</span></td><td><span class="badge green">O(log N)</span></td><td>閾値超過後</td></tr>
+    </table>
+  </div>
+
+  <h3>RDB vs AOF — 永続化の仕組み</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>RDB (Redis Database Snapshot)</h4>
+      <p>指定時刻または変更件数に達したとき、<strong>メモリ全体をスナップショット</strong>としてディスクに書き出す。<code>fork()</code>でコピーオンライトを使うため、書き込み中も本プロセスは稼働続ける。</p>
+      <pre><code><span class="cm"># redis.conf の RDB 設定</span>
+<span class="cm"># 「N秒以内にM回変更があった場合に保存」</span>
+save 3600 1      <span class="cm"># 1時間に1回以上変更</span>
+save 300  100    <span class="cm"># 5分間に100回以上変更</span>
+save 60   10000  <span class="cm"># 1分間に1万回以上変更</span>
+
+dbfilename dump.rdb
+dir /var/lib/redis/</code></pre>
+      <div class="highlight green"><strong>利点:</strong> コンパクト・リストア高速・I/O負荷小 / <strong>欠点:</strong> 最後のスナップショット以降のデータを失う可能性</div>
+    </div>
+    <div class="card">
+      <h4>AOF (Append Only File)</h4>
+      <p>全ての書き込みコマンドをログに追記する。<code>appendfsync</code>設定でfsyncのタイミングを制御する。</p>
+      <pre><code><span class="cm"># redis.conf の AOF 設定</span>
+appendonly yes
+appendfilename "appendonly.aof"
+
+<span class="cm"># fsync タイミング（重要）</span>
+appendfsync always    <span class="cm"># 毎コマンド後: 最安全・最低速</span>
+appendfsync everysec  <span class="cm"># 毎秒: 推奨・最大1秒分のデータ損失</span>
+appendfsync no        <span class="cm"># OS任せ: 最速・データ損失リスク大</span>
+
+<span class="cm"># AOF Rewrite: ファイルを圧縮（不要コマンド除去）</span>
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb</code></pre>
+      <div class="highlight amber"><strong>everysec の意味:</strong> 最大1秒分のデータを失う可能性があるが、パフォーマンスと耐久性のバランスが最も良い。本番環境での推奨設定。</div>
+    </div>
+  </div>
+
+  <h3>Redis Cluster のスロット設計</h3>
+  <div class="card">
+    <p>Redis Cluster はキーを<strong>16,384スロット</strong>に分散する。スロット番号は <code>CRC16(key) mod 16384</code> で決定される。</p>
+    <pre><code><span class="cm"># スロット計算の仕組み</span>
+slot = CRC16("user:123") % 16384  <span class="cm"># → 例: 5649</span>
+
+<span class="cm"># ハッシュタグ: {} 内の文字列でスロットを固定</span>
+<span class="cm"># 同じスロットに置きたいキーに使う（MULTI/EXEC用途）</span>
+"user:{123}:profile"   <span class="cm"># CRC16("123") でスロット決定</span>
+"user:{123}:orders"    <span class="cm"># 同じスロット → 同じノード</span>
+"user:{456}:profile"   <span class="cm"># 別スロット → 別ノード</span>
+
+<span class="cm"># クラスター構成例（3マスター + 3レプリカ）</span>
+<span class="cm"># Node A: スロット 0〜5460</span>
+<span class="cm"># Node B: スロット 5461〜10922</span>
+<span class="cm"># Node C: スロット 10923〜16383</span></code></pre>
+    <div class="highlight">
+      <strong>MOVED vs ASK リダイレクト:</strong>
+      <ul style="margin-top:8px;">
+        <li><strong>MOVED:</strong> キーが恒久的に別ノードに移った → クライアントはノード情報を更新し再送</li>
+        <li><strong>ASK:</strong> リシャーディング中で一時的に別ノードにある → 今回だけ別ノードへ送る（更新しない）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Redis Sentinel vs Redis Cluster の使い分け</h3>
+  <table>
+    <tr><th>観点</th><th>Redis Sentinel</th><th>Redis Cluster</th></tr>
+    <tr><td>目的</td><td>高可用性（HA）</td><td>水平スケールアウト</td></tr>
+    <tr><td>データ分散</td><td>なし（全ノードが全データを持つ）</td><td>あり（16384スロットに分散）</td></tr>
+    <tr><td>最大メモリ</td><td>単一マスターのメモリ上限</td><td>ノード数 × 1ノードのメモリ</td></tr>
+    <tr><td>フェイルオーバー</td><td>Sentinelが自動で昇格</td><td>クラスター自律的に切り替え</td></tr>
+    <tr><td>Multi-key操作</td><td>制限なし</td><td>同一スロット内のみ</td></tr>
+    <tr><td>適用場面</td><td>データ量少 / HA重視</td><td>データ量大 / スループット重視</td></tr>
+    <tr><td>最低構成</td><td>マスター1+レプリカ1+Sentinel3</td><td>マスター3+レプリカ3（計6台）</td></tr>
+  </table>
+
+  <h3>Lua スクリプトによるアトミック操作</h3>
+  <div class="card">
+    <p>Redisは<code>EVAL</code>コマンドでLuaスクリプトを実行する。スクリプト全体は<strong>アトミック</strong>に実行され、他のコマンドが割り込めない。チェック&セット（CAS）操作に最適。</p>
+    <pre><code><span class="cm"># CAS: 現在値を確認してから更新（競合を防ぐ）</span>
+<span class="cm"># EVAL script numkeys key [key ...] arg [arg ...]</span>
+
+local script = <span class="str">[[
+  local current = redis.call('GET', KEYS[1])
+  if current == ARGV[1] then
+    redis.call('SET', KEYS[1], ARGV[2])
+    return 1  -- 成功
+  else
+    return 0  -- 失敗（値が変わっていた）
+  end
+]]</span>
+
+<span class="kw">const</span> result = <span class="kw">await</span> redis.<span class="fn">eval</span>(
+  script,
+  1,                    <span class="cm">// numkeys</span>
+  <span class="str">'stock:product:456'</span>, <span class="cm">// KEYS[1]</span>
+  <span class="str">'100'</span>,               <span class="cm">// ARGV[1]: 期待する現在値</span>
+  <span class="str">'99'</span>                 <span class="cm">// ARGV[2]: 新しい値</span>
+);
+<span class="cm">// result=1: 更新成功 / result=0: 他者が先に変更</span>
+
+<span class="cm">-- スクリプトキャッシュ（SHA1ハッシュで再利用）</span>
+<span class="cm">-- SCRIPT LOAD でキャッシュし、EVALSHAで呼び出す</span>
+SCRIPT LOAD "return redis.call('GET', KEYS[1])"
+<span class="cm">-- → "e0e1f9fabfa9d353e2b5e8b1a6e4a4dbf7b6c5a3" などSHAを返す</span>
+EVALSHA e0e1... 1 mykey</code></pre>
+  </div>
+</section>
+
+<section id="deep-cache-consistency">
+  <h2><span class="num">11</span>深掘り: キャッシュ一貫性の保証</h2>
+  <p class="section-lead">データ更新時にキャッシュとDBの不整合を防ぐパターン。設計次第で不整合ウィンドウを最小化できる。</p>
+
+  <h3>ダブルデリート（二重削除）パターン</h3>
+  <div class="card">
+    <p>Cache-Aside において更新処理の前後でキャッシュを削除し、不整合ウィンドウを最小化するパターン。</p>
+    <pre><code><span class="kw">async function</span> <span class="fn">updateUserWithDoubleDelete</span>(userId, newData) {
+  <span class="kw">const</span> cacheKey = `user:${userId}`;
+
+  <span class="cm">// 1st delete: 古い値を持つ他リクエストのキャッシュ格納を防ぐ</span>
+  <span class="kw">await</span> redis.<span class="fn">del</span>(cacheKey);
+
+  <span class="cm">// DB更新（この間に別リクエストが古い値をキャッシュするリスクがある）</span>
+  <span class="kw">await</span> db.<span class="fn">updateUser</span>(userId, newData);
+
+  <span class="cm">// 短い待機（レプリカラグを考慮）</span>
+  <span class="kw">await</span> <span class="fn">sleep</span>(100);
+
+  <span class="cm">// 2nd delete: DB更新後に古い値をキャッシュした可能性を排除</span>
+  <span class="kw">await</span> redis.<span class="fn">del</span>(cacheKey);
+}
+<span class="cm">// 不整合ウィンドウ: 約100ms（sleep時間）のみ</span></code></pre>
+    <div class="highlight amber">
+      <strong>注意:</strong> 二重削除は不整合を最小化するが完全には防げない。厳密な一貫性が必要な場合はWrite-Through + 分散ロックを検討する。
+    </div>
+  </div>
+
+  <h3>Versioned Cache（バージョン付きキャッシュキー）</h3>
+  <div class="card">
+    <p>キャッシュキーにバージョン番号を含めることで、古いキャッシュが新しいキャッシュに上書きされることを防ぐ。</p>
+    <pre><code><span class="cm"># DBにバージョン番号を持つスキーマ</span>
+<span class="cm"># users: {id, name, email, version}</span>
+
+<span class="kw">async function</span> <span class="fn">getUser</span>(userId) {
+  <span class="cm">// バージョン付きキャッシュキー</span>
+  <span class="kw">const</span> version = <span class="kw">await</span> redis.<span class="fn">get</span>(`user:${userId}:version`);
+  <span class="kw">if</span> (version) {
+    <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(`user:${userId}:v${version}`);
+    <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+  }
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">findUser</span>(userId);
+  <span class="cm">// バージョン番号を含めてキャッシュ</span>
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(`user:${userId}:v${user.version}`, 3600, JSON.<span class="fn">stringify</span>(user));
+  <span class="kw">await</span> redis.<span class="fn">set</span>(`user:${userId}:version`, user.version);
+  <span class="kw">return</span> user;
+}
+
+<span class="kw">async function</span> <span class="fn">updateUser</span>(userId, newData) {
+  <span class="cm">// DB更新でバージョンをインクリメント</span>
+  <span class="kw">const</span> updated = <span class="kw">await</span> db.<span class="fn">updateUserWithVersionBump</span>(userId, newData);
+  <span class="cm">// バージョンポインタだけ更新 → 古いバージョンのキャッシュは自然消滅</span>
+  <span class="kw">await</span> redis.<span class="fn">set</span>(`user:${userId}:version`, updated.version);
+}</code></pre>
+  </div>
+
+  <h3>Pub/Sub を使ったキャッシュ無効化</h3>
+  <div class="card">
+    <p>データ更新時にRedisのPub/Subチャンネルに変更イベントを発行し、全アプリサーバーのローカルキャッシュを同時に無効化する。</p>
+    <pre><code><span class="cm">// Publisher（更新サービス）</span>
+<span class="kw">async function</span> <span class="fn">updateProduct</span>(productId, newData) {
+  <span class="kw">await</span> db.<span class="fn">updateProduct</span>(productId, newData);
+  <span class="cm">// 全ノードに無効化イベントを配信</span>
+  <span class="kw">await</span> redis.<span class="fn">publish</span>(<span class="str">'cache:invalidate'</span>, JSON.<span class="fn">stringify</span>({
+    type: <span class="str">'product'</span>,
+    id: productId,
+    timestamp: Date.<span class="fn">now</span>()
+  }));
+}
+
+<span class="cm">// Subscriber（各アプリサーバーで実行）</span>
+<span class="kw">const</span> subscriber = redis.<span class="fn">duplicate</span>(); <span class="cm">// 専用コネクション</span>
+<span class="kw">await</span> subscriber.<span class="fn">subscribe</span>(<span class="str">'cache:invalidate'</span>);
+subscriber.<span class="fn">on</span>(<span class="str">'message'</span>, (channel, message) => {
+  <span class="kw">const</span> event = JSON.<span class="fn">parse</span>(message);
+  <span class="cm">// ローカルキャッシュから削除</span>
+  localCache.<span class="fn">delete</span>(`${event.type}:${event.id}`);
+  <span class="cm">// 分散キャッシュからも削除</span>
+  redis.<span class="fn">del</span>(`product:${event.id}`);
+});</code></pre>
+  </div>
+
+  <h3>Read-Your-Writes 保証</h3>
+  <div class="card">
+    <p>ユーザーが書き込んだ直後に、その内容を確実に読み取れるようにする設計パターン。DB読み書きのレプリカラグが問題になる。</p>
+    <pre><code><span class="cm">// 解決策1: 書き込んだユーザーの次のリクエストはマスターDBへ</span>
+<span class="kw">async function</span> <span class="fn">readAfterWrite</span>(userId, key, userJustWrote) {
+  <span class="kw">if</span> (userJustWrote) {
+    <span class="cm">// 直後はマスターから読む（レプリカラグを回避）</span>
+    <span class="kw">return</span> masterDb.<span class="fn">get</span>(key);
+  }
+  <span class="cm">// 通常はレプリカから</span>
+  <span class="kw">return</span> replicaDb.<span class="fn">get</span>(key);
+}
+
+<span class="cm">// 解決策2: 書き込み後にキャッシュを直接更新（キャッシュ優先）</span>
+<span class="kw">async function</span> <span class="fn">writeAndCache</span>(userId, data) {
+  <span class="kw">await</span> db.<span class="fn">write</span>(userId, data);
+  <span class="cm">// 書き込んだ本人向けに短いTTLでキャッシュを即時更新</span>
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(`user:${userId}`, 30, JSON.<span class="fn">stringify</span>(data));
+  <span class="cm">// 30秒後にレプリカが追いついた後はDBから再取得される</span>
+}</code></pre>
+  </div>
+</section>
+
+<section id="practice-caching">
+  <h2><span class="num">12</span>実践演習</h2>
+  <p class="section-lead">設計問題・実装問題・アンチパターン診断で理解を実践レベルへ高める。</p>
+
+  <h3>演習1: Eコマースの商品ページキャッシュ設計</h3>
+  <div class="card">
+    <p>Eコマースサイトの商品詳細ページには3種類のデータが混在する。それぞれ適切なキャッシュ戦略を設計せよ。</p>
+    <div class="card-grid">
+      <div class="card" style="border-color:rgba(16,185,129,0.4);">
+        <h4 style="color:var(--green)">商品情報（低更新頻度）</h4>
+        <p>商品名・説明・画像URL・カテゴリ。月数回の更新。</p>
+        <div class="highlight green">
+          <strong>推奨設計:</strong>
+          <ul style="margin-top:8px;">
+            <li><strong>TTL:</strong> 24時間（86400秒）</li>
+            <li><strong>パターン:</strong> Cache-Aside + Write-Through</li>
+            <li><strong>キー:</strong> <code>product:{id}:info:v{version}</code></li>
+            <li><strong>Invalidation:</strong> 更新時に明示的削除 + バージョンバンプ</li>
+            <li><strong>CDNキャッシュ:</strong> 1時間（s-maxage=3600）</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,0.4);">
+        <h4 style="color:var(--accent3)">在庫数（高更新頻度）</h4>
+        <p>残り在庫数。注文のたびに変動。0になると購入不可。</p>
+        <div class="highlight amber">
+          <strong>推奨設計:</strong>
+          <ul style="margin-top:8px;">
+            <li><strong>TTL:</strong> 30秒（在庫表示は多少古くてOK）</li>
+            <li><strong>パターン:</strong> Redis INCRBY（アトミック減算）</li>
+            <li><strong>キー:</strong> <code>product:{id}:stock</code></li>
+            <li><strong>注意:</strong> 購入確定時はDBとRedisをトランザクションで整合</li>
+            <li><strong>表示:</strong> 「残りわずか（10以下）」のみ表示し実数は隠す</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="border-color:rgba(239,68,68,0.4);">
+        <h4 style="color:var(--red)">価格（随時変動）</h4>
+        <p>タイムセール・クーポン・ユーザー別価格など複雑な計算が必要。</p>
+        <div class="highlight red">
+          <strong>推奨設計:</strong>
+          <ul style="margin-top:8px;">
+            <li><strong>TTL:</strong> 5分（セール価格は最悪5分古くてもOK）</li>
+            <li><strong>パターン:</strong> Cache-Aside。購入確定時はDBで再計算</li>
+            <li><strong>キー:</strong> <code>product:{id}:price:{userId}:{timestamp_5min}</code></li>
+            <li><strong>注意:</strong> タイムセール開始時刻にキャッシュを一括削除</li>
+            <li><strong>CDN禁止:</strong> ユーザー別価格はCDNキャッシュNG</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <pre><code><span class="cm">// 商品ページデータ取得の実装例</span>
+<span class="kw">async function</span> <span class="fn">getProductPageData</span>(productId, userId) {
+  <span class="kw">const</span> [info, stock, price] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    <span class="cm">// 1. 商品情報（24時間TTL）</span>
+    redis.<span class="fn">get</span>(`product:${productId}:info`) ||
+      db.<span class="fn">getProduct</span>(productId).<span class="fn">then</span>(p => {
+        redis.<span class="fn">setex</span>(`product:${productId}:info`, 86400, JSON.<span class="fn">stringify</span>(p));
+        <span class="kw">return</span> p;
+      }),
+
+    <span class="cm">// 2. 在庫数（30秒TTL、Redisの整数値として管理）</span>
+    redis.<span class="fn">get</span>(`product:${productId}:stock`) ||
+      db.<span class="fn">getStock</span>(productId).<span class="fn">then</span>(s => {
+        redis.<span class="fn">setex</span>(`product:${productId}:stock`, 30, s);
+        <span class="kw">return</span> s;
+      }),
+
+    <span class="cm">// 3. 価格（ユーザー別・5分TTL）</span>
+    <span class="fn">getUserPrice</span>(productId, userId),
+  ]);
+
+  <span class="kw">return</span> { ...info, stock: parseInt(stock), price };
+}</code></pre>
+  </div>
+
+  <h3>演習2: リーダーボードをRedisで実装する</h3>
+  <div class="card">
+    <p>ゲームの1億ユーザーリーダーボードをRedisのSorted Setで構築する完全実装。</p>
+    <pre><code><span class="cm"># Python実装（redis-py）</span>
+<span class="kw">import</span> redis
+<span class="kw">import</span> math
+
+r = redis.Redis(host=<span class="str">'localhost'</span>, port=<span class="num">6379</span>)
+LEADERBOARD_KEY = <span class="str">"game:season2:leaderboard"</span>
+
+<span class="kw">def</span> <span class="fn">add_score</span>(player_id: str, score: int) -> <span class="kw">None</span>:
+    <span class="str">"""スコアを追加（既存スコアは置き換え）"""</span>
+    r.zadd(LEADERBOARD_KEY, {player_id: score})
+
+<span class="kw">def</span> <span class="fn">increment_score</span>(player_id: str, delta: int) -> float:
+    <span class="str">"""スコアをインクリメント（アトミック）"""</span>
+    <span class="kw">return</span> r.zincrby(LEADERBOARD_KEY, delta, player_id)
+
+<span class="kw">def</span> <span class="fn">get_top_n</span>(n: int = 10) -> list:
+    <span class="str">"""トップN取得（降順・スコア付き）"""</span>
+    results = r.zrevrange(LEADERBOARD_KEY, 0, n-1, withscores=True)
+    <span class="kw">return</span> [
+        {<span class="str">"rank"</span>: i+1, <span class="str">"player"</span>: pid.decode(), <span class="str">"score"</span>: int(score)}
+        <span class="kw">for</span> i, (pid, score) <span class="kw">in</span> enumerate(results)
+    ]
+
+<span class="kw">def</span> <span class="fn">get_player_rank</span>(player_id: str) -> dict:
+    <span class="str">"""プレイヤーの順位とスコアを取得"""</span>
+    rank = r.zrevrank(LEADERBOARD_KEY, player_id)
+    score = r.zscore(LEADERBOARD_KEY, player_id)
+    <span class="kw">if</span> rank <span class="kw">is None</span>:
+        <span class="kw">return</span> {<span class="str">"error"</span>: <span class="str">"player not found"</span>}
+    <span class="kw">return</span> {<span class="str">"rank"</span>: rank + 1, <span class="str">"score"</span>: int(score)}
+
+<span class="kw">def</span> <span class="fn">get_around_player</span>(player_id: str, window: int = 5) -> list:
+    <span class="str">"""プレイヤーの前後window人を取得"""</span>
+    rank = r.zrevrank(LEADERBOARD_KEY, player_id)
+    <span class="kw">if</span> rank <span class="kw">is None</span>:
+        <span class="kw">return</span> []
+    start = max(0, rank - window)
+    end = rank + window
+    results = r.zrevrange(LEADERBOARD_KEY, start, end, withscores=True)
+    <span class="kw">return</span> [
+        {<span class="str">"rank"</span>: start+i+1, <span class="str">"player"</span>: pid.decode(), <span class="str">"score"</span>: int(score)}
+        <span class="kw">for</span> i, (pid, score) <span class="kw">in</span> enumerate(results)
+    ]
+
+<span class="cm"># 使用例</span>
+add_score(<span class="str">"player:tanaka"</span>, 9850)
+increment_score(<span class="str">"player:tanaka"</span>, 150)  <span class="cm"># → 10000</span>
+print(get_top_n(3))
+print(get_player_rank(<span class="str">"player:tanaka"</span>))</code></pre>
+
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card">
+        <h4>メモリ見積もり（1億ユーザー）</h4>
+        <pre><code><span class="cm"># skiplist の1要素あたりのメモリ</span>
+<span class="cm"># キー文字列: ~20 bytes (player:12345678)</span>
+<span class="cm"># スコア (double): 8 bytes</span>
+<span class="cm"># skiplistノード: ~50 bytes</span>
+<span class="cm"># hash テーブルエントリ: ~30 bytes</span>
+<span class="cm"># 合計: ~108 bytes/entry</span>
+
+total = 100_000_000 * 108  <span class="cm"># bytes</span>
+print(f"{total / 1024**3:.1f} GB")  <span class="cm"># → 約10.1 GB</span>
+<span class="cm"># 実際は Redis のオーバーヘッドを含め ~12〜15 GB</span></code></pre>
+      </div>
+      <div class="card">
+        <h4>Sharded Leaderboard設計</h4>
+        <pre><code><span class="cm"># 1億ユーザーを10シャードに分割</span>
+<span class="cm"># 各シャードが1000万ユーザーを担当</span>
+
+<span class="kw">def</span> <span class="fn">get_shard</span>(player_id: str) -> int:
+    <span class="kw">return</span> hash(player_id) % 10
+
+<span class="kw">def</span> <span class="fn">add_score_sharded</span>(player_id, score):
+    shard = get_shard(player_id)
+    key = f<span class="str">"lb:shard:{shard}"</span>
+    r.zadd(key, {player_id: score})
+
+<span class="cm"># グローバルTOP10取得: 全シャードのTOP10を取り出してマージ</span>
+<span class="kw">def</span> <span class="fn">get_global_top10</span>() -> list:
+    candidates = []
+    <span class="kw">for</span> shard <span class="kw">in</span> range(10):
+        top = r.zrevrange(f<span class="str">"lb:shard:{shard}"</span>, 0, 9, withscores=True)
+        candidates.extend(top)
+    candidates.sort(key=<span class="kw">lambda</span> x: -x[1])
+    <span class="kw">return</span> candidates[:10]</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>演習3: キャッシュ設計アンチパターン診断（5問）</h3>
+  <div class="card">
+    <p>以下の各設計の<strong>問題点を特定し、修正案を考えよ</strong>。答えは下に示す。</p>
+
+    <h4>問題1: 同一TTLで全商品をキャッシュ</h4>
+    <pre><code><span class="cm">// 毎朝5時のバッチ処理</span>
+<span class="kw">const</span> products = <span class="kw">await</span> db.<span class="fn">getAllProducts</span>();
+<span class="kw">for</span> (<span class="kw">const</span> p <span class="kw">of</span> products) {
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(`product:${p.id}`, 3600, JSON.<span class="fn">stringify</span>(p));
+}</code></pre>
+    <div class="highlight red"><strong>問題:</strong> 毎朝6時に全キャッシュが同時に期限切れ → Cache Avalanche発生。<br><strong>修正:</strong> <code>3600 + Math.floor(Math.random() * 600)</code> のようにジッターを追加する。</div>
+
+    <h4>問題2: キャッシュミス時の処理なし</h4>
+    <pre><code><span class="kw">async function</span> <span class="fn">getUser</span>(userId) {
+  <span class="kw">return</span> JSON.<span class="fn">parse</span>(<span class="kw">await</span> redis.<span class="fn">get</span>(`user:${userId}`));
+}
+<span class="cm">// キャッシュミス時はnullが返る</span></code></pre>
+    <div class="highlight red"><strong>問題:</strong> キャッシュミス時にnullが返り、呼び出し元がDBアクセスしないためデータが取得できない。また、存在しないユーザーへのリクエストでもDBへの保護がない（Cache Penetration）。<br><strong>修正:</strong> キャッシュミス時にDBから取得し結果をキャッシュするCache-Asideパターンを実装する。存在しない場合もnull値をキャッシュする。</div>
+
+    <h4>問題3: セッション情報をアプリメモリに保存</h4>
+    <pre><code><span class="cm">// アプリサーバーのグローバル変数</span>
+<span class="kw">const</span> sessions = <span class="kw">new</span> <span class="fn">Map</span>();
+sessions.<span class="fn">set</span>(sessionId, { userId: 123, role: <span class="str">'admin'</span> });
+<span class="cm">// 別サーバーへのリクエストはこのMapにアクセスできない</span></code></pre>
+    <div class="highlight red"><strong>問題:</strong> スケールアウト時に別サーバーへリクエストが届くとセッション情報が見つからない（スティッキーセッション問題）。サーバー再起動でセッション消失。<br><strong>修正:</strong> Redis等の外部分散ストアにセッションを保存し、全サーバーが共有できるようにする。</div>
+
+    <h4>問題4: ホットなユーザーIDを単一キーで管理</h4>
+    <pre><code><span class="cm">// 有名人のプロフィール（毎秒10万アクセス）</span>
+<span class="kw">await</span> redis.<span class="fn">get</span>(<span class="str">'user:celebrity:1'</span>);
+<span class="cm">// このキーを持つノードのCPUが100%に</span></code></pre>
+    <div class="highlight red"><strong>問題:</strong> Hot Key Problem。単一Redisノードに負荷集中。<br><strong>修正:</strong> ①アプリサーバー内のローカルキャッシュ（5秒TTL）を追加する。②キーをシャーディングして複数ノードに分散させる（<code>user:celebrity:1:0</code>〜<code>:9</code>）。</div>
+
+    <h4>問題5: キャッシュキーのバージョン管理なし</h4>
+    <pre><code><span class="cm">// v1: ユーザー情報 {name, email}</span>
+redis.<span class="fn">setex</span>(`user:${id}`, 86400, JSON.<span class="fn">stringify</span>({name, email}));
+
+<span class="cm">// アプリアップデートでv2に: {name, email, phoneNumber}</span>
+<span class="cm">// 古いキャッシュが残っていると parseError の可能性</span></code></pre>
+    <div class="highlight red"><strong>問題:</strong> スキーマ変更時に古いフォーマットのキャッシュが残り、デシリアライズエラーが発生する可能性がある。<br><strong>修正:</strong> キャッシュキーにバージョンを含める（<code>user:v2:{id}</code>）か、キャッシュデプロイ時に全キーを削除（<code>FLUSHDB</code>は本番で危険なため、Scanを使った選択的削除を推奨）。</div>
+  </div>
+</section>
+
+</body>
+</html>

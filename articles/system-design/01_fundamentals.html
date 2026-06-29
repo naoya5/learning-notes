@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch01 システムデザインの進め方 | システムデザイン学習ガイド</title>
+<style>
+  :root {
+    --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+    --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+    --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+    --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* Nav */
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;}
+  nav a{color:var(--text2);font-size:0.9rem;} nav a:hover{color:var(--text);}
+  nav .current{color:var(--accent);font-weight:700;}
+  nav .sep{color:var(--border);}
+
+  /* Header */
+  .page-header{
+    background:linear-gradient(135deg,#0f1020,#1a1040,#0f1020);
+    padding:48px 40px; border-bottom:1px solid var(--border);
+    position:relative;overflow:hidden;
+  }
+  .page-header::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse at 20% 50%,rgba(99,102,241,0.2) 0%,transparent 60%);
+  }
+  .chapter-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);
+    color:#a5b4fc;padding:4px 14px;border-radius:20px;font-size:0.8rem;font-weight:600;
+    margin-bottom:16px;position:relative;z-index:1;
+  }
+  .page-header h1{font-size:2.2rem;font-weight:800;position:relative;z-index:1;margin-bottom:10px;}
+  .page-header p{color:var(--text2);font-size:1rem;position:relative;z-index:1;max-width:680px;}
+
+  /* Layout */
+  .container{max-width:960px;margin:0 auto;padding:40px 24px;}
+
+  /* Section */
+  h2{font-size:1.5rem;font-weight:700;color:var(--text);margin:48px 0 20px;
+     padding-bottom:12px;border-bottom:2px solid var(--border);
+     display:flex;align-items:center;gap:10px;}
+  h2 .icon{font-size:1.3rem;}
+  h3{font-size:1.1rem;font-weight:700;color:var(--text);margin:28px 0 12px;}
+  p{color:var(--text2);margin-bottom:14px;font-size:0.95rem;}
+  ul,ol{color:var(--text2);padding-left:24px;margin-bottom:14px;font-size:0.95rem;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+
+  /* Cards */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+  .info-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;
+              border-left:3px solid var(--accent);}
+  .info-card h4{font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:8px;}
+  .info-card p{font-size:0.87rem;color:var(--text2);margin:0;}
+
+  /* Step cards */
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{display:flex;gap:20px;position:relative;padding-bottom:32px;}
+  .step:last-child{padding-bottom:0;}
+  .step::before{
+    content:'';position:absolute;left:19px;top:44px;bottom:0;
+    width:2px;background:var(--border);
+  }
+  .step:last-child::before{display:none;}
+  .step-num{
+    width:40px;height:40px;border-radius:50%;background:var(--accent);
+    color:#fff;font-weight:800;font-size:0.9rem;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    position:relative;z-index:1;
+  }
+  .step-body{flex:1;padding-top:8px;}
+  .step-body h3{margin-top:0;margin-bottom:8px;font-size:1.05rem;}
+
+  /* Code */
+  pre{background:#0d0f18;border:1px solid var(--border);border-radius:8px;
+      padding:18px;overflow-x:auto;margin:14px 0;font-size:0.84rem;line-height:1.6;}
+  code{font-family:'Consolas','Monaco',monospace;color:#e2e8f0;}
+  .kw{color:#a5b4fc;}
+  .str{color:#6ee7b7;}
+  .cm{color:#64748b;font-style:italic;}
+  .num{color:#fcd34d;}
+  .fn{color:#67e8f9;}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:0.87rem;}
+  th{background:var(--surface2);color:var(--text);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+  td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+
+  /* Alert boxes */
+  .alert{border-radius:8px;padding:16px 20px;margin:16px 0;font-size:0.9rem;}
+  .alert-info{background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#c7d2fe;}
+  .alert-tip{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#a7f3d0;}
+  .alert-warn{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#fde68a;}
+  .alert-label{font-weight:700;margin-bottom:6px;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.05em;}
+
+  /* Formula box */
+  .formula{
+    background:#0d0f18;border:2px solid var(--border);border-radius:10px;
+    padding:20px;text-align:center;font-size:1.1rem;color:#a5b4fc;
+    font-family:monospace;letter-spacing:0.02em;margin:16px 0;
+  }
+
+  /* Two-column */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  @media(max-width:640px){.two-col{grid-template-columns:1fr;}.card-grid{grid-template-columns:1fr;}}
+
+  /* Tag */
+  .tag{display:inline-block;font-size:0.72rem;padding:2px 8px;border-radius:4px;
+        background:var(--surface2);color:var(--text3);border:1px solid var(--border);margin:2px;}
+
+  /* Interview section */
+  .interview-box{
+    background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(239,68,68,0.05));
+    border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:28px;margin-top:32px;
+  }
+  .interview-box h3{color:#fcd34d;font-size:1.1rem;margin-bottom:16px;}
+  .interview-qa{margin-bottom:16px;}
+  .interview-qa .q{color:#fde68a;font-weight:700;font-size:0.92rem;margin-bottom:6px;}
+  .interview-qa .a{color:var(--text2);font-size:0.88rem;}
+
+  /* Footer nav */
+  .footer-nav{
+    display:flex;justify-content:space-between;align-items:center;
+    border-top:1px solid var(--border);padding:24px 0;margin-top:48px;
+  }
+  .footer-nav a{
+    display:flex;align-items:center;gap:8px;color:var(--text2);
+    padding:10px 20px;border:1px solid var(--border);border-radius:8px;
+    transition:all 0.2s;font-size:0.9rem;
+  }
+  .footer-nav a:hover{border-color:var(--accent);color:var(--text);text-decoration:none;}
+
+  /* SVG Diagram */
+  .diagram-container{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;overflow-x:auto;}
+  .diagram-title{font-size:0.8rem;color:var(--text3);text-align:center;margin-top:12px;text-transform:uppercase;letter-spacing:0.05em;}
+
+  /* Checklist */
+  .checklist{list-style:none;padding:0;}
+  .checklist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.9rem;}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist .check{color:var(--green);flex-shrink:0;margin-top:2px;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="00_index.html">🏗️ ホーム</a>
+  <span class="sep">›</span>
+  <a class="current" href="01_fundamentals.html">Ch01 基礎・フレームワーク</a>
+</nav>
+
+<div class="page-header">
+  <div class="chapter-badge">📐 Chapter 01</div>
+  <h1>システムデザインの進め方</h1>
+  <p>Senior Engineerが面接・実務で使うフレームワーク：要件定義から詳細設計・トレードオフ分析まで体系的に習得する</p>
+</div>
+
+<div class="container">
+
+  <!-- 1. なぜシステムデザインが重要か -->
+  <h2><span class="icon">🎯</span> なぜシステムデザインが重要か</h2>
+  <p>
+    システムデザインは<strong>「正解のない問題に対して最善解を導く力」</strong>です。
+    コーディング試験が「与えられた問題を解く力」を見るのに対し、システムデザインは
+    <strong>「どんな問題を解くべきかを定義し、設計し、トレードオフを語れるか」</strong>を評価します。
+  </p>
+  <div class="two-col">
+    <div class="info-card">
+      <h4>🔍 面接での評価ポイント</h4>
+      <p>要件の明確化・スケールの数値化・コンポーネント選定の根拠・ボトルネックの特定・設計の進化シナリオ</p>
+    </div>
+    <div class="info-card" style="border-left-color:var(--accent2)">
+      <h4>🏢 実務での活用</h4>
+      <p>新機能の設計・既存システムのリファクタリング計画・技術選定・チームへの設計説明</p>
+    </div>
+  </div>
+
+  <!-- 2. 設計フレームワーク -->
+  <h2><span class="icon">🗺️</span> 5ステップ設計フレームワーク</h2>
+  <p>どんなシステムデザイン問題にも適用できる普遍的なフレームワークです。面接では<strong>45〜60分</strong>でこの流れをたどります。</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>要件定義（5〜7分）</h3>
+        <p>曖昧な問題文を具体的な仕様に変換します。<strong>機能要件</strong>と<strong>非機能要件</strong>を必ず分けて整理します。</p>
+        <div class="two-col">
+          <div class="card" style="border-left:3px solid var(--green)">
+            <h4 style="color:var(--green);font-size:0.9rem;margin-bottom:8px;">✅ 機能要件 (What)</h4>
+            <ul style="font-size:0.85rem;">
+              <li>システムが何をするか</li>
+              <li>主要なユースケース</li>
+              <li>対象ユーザー</li>
+              <li>データの入出力</li>
+            </ul>
+          </div>
+          <div class="card" style="border-left:3px solid var(--accent)">
+            <h4 style="color:var(--accent2);font-size:0.9rem;margin-bottom:8px;">⚡ 非機能要件 (How Well)</h4>
+            <ul style="font-size:0.85rem;">
+              <li>スケール（DAU、QPS）</li>
+              <li>可用性（99.9% vs 99.99%）</li>
+              <li>レイテンシ（p50, p99）</li>
+              <li>整合性（強一貫 vs 結果整合）</li>
+            </ul>
+          </div>
+        </div>
+        <div class="alert alert-tip">
+          <div class="alert-label">💡 実践Tips</div>
+          「Twitterを設計してください」→ 「書き込みより読み込みが多い？フォロワー数の上限は？リアルタイム性は必要？」と質問を重ねる
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>キャパシティ見積もり（5〜8分）</h3>
+        <p>スケールを数値で把握します。<strong>ザックリで構いません</strong>。面接官が見ているのは「スケールを意識しているか」です。</p>
+        <div class="card">
+          <h4 style="margin-bottom:12px;color:var(--accent2);">便利な数字を覚えておく</h4>
+          <table>
+            <tr><th>単位</th><th>値</th><th>例</th></tr>
+            <tr><td>1日 = 86,400秒</td><td>≈ 10万秒</td><td>1日1億リクエスト → QPS ≈ 1,000</td></tr>
+            <tr><td>1ヶ月 ≈ 250万秒</td><td>2.5M秒</td><td>月10億リクエスト → QPS ≈ 400</td></tr>
+            <tr><td>文字1字</td><td>1〜4 byte</td><td>ツイート280字 ≈ 560byte</td></tr>
+            <tr><td>写真1枚</td><td>300KB〜1MB</td><td>Instagram投稿 ≈ 500KB</td></tr>
+            <tr><td>動画1分(360p)</td><td>≈ 10MB</td><td>YouTube 1時間 ≈ 600MB</td></tr>
+          </table>
+        </div>
+        <div class="formula">
+          書き込みQPS = DAU × 1日あたりアクション数 ÷ 86,400秒
+        </div>
+        <pre><code><span class="cm">// URL短縮サービスの見積もり例</span>
+DAU = <span class="num">100</span>M  <span class="cm">// 日次アクティブユーザー</span>
+読み書き比率 = <span class="num">100</span>:1  <span class="cm">// 読み込みが圧倒的に多い</span>
+
+書き込みQPS = 100M × (1件/日) ÷ 86,400 ≈ <span class="num">1,157</span> QPS
+読み込みQPS = 1,157 × 100 ≈ <span class="num">115,700</span> QPS
+
+ストレージ(5年分):
+  1件 ≈ 500 bytes × 1,157 × 86,400 × 365 × 5
+       ≈ <span class="num">91</span> TB</code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>高レベル設計（10〜15分）</h3>
+        <p>コンポーネント図とデータフローを描きます。細部に入る前に<strong>全体像を合意</strong>することが重要です。</p>
+        <div class="diagram-container">
+          <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;">
+            <!-- Client -->
+            <rect x="10" y="75" width="100" height="50" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+            <text x="60" y="97" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">Client</text>
+            <text x="60" y="113" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Browser/App</text>
+            <!-- Arrow -->
+            <path d="M110 100 L155 100" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <text x="132" y="93" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">HTTPS</text>
+            <!-- LB -->
+            <rect x="155" y="75" width="110" height="50" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+            <text x="210" y="97" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">Load</text>
+            <text x="210" y="113" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">Balancer</text>
+            <!-- Arrow -->
+            <path d="M265 100 L310 100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow2)"/>
+            <!-- API Servers -->
+            <rect x="310" y="30" width="110" height="45" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="365" y="52" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">API Server</text>
+            <text x="365" y="65" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Instance 1</text>
+            <rect x="310" y="80" width="110" height="45" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="365" y="102" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">API Server</text>
+            <text x="365" y="115" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Instance 2</text>
+            <rect x="310" y="130" width="110" height="45" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="365" y="152" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">API Server</text>
+            <text x="365" y="165" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Instance 3</text>
+            <!-- Arrows to DB -->
+            <path d="M420 52 L470 80" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow3)"/>
+            <path d="M420 102 L470 100" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow3)"/>
+            <path d="M420 152 L470 120" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow3)"/>
+            <!-- Cache -->
+            <rect x="470" y="30" width="110" height="45" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="525" y="52" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">Cache</text>
+            <text x="525" y="65" text-anchor="middle" fill="#fcd34d" font-size="10" font-family="sans-serif">Redis</text>
+            <!-- DB -->
+            <rect x="470" y="95" width="110" height="80" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+            <text x="525" y="130" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif">Database</text>
+            <text x="525" y="148" text-anchor="middle" fill="#6ee7b7" font-size="10" font-family="sans-serif">Primary</text>
+            <text x="525" y="163" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">+ Replica</text>
+            <!-- Cache-DB arrow -->
+            <path d="M525 75 L525 95" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+            <!-- Arrow definitions -->
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+              </marker>
+              <marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+              </marker>
+              <marker id="arrow3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa"/>
+              </marker>
+            </defs>
+          </svg>
+          <div class="diagram-title">基本的なWebシステムの高レベル構成</div>
+        </div>
+        <div class="alert alert-info">
+          <div class="alert-label">💬 面接での進め方</div>
+          まず「こういう構成を考えています」と全体を説明してから、面接官の反応を見てボトルネックとなりそうな部分を深掘りします。
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>詳細設計（15〜20分）</h3>
+        <p>1〜2つの重要な部分を深掘りします。<strong>面接官が興味を示した部分を優先</strong>してください。</p>
+        <div class="card-grid">
+          <div class="info-card" style="border-left-color:var(--accent2)">
+            <h4>データモデル</h4>
+            <p>スキーマ設計、正規化 vs 非正規化、インデックス戦略</p>
+          </div>
+          <div class="info-card" style="border-left-color:var(--purple)">
+            <h4>APIエンドポイント</h4>
+            <p>REST/gRPC設計、リクエスト/レスポンス形式</p>
+          </div>
+          <div class="info-card" style="border-left-color:var(--green)">
+            <h4>キャッシュ戦略</h4>
+            <p>何をキャッシュするか、TTL、invalidation</p>
+          </div>
+          <div class="info-card" style="border-left-color:var(--accent3)">
+            <h4>スケーリング</h4>
+            <p>ボトルネックと解決策（シャーディング、CDN等）</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>スケール & 最終確認（5〜10分）</h3>
+        <p>SPOFの排除・ボトルネックの特定・将来の拡張シナリオを議論します。</p>
+        <ul>
+          <li><strong>Single Point of Failure (SPOF)</strong> はどこか？</li>
+          <li>データが10倍になったらどうなるか？</li>
+          <li>特定機能だけ急増した場合は？（例：特定時間帯のアクセス集中）</li>
+          <li>コストと可用性のトレードオフをどう判断するか？</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. トレードオフ分析 -->
+  <h2><span class="icon">⚖️</span> トレードオフ分析の思考法</h2>
+  <p>Senior Engineerとしての核心は<strong>「トレードオフを語れること」</strong>です。「AよりBがいい」ではなく「AとBにはこういうトレードオフがある、今回の要件ではBが適切」と語れるかが重要です。</p>
+
+  <table>
+    <thead><tr><th>観点</th><th>一方の選択</th><th>もう一方の選択</th><th>判断の基準</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>整合性 vs 可用性</strong></td>
+        <td>強一貫性（データが常に正確）</td>
+        <td>結果整合性（高可用性・低レイテンシ）</td>
+        <td>金融→強一貫性、SNSフィード→結果整合</td>
+      </tr>
+      <tr>
+        <td><strong>正規化 vs 非正規化</strong></td>
+        <td>正規化（データ整合性↑、書き込み速度↑）</td>
+        <td>非正規化（読み込み速度↑、ストレージ↑）</td>
+        <td>読み書き比率・クエリパターンで決定</td>
+      </tr>
+      <tr>
+        <td><strong>SQL vs NoSQL</strong></td>
+        <td>SQL（ACID、柔軟クエリ、JOINが得意）</td>
+        <td>NoSQL（水平スケール、スキーマ柔軟）</td>
+        <td>データ構造の複雑さとスケール要件で決定</td>
+      </tr>
+      <tr>
+        <td><strong>同期 vs 非同期</strong></td>
+        <td>同期（シンプル、即時確認可能）</td>
+        <td>非同期（スケーラブル、疎結合）</td>
+        <td>ユーザーが即時レスポンスを必要とするか</td>
+      </tr>
+      <tr>
+        <td><strong>モノリス vs マイクロサービス</strong></td>
+        <td>モノリス（シンプル、デプロイ容易）</td>
+        <td>マイクロサービス（独立スケール、技術多様性）</td>
+        <td>チームサイズとシステムの複雑さ</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 4. 見積もり公式集 -->
+  <h2><span class="icon">📊</span> 見積もりチートシート</h2>
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--accent2);margin-bottom:12px;">⏱️ 時間換算</h4>
+      <pre style="margin:0;font-size:0.8rem;"><code>1日 = 86,400秒 ≈ <span class="num">10万秒</span>
+1週 ≈ 60万秒
+1ヶ月 ≈ 250万秒
+1年 ≈ 3,000万秒</code></pre>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--green);margin-bottom:12px;">💾 ストレージ</h4>
+      <pre style="margin:0;font-size:0.8rem;"><code>1KB = <span class="num">10³</span> bytes
+1MB = <span class="num">10⁶</span> bytes
+1GB = <span class="num">10⁹</span> bytes
+1TB = <span class="num">10¹²</span> bytes</code></pre>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent3);margin-bottom:12px;">🚀 レイテンシ目安</h4>
+      <pre style="margin:0;font-size:0.8rem;"><code>L1キャッシュ:  0.5ns
+L2キャッシュ:    7ns
+RAM読み込み:   100ns
+SSD読み込み:   150µs
+HDD読み込み:   10ms
+<span class="cm">同じDC内ネット: 0.5ms</span>
+<span class="cm">大陸横断:      150ms</span></code></pre>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--purple);margin-bottom:12px;">📈 スケール目安</h4>
+      <pre style="margin:0;font-size:0.8rem;"><code>小規模:   1K  QPS
+中規模:  10K  QPS
+大規模: 100K+ QPS
+
+DB 1台: ~5K QPS
+Redis:  100K+ QPS
+Kafka:  MB/s〜GB/s</code></pre>
+    </div>
+  </div>
+
+  <!-- 5. よくある設計の罠 -->
+  <h2><span class="icon">⚠️</span> よくある設計の罠とアンチパターン</h2>
+  <ul class="checklist">
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>SPOFを見落とす</strong><br>
+        <span style="color:var(--text2);font-size:0.87rem;">DBが1台、LBが1台などの単一障害点は必ずレビューする。Active-Standbyかレプリカを検討する。</span>
+      </div>
+    </li>
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>キャッシュを無思慮に追加する</strong><br>
+        <span style="color:var(--text2);font-size:0.87rem;">キャッシュは magic bullet ではない。invalidation戦略とcache stampede（雪崩）への対策が必要。</span>
+      </div>
+    </li>
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>DBに全てのロジックを押し込む</strong><br>
+        <span style="color:var(--text2);font-size:0.87rem;">DBのストアドプロシージャやトリガーへの依存はスケールを妨げる。ロジックはアプリ層へ。</span>
+      </div>
+    </li>
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>非機能要件を後回しにする</strong><br>
+        <span style="color:var(--text2);font-size:0.87rem;">可用性・一貫性・レイテンシは設計の最初から考慮する。後付けでは大幅なリアーキテクチャになる。</span>
+      </div>
+    </li>
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>「とりあえずマイクロサービス」にする</strong><br>
+        <span style="color:var(--text2);font-size:0.87lem;">チームが小さいうちはモノリスの方がシンプルで保守しやすい。Premature decompositionは避ける。</span>
+      </div>
+    </li>
+    <li>
+      <span class="check">⚠️</span>
+      <div>
+        <strong>セキュリティを設計から除外する</strong><br>
+        <span style="color:var(--text2);font-size:0.87rem;">認証・認可・暗号化は後付けではなく設計時から組み込む（Security by Design）。</span>
+      </div>
+    </li>
+  </ul>
+
+  <!-- Interview Section -->
+  <div class="interview-box">
+    <h3>💼 面接攻略Tips</h3>
+    <div class="interview-qa">
+      <div class="q">Q: 面接でまず何をすべきか？</div>
+      <div class="a">まず要件を確認する質問をする。「どのくらいのスケール？」「読み書き比率は？」「可用性の目標は？」—— これだけで面接官への印象が大きく変わる。</div>
+    </div>
+    <div class="interview-qa">
+      <div class="q">Q: 詳細を聞かれたら何を話すべきか？</div>
+      <div class="a">「なぜその選択をしたか」「代替案と比較してどうか」「何がボトルネックか」を語る。知識の羅列ではなく設計思考のプロセスを見せる。</div>
+    </div>
+    <div class="interview-qa">
+      <div class="q">Q: 知らない技術が出てきたらどうする？</div>
+      <div class="a">正直に「詳しくないが、こういう用途の技術だと理解している。代わりに〜という選択肢を考えている」と言う。Bluffingは逆効果。</div>
+    </div>
+    <div class="alert alert-warn" style="margin-top:16px;">
+      <div class="alert-label">⏰ 時間配分の目安（60分面接）</div>
+      要件定義 5分 → 見積もり 5分 → 高レベル設計 15分 → 詳細設計 25分 → スケール確認 10分
+    </div>
+  </div>
+
+  <div class="footer-nav">
+    <a href="00_index.html">← ホームに戻る</a>
+    <a href="02_networking.html">Ch02 ネットワーク & プロトコル →</a>
+  </div>
+
+</div>
+
+<!-- ============================
+     深掘り & 実践セクション
+     ============================ -->
+
+<div style="border-top:2px solid var(--border);margin-top:48px;"></div>
+
+<h2><span class="icon">🔬</span> 深掘り: 見積もり演習（詳細版）</h2>
+
+<div class="card" style="border-left:3px solid var(--accent2)">
+  <h3>演習1: Instagramのような写真共有サービスの完全見積もり</h3>
+  <p style="color:var(--text2);margin-bottom:12px;">与えられた条件をもとに、書き込みQPS・必要ストレージ・帯域幅を算出する。</p>
+  <div class="card" style="background:#0d0f18;margin-bottom:12px;">
+    <strong style="color:var(--accent3)">前提条件</strong>
+    <ul style="color:var(--text2);margin-top:8px;padding-left:20px;line-height:2;">
+      <li>DAU = 500M（5億人）</li>
+      <li>写真投稿ユーザー = 2%/日 → 500M × 0.02 = 10M 投稿/日</li>
+      <li>1写真 = 500KB（サムネイル含む平均）</li>
+      <li>動画投稿ユーザー = 5%/日のうち 10% が動画 → 500M × 0.05 × 0.1 = 2.5M 動画/日</li>
+      <li>1動画 = 50MB（圧縮後平均）</li>
+    </ul>
+  </div>
+  <pre><code><span class="cm">// ===== 書き込みQPS =====</span>
+写真投稿QPS = <span class="num">10</span>M ÷ 86,400秒
+           = <span class="num">115.7</span> QPS  <span class="cm">// ≈ 116 QPS</span>
+
+動画投稿QPS = <span class="num">2.5</span>M ÷ 86,400秒
+           = <span class="num">28.9</span> QPS  <span class="cm">// ≈ 29 QPS</span>
+
+合計書き込みQPS ≈ <span class="num">146</span> QPS
+ピーク（×3）  ≈ <span class="num">438</span> QPS
+
+<span class="cm">// ===== ストレージ（5年分） =====</span>
+写真ストレージ/日 = 10M × 500KB = <span class="num">5</span> TB/日
+動画ストレージ/日 = 2.5M × 50MB = <span class="num">125</span> TB/日
+合計/日           = <span class="num">130</span> TB/日
+
+5年分           = 130 TB × 365 × 5
+               = <span class="num">237,250</span> TB
+               ≈ <span class="num">237</span> PB
+
+<span class="cm">// ===== 読み込み帯域幅 =====</span>
+<span class="cm">// 1ユーザーが1日20枚の写真を閲覧すると仮定</span>
+読み込みQPS   = 500M × 20枚 ÷ 86,400秒
+             ≈ <span class="num">115,740</span> QPS
+
+帯域幅        = 115,740 × 500KB
+             ≈ <span class="num">57.9</span> GB/s  <span class="cm">// ≈ 58 GB/s の読み込み帯域</span></code></pre>
+  <div class="alert alert-tip">
+    <div class="alert-label">解答のポイント</div>
+    写真より動画の方がストレージへの影響が圧倒的に大きい（125TB vs 5TB）。動画の圧縮・解像度別エンコード戦略が設計の核心になる。読み込み帯域はCDNで分散させることが必須。
+  </div>
+</div>
+
+<div class="card" style="border-left:3px solid var(--green)">
+  <h3>演習2: WhatsAppのメッセージング見積もり</h3>
+  <div class="card" style="background:#0d0f18;margin-bottom:12px;">
+    <strong style="color:var(--accent3)">前提条件</strong>
+    <ul style="color:var(--text2);margin-top:8px;padding-left:20px;line-height:2;">
+      <li>DAU = 2B（20億人）</li>
+      <li>1人1日 = 50通送受信</li>
+      <li>テキストメッセージ = 100 bytes</li>
+      <li>メディア（画像・動画）= 全メッセージの5%、平均200KB</li>
+    </ul>
+  </div>
+  <pre><code><span class="cm">// ===== メッセージQPS =====</span>
+メッセージ数/日 = 2B × 50 = <span class="num">100B</span>（1000億通/日）
+
+メッセージQPS  = 100B ÷ 86,400
+              ≈ <span class="num">1,157,407</span> QPS  <span class="cm">// ≈ 1.16M QPS</span>
+
+<span class="cm">// ===== テキストストレージ =====</span>
+テキスト/日   = 100B × 95% × 100 bytes
+             = 9.5T bytes
+             ≈ <span class="num">9.5</span> TB/日
+
+<span class="cm">// ===== メディアストレージ =====</span>
+メディア数/日 = 100B × 5% = 5B 件
+メディア容量  = 5B × 200KB
+             = 1,000T bytes
+             = <span class="num">1</span> PB/日
+
+<span class="cm">// ===== 帯域幅（送受信合計） =====</span>
+テキスト帯域  = 9.5TB ÷ 86,400 ≈ <span class="num">110</span> MB/s
+メディア帯域  = 1PB ÷ 86,400  ≈ <span class="num">11.6</span> GB/s
+合計          ≈ <span class="num">11.7</span> GB/s</code></pre>
+  <div class="alert alert-warn">
+    <div class="alert-label">設計上の注意点</div>
+    1.16M QPS は単一サーバーでは到底処理できない。メッセージキュー（Kafka）+ シャーディング（ユーザーIDベース）が必須。メディアはオブジェクトストレージ（S3互換）に分離する。
+  </div>
+</div>
+
+<h2><span class="icon">🔬</span> 深掘り: トレードオフの実例</h2>
+
+<div class="two-col">
+  <div class="card" style="border-left:3px solid var(--accent)">
+    <h3>Amazonカートの整合性問題</h3>
+    <p style="color:var(--text2);margin-bottom:10px;"><strong style="color:var(--text)">強一貫性を選んだ場合：</strong></p>
+    <pre style="font-size:0.78rem;"><code><span class="cm">// 分散トランザクション（2PC）</span>
+<span class="fn">BEGIN</span> DISTRIBUTED TRANSACTION
+  <span class="kw">lock</span>(cart_item)
+  <span class="kw">lock</span>(inventory)
+  <span class="kw">update</span> cart
+  <span class="kw">update</span> inventory
+<span class="fn">COMMIT</span>
+
+<span class="cm">// 問題: 在庫DBがダウン→カートも使えない</span>
+<span class="cm">// 可用性 ↓、レイテンシ ↑（ロック待ち）</span></code></pre>
+    <p style="color:var(--text2);margin-top:8px;"><strong style="color:var(--text)">結果整合性を選んだ場合（Amazonの実際）：</strong></p>
+    <pre style="font-size:0.78rem;"><code><span class="cm">// カートはDynamoDBで独立管理</span>
+<span class="cm">// 在庫チェックはチェックアウト時のみ</span>
+cart.add(item_id, qty)  <span class="cm">// 即時成功</span>
+<span class="cm">// → 稀に「在庫切れ」エラーが発生するが</span>
+<span class="cm">// → 99.99%の可用性を優先</span></code></pre>
+    <div class="alert alert-info" style="margin-top:8px;">
+      <div class="alert-label">教訓</div>
+      ユーザー体験（カートが使える）を可用性で優先。在庫不整合のリスクはビジネスロジックで吸収。
+    </div>
+  </div>
+  <div class="card" style="border-left:3px solid var(--purple)">
+    <h3>Facebookタイムライン: モノリス→マイクロサービス</h3>
+    <p style="color:var(--text2);margin-bottom:10px;">Facebookは2004年のPHP monolithから段階的に分解してきた。</p>
+    <div style="font-size:0.85rem;color:var(--text2);">
+      <div style="padding:6px 0;border-bottom:1px solid var(--border);"><strong style="color:var(--accent3)">2004〜2008:</strong> PHP + MySQL monolith。全機能が1コードベース。</div>
+      <div style="padding:6px 0;border-bottom:1px solid var(--border);"><strong style="color:var(--accent3)">2008〜2011:</strong> HipHop（PHP→C++トランスパイラ）で性能問題を解決しながらも単一コードベース維持。</div>
+      <div style="padding:6px 0;border-bottom:1px solid var(--border);"><strong style="color:var(--accent3)">2011〜2014:</strong> GraphQL/Thrift RPC で内部APIを分離。タイムライン生成を独立サービスに。</div>
+      <div style="padding:6px 0;"><strong style="color:var(--accent3)">2014〜:</strong> React + Flux でフロントエンド分離。バックエンドは数百のマイクロサービスへ。</div>
+    </div>
+    <div class="alert alert-tip" style="margin-top:10px;">
+      <div class="alert-label">教訓</div>
+      最初からマイクロサービスは不要。ユーザー規模・チーム規模が拡大してから分解する。
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left:3px solid var(--accent3)">
+  <h3>Netflixのカオスエンジニアリング: なぜ本番を意図的に壊すか</h3>
+  <div class="two-col">
+    <div>
+      <p style="color:var(--text2);margin-bottom:10px;"><strong style="color:var(--text)">背景（2010年）：</strong></p>
+      <p style="color:var(--text2);">Netflixが AWS に移行した際、依存関係の複雑化で「どこかが壊れた時に何が起きるか」が予測不能になった。本番障害で初めて問題を発見する事態が続いた。</p>
+      <br>
+      <p style="color:var(--text2);"><strong style="color:var(--text)">Chaos Monkeyの誕生：</strong></p>
+      <p style="color:var(--text2);">本番環境でランダムにEC2インスタンスを停止するツール。最初はエンジニアに嫌われたが、障害耐性が劇的に向上。</p>
+    </div>
+    <div>
+      <pre style="font-size:0.78rem;"><code><span class="cm">// Chaos Monkey の動作イメージ</span>
+<span class="kw">class</span> <span class="fn">ChaosMonkey</span> {
+  <span class="fn">run</span>() {
+    <span class="kw">const</span> instances = <span class="fn">getRunningInstances</span>()
+    <span class="kw">const</span> target = <span class="fn">randomPick</span>(instances)
+
+    <span class="cm">// 営業時間内に意図的に停止</span>
+    <span class="cm">// → エンジニアが対応できる時間に壊す</span>
+    target.<span class="fn">terminate</span>()
+
+    <span class="fn">alertTeam</span>(<span class="str">"Chaos Monkey struck: "</span> + target.id)
+  }
+}</code></pre>
+      <div class="alert alert-info" style="margin-top:8px;">
+        <div class="alert-label">具体的な学び</div>
+        Chaos Engineeringで発見した問題: タイムアウト設定漏れ、Retry storm、フォールバックなしの依存関係。これらを先手で修正できた。
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="icon">🛠️</span> 実践演習: ホワイトボード設計チャレンジ</h2>
+
+<div class="card" style="border-left:3px solid var(--accent2)">
+  <h3>問題1: オンライン投票システムの設計</h3>
+  <div class="alert alert-warn" style="margin-bottom:16px;">
+    <div class="alert-label">問題文</div>
+    1000万人が24時間以内に投票するシステムを設計せよ。不正投票の防止、リアルタイム集計、99.99%の可用性が必要。
+  </div>
+  <div class="two-col">
+    <div>
+      <p style="color:var(--accent3);font-weight:700;margin-bottom:8px;">Step1: 要件定義</p>
+      <div class="card" style="padding:12px;background:#0d0f18;">
+        <p style="color:var(--text2);font-size:0.85rem;"><strong style="color:var(--green)">機能要件：</strong></p>
+        <ul style="color:var(--text2);font-size:0.85rem;padding-left:16px;margin-bottom:8px;">
+          <li>1ユーザー = 1票のみ</li>
+          <li>投票結果のリアルタイム表示</li>
+          <li>投票受付の開始・終了時刻管理</li>
+        </ul>
+        <p style="color:var(--text2);font-size:0.85rem;"><strong style="color:var(--red)">非機能要件：</strong></p>
+        <ul style="color:var(--text2);font-size:0.85rem;padding-left:16px;">
+          <li>ピーク: 投票開始直後に集中 → 500K QPS</li>
+          <li>不正防止: 同一ユーザーの2重投票を防ぐ</li>
+          <li>可用性: 24時間以内に99.99% = 最大2.4分のダウンのみ許容</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <p style="color:var(--accent3);font-weight:700;margin-bottom:8px;">Step2: 見積もり</p>
+      <pre style="font-size:0.8rem;"><code>総投票数 = <span class="num">10M</span>
+平均投票QPS = 10M ÷ 86,400 ≈ <span class="num">116</span> QPS
+ピークQPS（開始直後）= <span class="num">500K</span> QPS
+
+<span class="cm">// 投票データサイズ</span>
+1投票 = user_id(8B) + choice(1B)
+      + timestamp(8B) = <span class="num">17</span> bytes
+総容量 = 10M × 17B = <span class="num">170</span> MB
+<span class="cm">// → ストレージはほぼ問題なし</span></code></pre>
+    </div>
+  </div>
+  <p style="color:var(--accent3);font-weight:700;margin:12px 0 8px;">Step3: 設計解答</p>
+  <pre><code><span class="cm">// 不正防止: Redis で冪等性チェック</span>
+<span class="fn">SETNX</span> voted:<span class="str">{user_id}</span> <span class="num">1</span> EX 86400
+<span class="cm">// → 既にキーが存在する場合 0 を返す → 2重投票拒否</span>
+<span class="cm">// → アトミック操作なので競合なし</span>
+
+<span class="cm">// アーキテクチャ</span>
+Client → API Gateway（レート制限: 1 req/user/日）
+       → Vote Service（水平スケール × 50台）
+       → Redis Cluster（冪等性チェック）
+       → Kafka（投票イベントキュー）
+       → Vote Counter（集計ワーカー）
+       → PostgreSQL（永続化）
+       → Redis（リアルタイム集計キャッシュ）
+       → WebSocket Server → Browser
+
+<span class="cm">// リアルタイム集計</span>
+Kafkaで投票を受け取るたびに:
+  <span class="fn">HINCRBY</span> vote_count choice_id <span class="num">1</span>
+  <span class="cm">// → 1ms以下でカウント更新 → WebSocketで配信</span></code></pre>
+  <div class="alert alert-tip">
+    <div class="alert-label">重要なトレードオフ</div>
+    Redisの冪等性チェックと PostgreSQL への永続化を非同期にすることで、高いスループットを実現。Kafkaがバッファとなり、DBへの書き込みが遅れても投票は受け付けられる。ただし障害時には Kafka のオフセット管理で重複を防ぐ（exactly-once semantics）。
+  </div>
+</div>
+
+<div class="card" style="border-left:3px solid var(--purple)">
+  <h3>問題2: ファイルストレージサービス（Dropbox風）の設計</h3>
+  <div class="alert alert-warn" style="margin-bottom:16px;">
+    <div class="alert-label">問題文</div>
+    100M DAU のファイル同期・共有・バージョニングサービスを設計せよ。
+  </div>
+  <div class="two-col">
+    <div>
+      <p style="color:var(--accent3);font-weight:700;margin-bottom:8px;">核心技術1: チャンク分割</p>
+      <pre style="font-size:0.78rem;"><code><span class="cm">// 4MB チャンクに分割してアップロード</span>
+<span class="kw">function</span> <span class="fn">uploadFile</span>(file) {
+  chunks = <span class="fn">split</span>(file, <span class="num">4</span>MB)
+  <span class="kw">for</span> chunk <span class="kw">in</span> chunks:
+    hash = <span class="fn">SHA256</span>(chunk)
+    <span class="cm">// 既存チャンクは再アップロード不要</span>
+    <span class="kw">if not</span> <span class="fn">exists</span>(hash):
+      <span class="fn">upload</span>(S3, hash, chunk)
+    db.<span class="fn">record</span>(file_id, hash, order)
+}</code></pre>
+    </div>
+    <div>
+      <p style="color:var(--accent3);font-weight:700;margin-bottom:8px;">核心技術2: デデュプリケーション</p>
+      <pre style="font-size:0.78rem;"><code><span class="cm">// 同じチャンクは1つだけ保存</span>
+<span class="cm">// 1MBの変更 → 残り3チャンクは再送不要</span>
+
+<span class="cm">// デルタ同期</span>
+old_chunks = [A, B, C, D]
+new_chunks = [A, B, C<span class="str">'</span>, D]
+<span class="cm">// → C' のみアップロード</span>
+<span class="cm">// → 転送量: 4MB → 4MB（1チャンク）</span>
+
+<span class="cm">// バージョン管理</span>
+versions[file_id] = [
+  {v:1, chunks:[A,B,C,D]},
+  {v:2, chunks:[A,B,C<span class="str">'</span>,D]},
+]</code></pre>
+    </div>
+  </div>
+  <div class="alert alert-info">
+    <div class="alert-label">アーキテクチャ全体像</div>
+    Client → Block Service（チャンク管理） → S3（オブジェクト保存）<br>
+    Client → Metadata Service → MySQL（ファイルツリー・バージョン情報）<br>
+    変更通知: Long polling / WebSocket → 他クライアントに同期トリガー送信
+  </div>
+</div>
+
+<div class="card" style="border-left:3px solid var(--accent3)">
+  <h3>問題3: ニュースフィード（Facebook風）— Push vs Pull vs Hybrid</h3>
+  <div class="two-col" style="margin-bottom:16px;">
+    <div class="card" style="background:#0d0f18;">
+      <p style="color:var(--red);font-weight:700;">Push モデル（Fan-out on write）</p>
+      <p style="color:var(--text2);font-size:0.85rem;margin-bottom:8px;">投稿時に全フォロワーのフィードに書き込む</p>
+      <pre style="font-size:0.75rem;"><code><span class="cm">// 投稿時</span>
+followers = <span class="fn">getFollowers</span>(user_id)
+<span class="kw">for</span> f <span class="kw">in</span> followers:
+  feed[f].<span class="fn">prepend</span>(post_id)
+
+<span class="cm">// 読み込み時 → O(1)</span>
+<span class="kw">return</span> feed[user_id]</code></pre>
+      <p style="color:var(--red);font-size:0.82rem;">問題: フォロワー100万人のセレブが投稿したら？→ 書き込みストーム</p>
+    </div>
+    <div class="card" style="background:#0d0f18;">
+      <p style="color:var(--green);font-weight:700;">Pull モデル（Fan-out on read）</p>
+      <p style="color:var(--text2);font-size:0.85rem;margin-bottom:8px;">読み込み時にフォロイーの投稿をマージ</p>
+      <pre style="font-size:0.75rem;"><code><span class="cm">// 読み込み時</span>
+followees = <span class="fn">getFollowing</span>(user_id)
+posts = []
+<span class="kw">for</span> f <span class="kw">in</span> followees:
+  posts += <span class="fn">getLatestPosts</span>(f)
+<span class="kw">return</span> <span class="fn">sort</span>(posts)
+
+<span class="cm">// 問題: 1000人フォロー→1000クエリ</span>
+<span class="cm">// 読み込みが遅く、キャッシュ効率も悪い</span></code></pre>
+      <p style="color:var(--red);font-size:0.82rem;">問題: 1000人フォローしているユーザーのフィード生成が重い</p>
+    </div>
+  </div>
+  <div class="card" style="background:#0d0f18;border-left:3px solid var(--green);">
+    <p style="color:var(--green);font-weight:700;">Hybrid モデル（Facebookの実際の解決策）</p>
+    <pre style="font-size:0.82rem;"><code><span class="cm">// セレブ判定（フォロワー閾値: 例 10万人）</span>
+<span class="kw">if</span> follower_count(post.user) &lt; <span class="num">100_000</span>:
+  <span class="cm">// 通常ユーザー: Push（Fan-out on write）</span>
+  <span class="fn">fanOutToFollowers</span>(post)
+<span class="kw">else</span>:
+  <span class="cm">// セレブ: Pull（読み込み時にマージ）</span>
+  <span class="fn">storeInCelebrityFeed</span>(post)
+  <span class="cm">// 読み込み時: ユーザーフィード + フォロー中セレブの最新投稿をマージ</span>
+
+<span class="cm">// 読み込み時</span>
+feed = redis.<span class="fn">get</span>(<span class="str">"feed:"</span> + user_id)  <span class="cm">// 通常ユーザー分（Push済み）</span>
+<span class="kw">for</span> celeb <span class="kw">in</span> <span class="fn">followingCelebrities</span>(user_id):
+  feed += <span class="fn">getLatestPosts</span>(celeb, limit=10)
+<span class="kw">return</span> <span class="fn">sort</span>(feed)[:N]</code></pre>
+  </div>
+  <div class="alert alert-tip">
+    <div class="alert-label">判断基準のまとめ</div>
+    フォロワーが少ない（一般ユーザー）→ Push が効率的。フォロワーが多い（セレブ・著名人）→ Pull に切り替え。閾値はシステム負荷に応じて動的に調整可能。
+  </div>
+</div>
+
+<h2><span class="icon">✅</span> セルフチェックリスト（面接前の確認用）</h2>
+
+<div class="card">
+  <p style="color:var(--text2);margin-bottom:16px;">面接で設計を始める前に、以下の項目を確認すること。チェックできない項目は重点的に復習しよう。</p>
+  <div class="two-col">
+    <div>
+      <p style="color:var(--accent);font-weight:700;margin-bottom:10px;">要件・見積もりフェーズ</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          機能要件と非機能要件を明確に分けたか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          DAU/MAU、読み書き比率を確認したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          QPS（平均とピーク）を計算したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          必要ストレージ量（1年・5年分）を見積もったか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          ネットワーク帯域幅の要件を確認したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          レイテンシ要件（P99など）を明確にしたか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          可用性SLAを確認したか（99.9% vs 99.99%）？
+        </label>
+      </div>
+      <p style="color:var(--accent);font-weight:700;margin:16px 0 10px;">高レベル設計フェーズ</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          SPOF（単一障害点）を特定したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          データフロー（読み書きの経路）を明確にしたか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent);">
+          主要コンポーネント間のAPIを定義したか？
+        </label>
+      </div>
+    </div>
+    <div>
+      <p style="color:var(--accent2);font-weight:700;margin-bottom:10px;">詳細設計フェーズ</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          データモデル（スキーマ）を定義したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          スケールアウト戦略（水平 vs 垂直）を述べたか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          キャッシュ戦略（何を・どこに・どのくらい）を述べたか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          CAP定理に基づきCP vs APを選択したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          ボトルネック（最もスローな部分）を特定したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          セキュリティ（認証・認可・暗号化）に言及したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          障害シナリオ（DBダウン・ネット断絶）に対応したか？
+        </label>
+      </div>
+      <p style="color:var(--accent2);font-weight:700;margin:16px 0 10px;">面接コミュニケーション</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          仮定を声に出して確認したか（「〜と仮定しています」）？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          複数の選択肢とトレードオフを提示したか？
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;color:var(--text2);font-size:0.88rem;cursor:pointer;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent2);">
+          面接官の誘導・質問に柔軟に対応したか？
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="alert alert-info" style="margin-top:16px;">
+    <div class="alert-label">面接官が見ているポイント</div>
+    答えの「正しさ」よりも、<strong>思考プロセスの明確さ</strong>が重要。「なぜその選択をしたか」を常に説明しよう。完璧な設計よりも、トレードオフを理解した設計の方が高評価を得られる。
+  </div>
+</div>
+</body>
+</html>

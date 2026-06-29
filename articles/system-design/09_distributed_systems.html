@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch09 分散システム理論 | System Design</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0.75rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.nav-brand{font-weight:700;color:var(--accent);margin-right:auto;}
+.nav-links{display:flex;gap:0.5rem;flex-wrap:wrap;}
+.nav-links a{padding:0.3rem 0.8rem;border-radius:6px;font-size:0.85rem;color:var(--text2);border:1px solid var(--border);}
+.nav-links a:hover{background:var(--surface2);color:var(--text);}
+.nav-links a.current{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* HEADER */
+.hero{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4c1d95 100%);padding:5rem 2rem 4rem;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(99,102,241,0.3) 0%,transparent 60%),radial-gradient(ellipse at 70% 30%,rgba(34,211,238,0.15) 0%,transparent 50%);pointer-events:none;}
+.hero-badge{display:inline-block;background:rgba(99,102,241,0.2);border:1px solid rgba(129,140,248,0.4);color:#818cf8;padding:0.3rem 1rem;border-radius:999px;font-size:0.8rem;letter-spacing:0.08em;margin-bottom:1rem;}
+.hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;color:#fff;margin-bottom:0.75rem;position:relative;}
+.hero h1 span{color:#818cf8;}
+.hero p{font-size:1.1rem;color:rgba(255,255,255,0.7);max-width:640px;margin:0 auto;}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:2rem;}
+section{margin-bottom:4rem;}
+h2.section-title{font-size:1.7rem;font-weight:700;color:var(--text);border-left:4px solid var(--accent);padding-left:1rem;margin-bottom:1.5rem;}
+h3.sub-title{font-size:1.2rem;font-weight:600;color:var(--accent2);margin:1.5rem 0 0.75rem;}
+h4{font-size:1rem;font-weight:600;color:var(--accent3);margin:1rem 0 0.5rem;}
+p{color:var(--text2);margin-bottom:0.75rem;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;}
+.card h4{margin-top:0;}
+
+/* HIGHLIGHT BOXES */
+.info-box{background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;}
+.warn-box{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;}
+.danger-box{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;}
+.success-box{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;margin:1rem 0;}
+table{width:100%;border-collapse:collapse;font-size:0.9rem;}
+th{background:var(--surface2);color:var(--text);padding:0.75rem 1rem;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:0.65rem 1rem;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600;}
+.badge-green{background:rgba(16,185,129,0.2);color:var(--green);}
+.badge-yellow{background:rgba(245,158,11,0.2);color:var(--accent3);}
+.badge-red{background:rgba(239,68,68,0.2);color:var(--red);}
+.badge-blue{background:rgba(99,102,241,0.2);color:var(--accent);}
+.badge-cyan{background:rgba(34,211,238,0.2);color:var(--accent2);}
+.badge-purple{background:rgba(167,139,250,0.2);color:var(--purple);}
+
+/* SVG containers */
+.svg-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.5rem 0;overflow:hidden;}
+.svg-wrap svg{display:block;margin:0 auto;}
+
+/* STEP LIST */
+.step-list{list-style:none;padding:0;}
+.step-list li{display:flex;gap:1rem;margin-bottom:1rem;align-items:flex-start;}
+.step-num{flex-shrink:0;width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:#fff;}
+.step-content strong{color:var(--text);display:block;}
+.step-content span{color:var(--text2);font-size:0.9rem;}
+
+/* CODE */
+code{background:var(--surface2);color:var(--accent2);padding:0.1rem 0.4rem;border-radius:4px;font-family:monospace;font-size:0.88rem;}
+pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;margin:1rem 0;}
+pre code{background:none;padding:0;color:var(--text2);}
+
+/* INTERVIEW TIPS */
+.tip-section{background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(34,211,238,0.05));border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:2rem;margin:2rem 0;}
+.tip-section h3{color:var(--accent);margin-bottom:1rem;}
+.tip-item{display:flex;gap:0.75rem;margin-bottom:0.75rem;align-items:flex-start;}
+.tip-icon{color:var(--accent3);font-size:1.1rem;flex-shrink:0;}
+
+/* FOOTER NAV */
+.footer-nav{border-top:1px solid var(--border);padding:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:gap;gap:1rem;}
+.footer-nav a{display:flex;align-items:center;gap:0.5rem;padding:0.75rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text2);}
+.footer-nav a:hover{border-color:var(--accent);color:var(--text);}
+
+/* PHASE DIAGRAM */
+.phase-row{display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;}
+.phase-box{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.75rem;text-align:center;}
+.phase-box.active{border-color:var(--accent);background:rgba(99,102,241,0.1);}
+.phase-box .phase-label{font-size:0.75rem;color:var(--text3);margin-bottom:0.25rem;}
+.phase-box .phase-val{font-size:0.85rem;color:var(--text);font-weight:600;}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:2rem;}
+.timeline::before{content:'';position:absolute;left:0.5rem;top:0;bottom:0;width:2px;background:var(--border);}
+.timeline-item{position:relative;margin-bottom:1.5rem;}
+.timeline-item::before{content:'';position:absolute;left:-1.65rem;top:0.4rem;width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);}
+.timeline-item h4{margin-top:0;color:var(--text);}
+
+/* COLUMNS */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+@media(max-width:700px){.two-col{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-brand">⚡ System Design</span>
+  <div class="nav-links">
+    <a href="00_index.html">🏠 Home</a>
+    <a href="08_microservices.html">← Ch08 マイクロサービス</a>
+    <a href="#" class="current">Ch09 分散システム理論</a>
+    <a href="10_scalability.html">Ch10 スケーラビリティ →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Chapter 09</div>
+  <h1>分散システム<span>理論</span></h1>
+  <p>ネットワーク分断・CAP定理・コンセンサスアルゴリズム・分散トランザクション・ベクタークロック——複数ノードが協調して動作する世界の本質を理解する</p>
+</div>
+
+<div class="container">
+
+<!-- ===== SECTION 1 ===== -->
+<section id="fundamentals">
+  <h2 class="section-title">1. 分散システムの本質的な課題</h2>
+
+  <p>分散システムとは、ネットワークで接続された複数のコンピュータが協調して動作するシステムです。単一マシンでは当然のように成立する前提が、分散システムでは一切通用しません。</p>
+
+  <h3 class="sub-title">ネットワーク分断（Network Partition）の現実</h3>
+  <p>ネットワーク分断とは、ネットワークの一部が切断され、ノード間の通信が不可能になる状態です。データセンター内でさえ、スイッチの障害・ケーブルの物理的切断・ソフトウェアのバグにより頻繁に発生します。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:720px;">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+      <!-- Left cluster -->
+      <rect x="20" y="30" width="280" height="160" rx="12" fill="rgba(99,102,241,0.08)" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="160" y="22" fill="#6366f1" font-size="12" text-anchor="middle">クラスターA</text>
+      <circle cx="80" cy="110" r="28" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="80" y="107" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 1</text>
+      <text x="80" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">Leader</text>
+      <circle cx="200" cy="80" r="28" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="200" y="77" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 2</text>
+      <text x="200" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">Follower</text>
+      <circle cx="220" cy="155" r="28" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="220" y="152" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 3</text>
+      <text x="220" y="165" fill="#94a3b8" font-size="9" text-anchor="middle">Follower</text>
+      <line x1="108" y1="110" x2="172" y2="88" stroke="#6366f1" stroke-width="1.5"/>
+      <line x1="108" y1="118" x2="192" y2="148" stroke="#6366f1" stroke-width="1.5"/>
+      <!-- Partition line -->
+      <line x1="360" y1="10" x2="360" y2="210" stroke="#ef4444" stroke-width="3" stroke-dasharray="8,4"/>
+      <text x="360" y="8" fill="#ef4444" font-size="11" text-anchor="middle">✕ 分断</text>
+      <!-- Right cluster -->
+      <rect x="420" y="30" width="280" height="160" rx="12" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="560" y="22" fill="#a78bfa" font-size="12" text-anchor="middle">クラスターB</text>
+      <circle cx="480" cy="110" r="28" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="480" y="107" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 4</text>
+      <text x="480" y="120" fill="#f59e0b" font-size="9" text-anchor="middle">?? Leader</text>
+      <circle cx="600" cy="80" r="28" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="600" y="77" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 5</text>
+      <text x="600" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">Follower</text>
+      <circle cx="610" cy="155" r="28" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="610" y="152" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 6</text>
+      <text x="610" y="165" fill="#94a3b8" font-size="9" text-anchor="middle">Follower</text>
+      <line x1="508" y1="108" x2="572" y2="88" stroke="#a78bfa" stroke-width="1.5"/>
+      <line x1="508" y1="118" x2="582" y2="148" stroke="#a78bfa" stroke-width="1.5"/>
+      <!-- Cross arrow blocked -->
+      <line x1="300" y1="110" x2="340" y2="110" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="320" y="104" fill="#ef4444" font-size="16" text-anchor="middle">✕</text>
+    </svg>
+  </div>
+
+  <h3 class="sub-title">Fallacies of Distributed Computing（分散コンピューティングの8つの誤信）</h3>
+  <p>Peter Deutsch らが提唱した、分散システムの設計者が陥りやすい誤った前提。これらを前提にして設計すると、本番で深刻な障害が発生します。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>❌ 誤信 1：ネットワークは信頼できる</h4>
+      <p>パケットロス・タイムアウト・ルーティングの失敗が常に起こりえます。すべてのネットワーク呼び出しは失敗する可能性があると想定して設計する必要があります。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 2：レイテンシはゼロ</h4>
+      <p>ローカル関数呼び出しとは異なり、ネットワーク越しの呼び出しには数ms〜数百msのレイテンシが発生します。ホットパスにリモート呼び出しを多用するとパフォーマンスが壊滅します。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 3：帯域幅は無限</h4>
+      <p>大量のデータを転送すればネットワーク輻輳が発生します。ペイロードのサイズ管理・圧縮・ページネーションが不可欠です。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 4：ネットワークは安全</h4>
+      <p>中間者攻撃・盗聴・なりすましのリスクがあります。TLS・認証・認可なしで本番運用はできません。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 5：トポロジーは変化しない</h4>
+      <p>ノードの追加・削除・IPアドレスの変更が常に起こります。サービスディスカバリーやヘルスチェックが必要です。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 6：管理者は一人</h4>
+      <p>複数のチーム・組織・クラウドプロバイダーが絡む場合、変更の調整が困難です。障害時の責任範囲が不明確になります。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 7：転送コストはゼロ</h4>
+      <p>クラウドでのデータ転送には課金が発生します（Egress費用）。また、シリアライズ・デシリアライズのCPUコストも無視できません。</p>
+    </div>
+    <div class="card">
+      <h4>❌ 誤信 8：ネットワークは均質</h4>
+      <p>複数のプロトコル・ベンダー・データセンターが混在し、それぞれ異なる特性を持ちます。リージョン間ではレイテンシが桁違いに異なります。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">部分的障害（Partial Failure）の難しさ</h3>
+  <div class="warn-box">
+    <p><strong>単一マシン</strong>では、プロセスがクラッシュすればすべての処理が止まります。状態は明確です。</p>
+    <p><strong>分散システム</strong>では、あるノードが障害を起こしても他のノードは動き続けます。「リクエストが届いたか？」「処理が完了したか？」が不明な状態（<strong>部分的障害</strong>）が発生します。</p>
+  </div>
+  <p>例：決済サービスへのリクエストを送ったが応答がない。これは「リクエストが届いていない（未処理）」のか、「処理は完了したが応答の途中でネットワークが切断された（二重課金リスク）」のか区別できません。</p>
+
+  <h3 class="sub-title">非同期通信における不確実性</h3>
+  <p>分散システムでは、送信したメッセージがいつ届くか（あるいは届くか）、相手ノードが生きているかどうかを確認する信頼できる方法がありません。これを「非同期ネットワークモデル」と呼びます。タイムアウトを設定しても、タイムアウト後に実は処理が完了している可能性があります。</p>
+</section>
+
+<!-- ===== SECTION 2: CAP ===== -->
+<section id="cap">
+  <h2 class="section-title">2. CAP 定理</h2>
+
+  <p>CAP定理（Brewer's Theorem）は2000年にEric Brewerが提唱し、2002年にGilbert & Lynchが証明した分散システムの基本定理です。</p>
+
+  <div class="card-grid">
+    <div class="card" style="border-color:rgba(99,102,241,0.5);">
+      <h4 style="color:var(--accent);">C — Consistency（一貫性）</h4>
+      <p>すべてのノードが同時に同じデータを参照できる。あるノードへの書き込みが完了した後、どのノードから読み取っても最新の値が返る。</p>
+    </div>
+    <div class="card" style="border-color:rgba(34,211,238,0.5);">
+      <h4 style="color:var(--accent2);">A — Availability（可用性）</h4>
+      <p>すべてのリクエストに対して（エラーではなく）何らかのレスポンスが返る。ただしそのデータが最新かどうかは保証しない。</p>
+    </div>
+    <div class="card" style="border-color:rgba(245,158,11,0.5);">
+      <h4 style="color:var(--accent3);">P — Partition Tolerance（分断耐性）</h4>
+      <p>ネットワーク分断（ノード間の通信断絶）が発生しても、システムが動作し続ける。</p>
+    </div>
+  </div>
+
+  <!-- CAP SVG Triangle -->
+  <div class="svg-wrap">
+    <svg viewBox="0 0 660 380" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:660px;">
+      <defs>
+        <linearGradient id="grad-cap" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.15"/>
+          <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:0.05"/>
+        </linearGradient>
+      </defs>
+      <!-- Triangle -->
+      <polygon points="330,40 80,320 580,320" fill="url(#grad-cap)" stroke="#2a2d3e" stroke-width="2"/>
+      <!-- Vertices -->
+      <!-- C top -->
+      <circle cx="330" cy="40" r="36" fill="#1c1f2e" stroke="#6366f1" stroke-width="2.5"/>
+      <text x="330" y="36" fill="#6366f1" font-size="18" font-weight="700" text-anchor="middle">C</text>
+      <text x="330" y="51" fill="#94a3b8" font-size="9" text-anchor="middle">Consistency</text>
+      <!-- A left -->
+      <circle cx="80" cy="320" r="36" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2.5"/>
+      <text x="80" y="316" fill="#22d3ee" font-size="18" font-weight="700" text-anchor="middle">A</text>
+      <text x="80" y="331" fill="#94a3b8" font-size="9" text-anchor="middle">Availability</text>
+      <!-- P right -->
+      <circle cx="580" cy="320" r="36" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2.5"/>
+      <text x="580" y="316" fill="#f59e0b" font-size="18" font-weight="700" text-anchor="middle">P</text>
+      <text x="580" y="331" fill="#94a3b8" font-size="9" text-anchor="middle">Partition Tolerance</text>
+      <!-- Edge labels -->
+      <text x="175" y="190" fill="#94a3b8" font-size="11" text-anchor="middle" transform="rotate(-53,175,190)">CP システム</text>
+      <text x="490" y="190" fill="#94a3b8" font-size="11" text-anchor="middle" transform="rotate(53,490,190)">AP システム</text>
+      <text x="330" y="340" fill="#94a3b8" font-size="11" text-anchor="middle">CA システム（単一ノード）</text>
+      <!-- Systems placed inside -->
+      <!-- CP zone: top-left area -->
+      <rect x="185" y="115" width="90" height="28" rx="6" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1"/>
+      <text x="230" y="133" fill="#a5b4fc" font-size="10" text-anchor="middle">ZooKeeper</text>
+      <rect x="155" y="150" width="80" height="28" rx="6" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1"/>
+      <text x="195" y="168" fill="#a5b4fc" font-size="10" text-anchor="middle">HBase</text>
+      <rect x="195" y="185" width="80" height="28" rx="6" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="1"/>
+      <text x="235" y="203" fill="#a5b4fc" font-size="10" text-anchor="middle">etcd</text>
+      <!-- AP zone: top-right area -->
+      <rect x="375" y="115" width="100" height="28" rx="6" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="425" y="133" fill="#67e8f9" font-size="10" text-anchor="middle">Cassandra</text>
+      <rect x="390" y="150" width="95" height="28" rx="6" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="437" y="168" fill="#67e8f9" font-size="10" text-anchor="middle">DynamoDB</text>
+      <rect x="380" y="185" width="80" height="28" rx="6" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="420" y="203" fill="#67e8f9" font-size="10" text-anchor="middle">CouchDB</text>
+      <!-- CA zone: bottom -->
+      <rect x="260" y="275" width="80" height="28" rx="6" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="1"/>
+      <text x="300" y="293" fill="#6ee7b7" font-size="10" text-anchor="middle">PostgreSQL</text>
+      <rect x="350" y="275" width="70" height="28" rx="6" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="1"/>
+      <text x="385" y="293" fill="#6ee7b7" font-size="10" text-anchor="middle">MySQL</text>
+      <!-- Center note -->
+      <text x="330" y="235" fill="#64748b" font-size="10" text-anchor="middle">※ネットワーク分断時に</text>
+      <text x="330" y="250" fill="#64748b" font-size="10" text-anchor="middle">C か A を諦める必要がある</text>
+    </svg>
+  </div>
+
+  <h3 class="sub-title">なぜ3つを同時に満たせないか</h3>
+  <div class="info-box">
+    <p><strong>直感的な証明：</strong>2ノード（N1・N2）のシステムで、N1に書き込み後にネットワーク分断が発生したとします。</p>
+    <ul style="color:var(--text2);margin-left:1.5rem;margin-top:0.5rem;">
+      <li>N2がリクエストを受けた場合：<strong>最新値を返せない（Consistency違反）</strong> か <strong>エラーを返す（Availability違反）</strong> の二択</li>
+      <li>Partition Toleranceを諦める（= 分断時にシステム停止）なら、単一ノードと同等</li>
+    </ul>
+    <p style="margin-top:0.5rem;"><strong>結論：</strong>実用的な分散システムはPを前提とするため、C か A のどちらかをトレードオフとして選択する。</p>
+  </div>
+
+  <h3 class="sub-title">ネットワーク分断時の実際の動作</h3>
+  <div class="two-col">
+    <div class="card" style="border-color:rgba(99,102,241,0.4);">
+      <h4>CP システム（例：ZooKeeper）</h4>
+      <p>分断発生時、過半数のノードと通信できないノードは<strong>リクエストを拒否</strong>します。一貫性は保たれますが、分断された少数側は利用不可になります。<br><br>用途：設定管理・リーダー選出・ロック</p>
+    </div>
+    <div class="card" style="border-color:rgba(34,211,238,0.4);">
+      <h4>AP システム（例：Cassandra）</h4>
+      <p>分断発生時も<strong>すべてのノードがリクエストを受け付け</strong>ます。ただし分断されたノード群は古いデータを返す可能性があります。分断解消後に競合解決（Last Write Wins等）を行います。<br><br>用途：ショッピングカート・SNSのタイムライン</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">PACELC 定理（CAPの拡張）</h3>
+  <p>CAPはネットワーク分断時のみのトレードオフを示しますが、<strong>分断が発生していない通常時にも</strong>トレードオフが存在します。Daniel Abadi が2012年に提唱したPACELC定理がこれを整理します。</p>
+
+  <div class="info-box">
+    <p><strong>PACELC の読み方：</strong></p>
+    <p><code>if Partition → (Availability vs Consistency) else (Latency vs Consistency)</code></p>
+    <ul style="color:var(--text2);margin-left:1.5rem;margin-top:0.5rem;">
+      <li><strong>P（Partition）：</strong>分断発生時は A vs C のトレードオフ（= CAP定理）</li>
+      <li><strong>ELC（Else Latency vs Consistency）：</strong>通常時はレイテンシを下げるか一貫性を保つかのトレードオフ</li>
+    </ul>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>システム</th><th>分断時</th><th>通常時</th><th>分類</th></tr>
+      <tr><td>DynamoDB（デフォルト）</td><td>Availability優先</td><td>Latency優先</td><td><span class="badge badge-cyan">PA/EL</span></td></tr>
+      <tr><td>Cassandra</td><td>Availability優先</td><td>Latency優先</td><td><span class="badge badge-cyan">PA/EL</span></td></tr>
+      <tr><td>ZooKeeper</td><td>Consistency優先</td><td>Consistency優先</td><td><span class="badge badge-blue">PC/EC</span></td></tr>
+      <tr><td>Google Spanner</td><td>Consistency優先</td><td>Consistency優先</td><td><span class="badge badge-blue">PC/EC</span></td></tr>
+      <tr><td>MongoDB（デフォルト）</td><td>Consistency優先</td><td>Latency優先</td><td><span class="badge badge-purple">PC/EL</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SECTION 3: CONSISTENCY MODELS ===== -->
+<section id="consistency">
+  <h2 class="section-title">3. 一貫性モデルのスペクトル</h2>
+
+  <p>「一貫性」は単一の概念ではなく、強さのスペクトルがあります。強い一貫性ほどパフォーマンスへの影響が大きく、弱い一貫性ほど高速・高可用ですが、アプリケーション側での異常値処理が必要です。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 680 130" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:680px;">
+      <!-- Arrow bar -->
+      <defs>
+        <linearGradient id="consistency-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:1"/>
+        </linearGradient>
+      </defs>
+      <rect x="40" y="55" width="600" height="14" rx="7" fill="url(#consistency-grad)"/>
+      <polygon points="640,48 660,62 640,76" fill="#22d3ee"/>
+      <text x="30" y="85" fill="#6366f1" font-size="10" text-anchor="middle">強</text>
+      <text x="650" y="85" fill="#22d3ee" font-size="10" text-anchor="middle">弱</text>
+      <!-- Labels top -->
+      <text x="80" y="45" fill="#a5b4fc" font-size="10" text-anchor="middle">Linearizability</text>
+      <text x="200" y="45" fill="#a5b4fc" font-size="10" text-anchor="middle">Sequential</text>
+      <text x="320" y="45" fill="#a5b4fc" font-size="10" text-anchor="middle">Causal</text>
+      <text x="450" y="45" fill="#67e8f9" font-size="10" text-anchor="middle">Read-Your-Writes</text>
+      <text x="590" y="45" fill="#67e8f9" font-size="10" text-anchor="middle">Eventual</text>
+      <!-- Tick marks -->
+      <line x1="80" y1="50" x2="80" y2="69" stroke="#fff" stroke-width="1.5"/>
+      <line x1="200" y1="50" x2="200" y2="69" stroke="#fff" stroke-width="1.5"/>
+      <line x1="320" y1="50" x2="320" y2="69" stroke="#fff" stroke-width="1.5"/>
+      <line x1="450" y1="50" x2="450" y2="69" stroke="#fff" stroke-width="1.5"/>
+      <line x1="590" y1="50" x2="590" y2="69" stroke="#fff" stroke-width="1.5"/>
+      <!-- Bottom label -->
+      <text x="340" y="110" fill="#64748b" font-size="10" text-anchor="middle">← パフォーマンス低 / 一貫性高　　　　　パフォーマンス高 / 一貫性低 →</text>
+    </svg>
+  </div>
+
+  <h3 class="sub-title">Strong Consistency（線形化可能性 / Linearizability）</h3>
+  <div class="card">
+    <p>最も強い一貫性モデル。<strong>すべての操作がある時点で原子的に発生するかのように見える</strong>。読み取りは必ず最新の書き込み値を返します。</p>
+    <p>実装には、書き込みが過半数ノードに伝播するまでクライアントにACKを返さないため、レイテンシが増大します。ZooKeeper・etcd・Google Spannerが採用。</p>
+    <div class="success-box">
+      <p>ユースケース：分散ロック・リーダー選出・金融トランザクション</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">Sequential Consistency（逐次一貫性）</h3>
+  <div class="card">
+    <p>すべての操作がある<strong>全体的な順序</strong>に従って見える。各プロセス内の操作順序は保たれるが、異なるプロセス間で「リアルタイムな」順序は保証しない。</p>
+    <p>例：P1が書き込み後にP2が別の値を書き込んだ場合、P3・P4は同じ順序で見えるが、それが実際の時系列と一致しない場合がある。</p>
+  </div>
+
+  <h3 class="sub-title">Causal Consistency（因果一貫性）</h3>
+  <div class="card">
+    <p><strong>因果関係のある操作のみ</strong>全ノードで同じ順序で見える。無関係な操作は異なる順序で見えてもよい。</p>
+    <p>例：「AがBに返信した」という因果関係がある場合、BがAより先に届くことは防ぐ。しかし互いに独立した投稿の順序は保証しない。SNS・チャットシステムに適する。</p>
+  </div>
+
+  <h3 class="sub-title">Eventual Consistency（結果整合性）</h3>
+  <div class="card">
+    <p>新規書き込みが停止すれば、<strong>最終的にはすべてのノードが同じ値に収束する</strong>ことを保証する。現時点では古いデータを返す可能性がある。</p>
+    <p>DynamoDB・Cassandra・Amazon S3のデフォルト動作。高可用性と低レイテンシを実現するが、アプリケーション側での矛盾対処が必要。</p>
+  </div>
+
+  <h3 class="sub-title">セッション保証（Session Guarantees）</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>Read-Your-Writes</h4>
+      <p>自分が書き込んだ値は必ず自分が読み取れる。ユーザーが投稿した内容がすぐに自分のタイムラインに反映される、などに必要。</p>
+    </div>
+    <div class="card">
+      <h4>Monotonic Read（単調読み取り）</h4>
+      <p>一度新しい値を読んだら、それ以降に古い値を読まない。時間が「戻る」ような現象を防ぐ。</p>
+    </div>
+    <div class="card">
+      <h4>Monotonic Write（単調書き込み）</h4>
+      <p>同一クライアントの書き込み操作は順序通りに処理される。後の書き込みが先の書き込みより先に適用されることを防ぐ。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>一貫性モデル</th><th>レイテンシ</th><th>可用性</th><th>主な採用システム</th><th>適用例</th></tr>
+      <tr><td>Linearizability</td><td><span class="badge badge-red">高</span></td><td><span class="badge badge-red">低</span></td><td>ZooKeeper, etcd, Spanner</td><td>分散ロック・設定管理</td></tr>
+      <tr><td>Sequential</td><td><span class="badge badge-yellow">中</span></td><td><span class="badge badge-yellow">中</span></td><td>一部のDB実装</td><td>共有ドキュメント編集</td></tr>
+      <tr><td>Causal</td><td><span class="badge badge-yellow">中</span></td><td><span class="badge badge-yellow">中〜高</span></td><td>MongoDB Causal, COPS</td><td>SNS・チャット</td></tr>
+      <tr><td>Read-Your-Writes</td><td><span class="badge badge-green">低〜中</span></td><td><span class="badge badge-green">高</span></td><td>DynamoDB（セッション）</td><td>プロフィール更新</td></tr>
+      <tr><td>Eventual</td><td><span class="badge badge-green">最低</span></td><td><span class="badge badge-green">最高</span></td><td>Cassandra, DynamoDB</td><td>ショッピングカート・DNS</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SECTION 4: CONSENSUS ===== -->
+<section id="consensus">
+  <h2 class="section-title">4. コンセンサスアルゴリズム</h2>
+
+  <p>コンセンサスとは、複数のノードが<strong>ある値について合意に達する</strong>問題です。障害耐性を持つ分散システムの根幹をなすアルゴリズムです。</p>
+
+  <h3 class="sub-title">Raft アルゴリズム</h3>
+  <p>2013年にDiego OngaroとJohn Ousterhoutが提案。Paxosより理解しやすい設計を目指しました。<strong>etcd・CockroachDB・TiKV・Consul</strong>などが採用しています。</p>
+
+  <h4>Raftの3つのロール</h4>
+  <div class="card-grid">
+    <div class="card" style="border-color:rgba(245,158,11,0.4);">
+      <h4 style="color:var(--accent3);">👑 Leader</h4>
+      <p>クライアントリクエストを受け付け、ログエントリをFollowerに複製する。各Termに最大1人のLeaderが存在。</p>
+    </div>
+    <div class="card">
+      <h4>📋 Follower</h4>
+      <p>Leaderからのメッセージに受動的に応答。HeartbeatをLeaderから受け取り、一定時間受け取れなければCandidateに遷移。</p>
+    </div>
+    <div class="card" style="border-color:rgba(167,139,250,0.4);">
+      <h4 style="color:var(--purple);">🗳️ Candidate</h4>
+      <p>新しいLeaderを選出するためにVote Requestを送信。過半数の票を集めるとLeaderになる。</p>
+    </div>
+  </div>
+
+  <h4>Leader 選出フロー</h4>
+  <div class="svg-wrap">
+    <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:700px;">
+      <!-- Nodes -->
+      <!-- N1 -->
+      <circle cx="100" cy="80" r="35" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2.5"/>
+      <text x="100" y="76" fill="#f59e0b" font-size="11" font-weight="700" text-anchor="middle">Node 1</text>
+      <text x="100" y="91" fill="#f59e0b" font-size="9" text-anchor="middle">Candidate</text>
+      <!-- N2 -->
+      <circle cx="100" cy="200" r="35" fill="#1c1f2e" stroke="#94a3b8" stroke-width="2"/>
+      <text x="100" y="196" fill="#e2e8f0" font-size="11" text-anchor="middle">Node 2</text>
+      <text x="100" y="211" fill="#94a3b8" font-size="9" text-anchor="middle">Follower</text>
+      <!-- N3 -->
+      <circle cx="100" cy="310" r="0"/>
+      <!-- Step 1: timeout -->
+      <rect x="170" y="55" width="130" height="44" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="235" y="73" fill="#f59e0b" font-size="10" text-anchor="middle">①Election Timeout</text>
+      <text x="235" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">Term++ → Candidate</text>
+      <line x1="135" y1="80" x2="170" y2="77" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Vote request -->
+      <rect x="170" y="155" width="130" height="44" rx="6" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="235" y="173" fill="#a78bfa" font-size="10" text-anchor="middle">②VoteRequest 送信</text>
+      <text x="235" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">term=5, lastLog=...</text>
+      <line x1="135" y1="77" x2="170" y2="170" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <line x1="135" y1="200" x2="170" y2="178" stroke="#a78bfa" stroke-width="1.5"/>
+      <!-- Vote granted -->
+      <rect x="340" y="155" width="130" height="44" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="405" y="173" fill="#10b981" font-size="10" text-anchor="middle">③VoteGranted</text>
+      <text x="405" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">過半数 → Leader</text>
+      <line x1="300" y1="177" x2="340" y2="177" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Become leader -->
+      <rect x="520" y="55" width="150" height="44" rx="6" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="595" y="73" fill="#f59e0b" font-size="10" text-anchor="middle">④Leader 確立</text>
+      <text x="595" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">Heartbeat 送信開始</text>
+      <line x1="470" y1="170" x2="595" y2="99" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Heartbeat down -->
+      <line x1="595" y1="99" x2="135" y2="190" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="450" y="140" fill="#22d3ee" font-size="9">Heartbeat →</text>
+      <!-- Legend -->
+      <text x="50" y="285" fill="#64748b" font-size="10">※ Election Timeout：150〜300msのランダム値</text>
+      <text x="50" y="300" fill="#64748b" font-size="10">※ Term：単調増加する論理的な選挙番号</text>
+    </svg>
+  </div>
+
+  <h4>ログレプリケーション</h4>
+  <div class="card">
+    <ol style="color:var(--text2);margin-left:1.5rem;line-height:2;">
+      <li>クライアントがLeaderにコマンドを送信</li>
+      <li>Leaderがコマンドをローカルログに追記（まだコミットしない）</li>
+      <li>LeaderがAppendEntries RPCで全Followerに送信</li>
+      <li><strong>過半数（N/2 + 1）のFollowerがACK</strong>を返した時点でLeaderはエントリをコミット</li>
+      <li>Leaderがクライアントに成功を返し、次のHeartbeatでFollowerにコミット済みを通知</li>
+    </ol>
+  </div>
+
+  <h3 class="sub-title">Paxos（概要）</h3>
+  <p>Leslie Lampsonが1989年に提案した元祖コンセンサスアルゴリズム。理論的に重要だが、実装の複雑さからRaftが後継として広く採用されています。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Phase 1: Prepare / Promise</h4>
+      <p>提案者がProposal番号nでPrepareメッセージを送信。アクセプターはn以上の番号のPrepareに応答しないことを約束し（Promise）、これまでに受け入れた最高番号の提案を返す。</p>
+    </div>
+    <div class="card">
+      <h4>Phase 2: Accept / Accepted</h4>
+      <p>過半数のPromiseを得た提案者がAcceptメッセージを送信。アクセプターがまだより高い番号のPrepareを処理していなければAcceptedを返し、値を決定する。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>比較項目</th><th>Paxos</th><th>Raft</th></tr>
+      <tr><td>理解しやすさ</td><td><span class="badge badge-red">難解</span></td><td><span class="badge badge-green">理解しやすい</span></td></tr>
+      <tr><td>リーダー制</td><td>必須ではない（Multi-Paxos）</td><td>常にLeaderが存在</td></tr>
+      <tr><td>ログ管理</td><td>ホール（空白）が発生しうる</td><td>連続したログを強制</td></tr>
+      <tr><td>主な採用</td><td>Google Chubby, Zab(ZooKeeper)</td><td>etcd, CockroachDB, TiKV</td></tr>
+    </table>
+  </div>
+
+  <h3 class="sub-title">Byzantine Fault Tolerance（PBFT）</h3>
+  <div class="danger-box">
+    <h4 style="color:var(--red);margin-bottom:0.5rem;">ビザンチン障害とは</h4>
+    <p>単なるクラッシュではなく、<strong>意図的に誤ったデータを送信する悪意あるノード</strong>が存在する障害モデル。ブロックチェーン・宇宙探査機・航空システムで考慮される。</p>
+  </div>
+
+  <div class="card">
+    <h4>なぜ 3f+1 ノードが必要か</h4>
+    <p>f個の障害（クラッシュ）を許容するには <code>2f+1</code> ノードが必要（過半数投票）。しかし<strong>ビザンチン障害</strong>では悪意あるノードが嘘をつくため：</p>
+    <ul style="color:var(--text2);margin-left:1.5rem;margin-top:0.5rem;">
+      <li>f個の悪意あるノードが「値Aに同意する」と嘘をつく可能性</li>
+      <li>f個のクラッシュノードが応答しない可能性</li>
+      <li>残り <code>n - 2f</code> 個の正直なノードが多数派である必要がある</li>
+      <li>したがって <code>n - 2f &gt; f</code>、つまり <code>n &gt; 3f</code>、<strong>n = 3f+1</strong></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 5: DISTRIBUTED TRANSACTIONS ===== -->
+<section id="transactions">
+  <h2 class="section-title">5. 分散トランザクション</h2>
+
+  <h3 class="sub-title">2フェーズコミット（2PC）</h3>
+  <p>複数のノード（参加者）をまたぐトランザクションを原子的に完了させるプロトコル。コーディネーターが全参加者を調整します。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:700px;">
+      <!-- Coordinator -->
+      <rect x="270" y="20" width="160" height="44" rx="8" fill="rgba(99,102,241,0.2)" stroke="#6366f1" stroke-width="2"/>
+      <text x="350" y="38" fill="#a5b4fc" font-size="12" font-weight="700" text-anchor="middle">Coordinator</text>
+      <text x="350" y="54" fill="#94a3b8" font-size="10" text-anchor="middle">（トランザクションマネージャー）</text>
+      <!-- Participants -->
+      <rect x="60" y="160" width="130" height="40" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="125" y="183" fill="#67e8f9" font-size="11" text-anchor="middle">Participant A</text>
+      <rect x="285" y="160" width="130" height="40" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="350" y="183" fill="#67e8f9" font-size="11" text-anchor="middle">Participant B</text>
+      <rect x="510" y="160" width="130" height="40" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="575" y="183" fill="#67e8f9" font-size="11" text-anchor="middle">Participant C</text>
+
+      <!-- Phase 1: Prepare -->
+      <text x="20" y="115" fill="#f59e0b" font-size="11" font-weight="700">Phase 1: Prepare</text>
+      <line x1="350" y1="64" x2="125" y2="160" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="350" y1="64" x2="350" y2="160" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="350" y1="64" x2="575" y2="160" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <text x="220" y="118" fill="#f59e0b" font-size="9">PREPARE</text>
+      <text x="355" y="118" fill="#f59e0b" font-size="9">PREPARE</text>
+      <text x="465" y="118" fill="#f59e0b" font-size="9">PREPARE</text>
+
+      <!-- Vote up -->
+      <line x1="125" y1="200" x2="310" y2="250" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="350" y1="200" x2="350" y2="250" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="575" y1="200" x2="390" y2="250" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="185" y="240" fill="#10b981" font-size="9">YES</text>
+      <text x="355" y="240" fill="#10b981" font-size="9">YES</text>
+      <text x="490" y="240" fill="#10b981" font-size="9">YES</text>
+
+      <!-- Phase 2 -->
+      <rect x="270" y="255" width="160" height="40" rx="8" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+      <text x="350" y="278" fill="#6ee7b7" font-size="11" text-anchor="middle">全員YES → COMMIT</text>
+      <text x="20" y="270" fill="#10b981" font-size="11" font-weight="700">Phase 2: Commit</text>
+
+      <line x1="310" y1="295" x2="155" y2="330" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="350" y1="295" x2="350" y2="330" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="390" y1="295" x2="545" y2="330" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="145" y="325" fill="#10b981" font-size="9">COMMIT</text>
+      <text x="355" y="325" fill="#10b981" font-size="9">COMMIT</text>
+      <text x="460" y="325" fill="#10b981" font-size="9">COMMIT</text>
+      <rect x="60" y="330" width="130" height="24" rx="4" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="1"/>
+      <text x="125" y="346" fill="#10b981" font-size="9" text-anchor="middle">committed</text>
+      <rect x="285" y="330" width="130" height="24" rx="4" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="1"/>
+      <text x="350" y="346" fill="#10b981" font-size="9" text-anchor="middle">committed</text>
+      <rect x="510" y="330" width="130" height="24" rx="4" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="1"/>
+      <text x="575" y="346" fill="#10b981" font-size="9" text-anchor="middle">committed</text>
+    </svg>
+  </div>
+
+  <div class="danger-box">
+    <h4 style="color:var(--red);">2PCの問題点：ブロッキング</h4>
+    <p>コーディネーターがPhase2の途中でクラッシュすると、<strong>参加者はPREPARE済みのままブロックされ、コーディネーターの復旧まで待ち続けます</strong>。ロックを保持したまま永遠に待つ可能性（ブロッキングプロトコル）があります。</p>
+  </div>
+
+  <div class="card">
+    <h4>3フェーズコミット（3PC）との比較</h4>
+    <p>3PCはPhase1（CanCommit）・Phase2（PreCommit）・Phase3（Commit）の3段階に分け、コーディネーター障害時にも参加者が自律的にコミット/アボートを決定できます。しかしネットワーク分断時は依然として問題があり、実運用ではあまり使われません。</p>
+  </div>
+
+  <h3 class="sub-title">Saga パターン</h3>
+  <p>2PCの代替として、マイクロサービスアーキテクチャで広く採用される長期トランザクション管理パターン。各ステップが成功すれば次に進み、失敗したら補償トランザクションで巻き戻します。</p>
+
+  <h4>Choreography Saga（コレオグラフィ型）</h4>
+  <div class="svg-wrap">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:720px;">
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arr-comp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+      <!-- Event bus -->
+      <rect x="20" y="130" width="680" height="30" rx="6" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="360" y="150" fill="#64748b" font-size="10" text-anchor="middle">Event Bus（Message Queue）</text>
+
+      <!-- Services -->
+      <rect x="20" y="40" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="80" y="65" fill="#a5b4fc" font-size="10" text-anchor="middle">注文サービス</text>
+      <text x="80" y="80" fill="#64748b" font-size="9" text-anchor="middle">Order Created</text>
+
+      <rect x="175" y="40" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="235" y="65" fill="#67e8f9" font-size="10" text-anchor="middle">在庫サービス</text>
+      <text x="235" y="80" fill="#64748b" font-size="9" text-anchor="middle">Stock Reserved</text>
+
+      <rect x="330" y="40" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="390" y="65" fill="#6ee7b7" font-size="10" text-anchor="middle">決済サービス</text>
+      <text x="390" y="80" fill="#64748b" font-size="9" text-anchor="middle">Payment Done</text>
+
+      <rect x="485" y="40" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="545" y="65" fill="#fcd34d" font-size="10" text-anchor="middle">配送サービス</text>
+      <text x="545" y="80" fill="#64748b" font-size="9" text-anchor="middle">Shipped</text>
+
+      <!-- Arrows down to bus -->
+      <line x1="80" y1="100" x2="80" y2="130" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <line x1="235" y1="100" x2="235" y2="130" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <line x1="390" y1="100" x2="390" y2="130" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <line x1="545" y1="100" x2="545" y2="130" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Compensation flow (red, bottom) -->
+      <rect x="175" y="220" width="120" height="50" rx="8" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="235" y="241" fill="#fca5a5" font-size="10" text-anchor="middle">在庫補償</text>
+      <text x="235" y="256" fill="#64748b" font-size="9" text-anchor="middle">Stock Released</text>
+
+      <rect x="330" y="220" width="120" height="50" rx="8" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="390" y="241" fill="#fca5a5" font-size="10" text-anchor="middle">決済補償</text>
+      <text x="390" y="256" fill="#64748b" font-size="9" text-anchor="middle">Refund</text>
+
+      <line x1="390" y1="220" x2="390" y2="160" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-comp)"/>
+      <line x1="235" y1="220" x2="235" y2="160" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-comp)"/>
+      <text x="640" y="242" fill="#ef4444" font-size="9" text-anchor="middle">配送失敗時</text>
+      <text x="640" y="257" fill="#ef4444" font-size="9" text-anchor="middle">→ 補償実行</text>
+      <line x1="545" y1="220" x2="545" y2="160" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3"/>
+    </svg>
+  </div>
+
+  <h4>Orchestration Saga（オーケストレーション型）</h4>
+  <div class="card">
+    <p>中央のSagaオーケストレーター（Saga Orchestrator）が各サービスに命令を送り、成功/失敗に応じて次のステップを決定します。フローが一箇所に集中するため可視化しやすいですが、オーケストレーター自体が単一障害点になりえます。</p>
+    <div class="two-col" style="margin-top:1rem;">
+      <div>
+        <p><strong style="color:var(--green);">Choreography の利点</strong></p>
+        <ul style="color:var(--text2);margin-left:1.2rem;">
+          <li>疎結合（各サービスが自律）</li>
+          <li>単一障害点なし</li>
+          <li>スケーラブル</li>
+        </ul>
+      </div>
+      <div>
+        <p><strong style="color:var(--accent3);">Orchestration の利点</strong></p>
+        <ul style="color:var(--text2);margin-left:1.2rem;">
+          <li>フローが明確・可視化しやすい</li>
+          <li>複雑な条件分岐に対応</li>
+          <li>デバッグしやすい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h4>補償トランザクション（Compensating Transaction）の設計</h4>
+  <div class="warn-box">
+    <p>補償トランザクションは<strong>べき等（Idempotent）</strong>でなければなりません。ネットワーク障害で同じ補償が複数回実行されても、システムの状態が同じになるよう設計します。</p>
+    <p>また、補償は<strong>逆順</strong>に実行します（配送→決済→在庫→注文の逆）。すでに完了した操作のみを補償してください。</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 6: VECTOR CLOCKS ===== -->
+<section id="clocks">
+  <h2 class="section-title">6. ベクタークロックと論理クロック</h2>
+
+  <h3 class="sub-title">なぜ実時間クロックが使えないか</h3>
+  <div class="danger-box">
+    <ul style="color:var(--text2);margin-left:1.5rem;">
+      <li><strong>Clock Drift：</strong>各マシンのクロックは少しずつずれていく（1日あたり数秒〜数十秒）</li>
+      <li><strong>Clock Skew：</strong>NTPで同期しても±数ms〜数百msのずれが残る</li>
+      <li><strong>結果：</strong>ノードA（時刻 10:00:00.100）の書き込みが、ノードB（時刻 10:00:00.050）の書き込みより後に見える可能性がある</li>
+    </ul>
+  </div>
+
+  <h3 class="sub-title">Lamport タイムスタンプ</h3>
+  <p>Leslie Lampsonが1978年に提案。物理時刻を使わず、<strong>因果関係のみから論理的な順序</strong>を構築します。</p>
+  <div class="card">
+    <p><strong>ルール：</strong></p>
+    <ul style="color:var(--text2);margin-left:1.5rem;">
+      <li>各ノードは内部カウンター（論理クロック）を持つ</li>
+      <li>イベント発生時：カウンターをインクリメント</li>
+      <li>メッセージ送信時：現在のカウンター値をメッセージに付加</li>
+      <li>メッセージ受信時：<code>max(自分のカウンター, 受信したカウンター) + 1</code></li>
+    </ul>
+    <p style="margin-top:0.75rem;"><strong>限界：</strong>Lamportタイムスタンプは「A→Bなら ts(A) &lt; ts(B)」を保証するが、逆は真でない。<code>ts(A) &lt; ts(B)</code> でもA→Bとは限らない。</p>
+  </div>
+
+  <h3 class="sub-title">ベクタークロック（Vector Clock）</h3>
+  <p>各ノードが<strong>全ノードのカウンターのベクター</strong>を保持することで、因果関係を完全に追跡します。AmazonのDynamoなどが採用。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:700px;">
+      <!-- Timeline axes -->
+      <line x1="60" y1="30" x2="60" y2="310" stroke="#2a2d3e" stroke-width="1.5"/>
+      <line x1="270" y1="30" x2="270" y2="310" stroke="#2a2d3e" stroke-width="1.5"/>
+      <line x1="480" y1="30" x2="480" y2="310" stroke="#2a2d3e" stroke-width="1.5"/>
+      <text x="60" y="20" fill="#6366f1" font-size="12" text-anchor="middle" font-weight="700">Node A</text>
+      <text x="270" y="20" fill="#22d3ee" font-size="12" text-anchor="middle" font-weight="700">Node B</text>
+      <text x="480" y="20" fill="#a78bfa" font-size="12" text-anchor="middle" font-weight="700">Node C</text>
+
+      <!-- Events A -->
+      <circle cx="60" cy="70" r="12" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="60" y="74" fill="#a5b4fc" font-size="8" text-anchor="middle">a1</text>
+      <text x="100" y="74" fill="#94a3b8" font-size="9">[1,0,0]</text>
+
+      <circle cx="60" cy="150" r="12" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="60" y="154" fill="#a5b4fc" font-size="8" text-anchor="middle">a2</text>
+      <text x="100" y="154" fill="#94a3b8" font-size="9">[2,1,0]</text>
+
+      <circle cx="60" cy="240" r="12" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="60" y="244" fill="#a5b4fc" font-size="8" text-anchor="middle">a3</text>
+      <text x="100" y="244" fill="#94a3b8" font-size="9">[3,1,0]</text>
+
+      <!-- Events B -->
+      <circle cx="270" cy="100" r="12" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="270" y="104" fill="#67e8f9" font-size="8" text-anchor="middle">b1</text>
+      <text x="310" y="104" fill="#94a3b8" font-size="9">[0,1,0]</text>
+
+      <circle cx="270" cy="180" r="12" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="270" y="184" fill="#67e8f9" font-size="8" text-anchor="middle">b2</text>
+      <text x="310" y="184" fill="#94a3b8" font-size="9">[2,2,1]</text>
+
+      <circle cx="270" cy="270" r="12" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="270" y="274" fill="#67e8f9" font-size="8" text-anchor="middle">b3</text>
+      <text x="310" y="274" fill="#94a3b8" font-size="9">[3,3,1]</text>
+
+      <!-- Events C -->
+      <circle cx="480" cy="130" r="12" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="480" y="134" fill="#c4b5fd" font-size="8" text-anchor="middle">c1</text>
+      <text x="520" y="134" fill="#94a3b8" font-size="9">[0,0,1]</text>
+
+      <circle cx="480" cy="210" r="12" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="480" y="214" fill="#c4b5fd" font-size="8" text-anchor="middle">c2</text>
+      <text x="520" y="214" fill="#94a3b8" font-size="9">[0,1,2]</text>
+
+      <!-- Message arrows -->
+      <!-- A→B: a1→b2 (after a1, b receives) -->
+      <line x1="72" y1="70" x2="258" y2="170" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="155" y="115" fill="#6366f1" font-size="9">msg A→B</text>
+      <!-- C→B: c1→b2 -->
+      <line x1="468" y1="130" x2="282" y2="172" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="380" y="148" fill="#a78bfa" font-size="9">msg C→B</text>
+      <!-- B→A: b1→a2 -->
+      <line x1="258" y1="100" x2="72" y2="143" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="150" y="118" fill="#22d3ee" font-size="9">msg B→A</text>
+      <!-- B→C: b1→c2 -->
+      <line x1="282" y1="100" x2="468" y2="203" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="390" y="155" fill="#22d3ee" font-size="9">msg B→C</text>
+      <!-- B→A: b2→a3 -->
+      <line x1="258" y1="180" x2="72" y2="232" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="150" y="215" fill="#22d3ee" font-size="9">msg B→A</text>
+    </svg>
+  </div>
+
+  <div class="info-box">
+    <p><strong>ベクタークロックの比較ルール：</strong></p>
+    <ul style="color:var(--text2);margin-left:1.5rem;">
+      <li><code>VC(a) ≤ VC(b)</code>：すべての要素で a ≤ b → aはbの「前に発生した（happens-before）」</li>
+      <li>比較不能（concurrent）：どちらも相手より大きい要素を持つ → 因果関係なし（並行発生）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 7: GOSSIP ===== -->
+<section id="gossip">
+  <h2 class="section-title">7. Gossip プロトコル</h2>
+
+  <p>人間の噂話のように、各ノードがランダムに選んだ少数のピアに情報を伝播させるプロトコルです。<strong>中央集権的な管理なしに</strong>クラスター全体に情報が広がります。</p>
+
+  <h3 class="sub-title">Gossip の仕組み</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>🔁 周期的な伝播</h4>
+      <p>各ノードは一定間隔（例：1秒）でランダムに数ノードを選び、自身の状態（ハートビート・バージョン情報）を送信します。受信ノードは情報をマージし、次のサイクルで別のノードに伝えます。</p>
+    </div>
+    <div class="card">
+      <h4>📈 対数的収束</h4>
+      <p>nノードのクラスターで情報が全体に伝播するまでの時間は <code>O(log n)</code>。1000ノードでも約10サイクルで全体に伝播。スケーラブルで障害耐性が高い。</p>
+    </div>
+    <div class="card">
+      <h4>🛡️ 障害耐性</h4>
+      <p>一部のノードがクラッシュしても、他のルートから情報が届きます。中央サーバーがないため、単一障害点がありません。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">実際の活用例</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>システム</th><th>Gossipの用途</th></tr>
+      <tr><td>Apache Cassandra</td><td>ノードのメンバーシップ管理・障害検知（Phi Accrual Failure Detector）</td></tr>
+      <tr><td>Amazon DynamoDB</td><td>レプリカ間の状態同期・ノード参加・離脱の通知</td></tr>
+      <tr><td>HashiCorp Consul/Serf</td><td>クラスターメンバーシップ・ヘルスチェック状態の伝播</td></tr>
+      <tr><td>Riak</td><td>リングメンバーシップ・データのバージョン伝播</td></tr>
+      <tr><td>Bitcoin P2P</td><td>トランザクション・ブロックのピア間伝播</td></tr>
+    </table>
+  </div>
+
+  <h3 class="sub-title">Gossip ベースのメンバーシップ管理</h3>
+  <div class="card">
+    <p>各ノードは<strong>メンバーリスト</strong>を保持し、各エントリに「ハートビートカウンター」を付加します。ノードが生きていればカウンターは増加し続けます。一定時間カウンターが更新されなければそのノードを「疑わしい（Suspicious）」→「死亡（Dead）」とマークします。</p>
+    <p>Cassandraの <strong>Phi Accrual Failure Detector</strong> は、ネットワークの遅延統計から動的に閾値を計算するため、一時的な遅延とクラッシュを区別できます。</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 8: QUORUM ===== -->
+<section id="quorum">
+  <h2 class="section-title">8. 分散ストレージの一貫性</h2>
+
+  <h3 class="sub-title">Quorum（クォーラム）読み書き</h3>
+  <p>レプリケーションファクター N のシステムで、<strong>R + W &gt; N</strong> という条件を満たすように読み書きのクォーラムを設定することで、一貫性を保証します。</p>
+
+  <div class="card-grid">
+    <div class="card" style="border-color:rgba(99,102,241,0.4);">
+      <h4>条件：R + W &gt; N</h4>
+      <p>読み取りに使うノード数（R）と書き込みに使うノード数（W）の合計がレプリカ数（N）を超えれば、読み取り時に必ず最新データを持つノードが1つ以上含まれる。</p>
+    </div>
+    <div class="card" style="border-color:rgba(34,211,238,0.4);">
+      <h4>Strong Consistency：N=3, W=2, R=2</h4>
+      <p>W+R = 4 &gt; 3 = N。書き込みは2ノードに成功が必要、読み取りも2ノードを参照。最新値のあるノードが必ずオーバーラップ。</p>
+    </div>
+    <div class="card" style="border-color:rgba(245,158,11,0.4);">
+      <h4>高速書き込み：N=3, W=1, R=3</h4>
+      <p>書き込みは1ノードのみ（低レイテンシ）。読み取りで全ノードを確認するため一貫性は保たれるが、読み取りレイテンシが高い。</p>
+    </div>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:700px;">
+      <!-- N=3 nodes -->
+      <text x="350" y="22" fill="#e2e8f0" font-size="12" text-anchor="middle" font-weight="700">クォーラム例：N=3, W=2, R=2</text>
+      <!-- Client -->
+      <rect x="290" y="35" width="120" height="36" rx="8" fill="rgba(99,102,241,0.2)" stroke="#6366f1"/>
+      <text x="350" y="57" fill="#a5b4fc" font-size="11" text-anchor="middle">Client</text>
+      <!-- Nodes -->
+      <circle cx="160" cy="170" r="40" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="160" y="165" fill="#67e8f9" font-size="11" text-anchor="middle">Node 1</text>
+      <text x="160" y="180" fill="#94a3b8" font-size="9" text-anchor="middle">v=5 ✓</text>
+      <circle cx="350" cy="170" r="40" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+      <text x="350" y="165" fill="#67e8f9" font-size="11" text-anchor="middle">Node 2</text>
+      <text x="350" y="180" fill="#94a3b8" font-size="9" text-anchor="middle">v=5 ✓</text>
+      <circle cx="540" cy="170" r="40" fill="#1c1f2e" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="540" y="165" fill="#64748b" font-size="11" text-anchor="middle">Node 3</text>
+      <text x="540" y="180" fill="#64748b" font-size="9" text-anchor="middle">v=4 (古い)</text>
+      <!-- Write arrows -->
+      <line x1="330" y1="71" x2="190" y2="133" stroke="#10b981" stroke-width="2"/>
+      <line x1="350" y1="71" x2="350" y2="130" stroke="#10b981" stroke-width="2"/>
+      <text x="265" y="100" fill="#10b981" font-size="9">Write v=5</text>
+      <text x="355" y="105" fill="#10b981" font-size="9">Write v=5</text>
+      <!-- No write to node3 -->
+      <line x1="370" y1="71" x2="510" y2="133" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="450" y="100" fill="#64748b" font-size="9">（W=2で十分）</text>
+      <!-- Read overlap -->
+      <rect x="130" y="225" width="80" height="24" rx="4" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="170" y="241" fill="#67e8f9" font-size="9" text-anchor="middle">Read quorum</text>
+      <rect x="320" y="225" width="80" height="24" rx="4" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="360" y="241" fill="#67e8f9" font-size="9" text-anchor="middle">Read quorum</text>
+      <text x="350" y="257" fill="#64748b" font-size="9" text-anchor="middle">→ 最新値 v=5 を確実に取得（オーバーラップ保証）</text>
+    </svg>
+  </div>
+
+  <h3 class="sub-title">Read Repair と Anti-Entropy</h3>
+  <div class="two-col">
+    <div class="card">
+      <h4>Read Repair（読み取り時修復）</h4>
+      <p>クォーラム読み取り時に複数ノードから値を取得した際、古い値を持つノードを検出したら<strong>バックグラウンドで最新値に更新</strong>します。頻繁に読まれるデータは素早く一貫性が確保されます。</p>
+    </div>
+    <div class="card">
+      <h4>Anti-Entropy（バックグラウンド同期）</h4>
+      <p>定期的にノード間でデータを比較・同期するバックグラウンドプロセス。<strong>Merkle Tree</strong>を使い効率的に差分を検出します。めったに読まれないデータの一貫性を確保します。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 9: TIME SYNC ===== -->
+<section id="timesync">
+  <h2 class="section-title">9. 時刻同期と Hybrid Logical Clocks</h2>
+
+  <h3 class="sub-title">NTP の限界</h3>
+  <div class="card">
+    <p>Network Time Protocol（NTP）はインターネット上でクロックを同期する標準プロトコルです。しかし：</p>
+    <ul style="color:var(--text2);margin-left:1.5rem;margin-top:0.5rem;">
+      <li><strong>Clock Drift：</strong>ハードウェアクロックは温度・電圧によって±50 ppm程度ドリフト（1日あたり±4秒）</li>
+      <li><strong>Clock Skew：</strong>NTP同期後も±1ms〜±100msの誤差が残る</li>
+      <li><strong>Leap Second：</strong>うるう秒の挿入でシステムの挙動が不定に</li>
+      <li><strong>うるう秒スラム：</strong>Linuxカーネルの問題でCPUスパイクが起きることも</li>
+    </ul>
+    <p style="margin-top:0.75rem;">これにより、分散システムで「後の操作が先のタイムスタンプを持つ」矛盾が発生しえます。</p>
+  </div>
+
+  <h3 class="sub-title">Google Spanner の TrueTime API</h3>
+  <div class="info-box">
+    <p>SpannerはGPSとアトミック時計を使い、<code>TT.now()</code> が<strong>誤差範囲 [earliest, latest]</strong>を返します（ε ≈ 7ms以下）。</p>
+    <p>トランザクションコミット時に <code>TT.now().latest</code> まで待機することで、<strong>外部一貫性（External Consistency）</strong>を保証します。後に発生したトランザクションは必ずより大きいタイムスタンプを持ちます。</p>
+    <p>代償：各コミットで最大14msのウェイトが発生（誤差区間が確実に通過するまで待つ）。</p>
+  </div>
+
+  <h3 class="sub-title">Hybrid Logical Clocks（HLC）</h3>
+  <p>物理クロックと論理クロックを組み合わせたアプローチ。Sanfilippo et al. (2014) が提案。CockroachDBなどが採用しています。</p>
+
+  <div class="card">
+    <h4>HLCの構造</h4>
+    <p>各タイムスタンプは <code>(l, c)</code> のペア：</p>
+    <ul style="color:var(--text2);margin-left:1.5rem;">
+      <li><strong>l（物理時刻の上界）：</strong>既知の最大物理タイムスタンプ</li>
+      <li><strong>c（論理カウンター）：</strong>同じl値が続く場合の順序付け</li>
+    </ul>
+    <p style="margin-top:0.75rem;">メッセージ受信時のルール：</p>
+    <pre><code>l' = max(l_自分, l_受信, pt_現在物理時刻)
+if l' == l_自分 == l_受信: c' = max(c_自分, c_受信) + 1
+elif l' == l_自分:          c' = c_自分 + 1
+elif l' == l_受信:          c' = c_受信 + 1
+else:                       c' = 0</code></pre>
+    <p><strong>利点：</strong>物理時刻に近い値を持ちながら、論理クロックの因果順序保証も得られる。TrueTimeのような専用ハードウェアが不要。</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>方式</th><th>精度</th><th>ハードウェア要件</th><th>外部一貫性</th><th>採用例</th></tr>
+      <tr><td>NTP</td><td>±1ms〜±100ms</td><td>不要</td><td><span class="badge badge-red">なし</span></td><td>一般的なLinuxサーバー</td></tr>
+      <tr><td>TrueTime</td><td>±7ms以下</td><td>GPS+アトミック時計</td><td><span class="badge badge-green">保証</span></td><td>Google Spanner</td></tr>
+      <tr><td>HLC</td><td>物理時刻に近似</td><td>不要</td><td><span class="badge badge-yellow">因果一貫性</span></td><td>CockroachDB</td></tr>
+      <tr><td>Lamport Clock</td><td>論理順序のみ</td><td>不要</td><td><span class="badge badge-red">なし</span></td><td>学術・基礎実装</td></tr>
+      <tr><td>Vector Clock</td><td>因果関係完全追跡</td><td>不要</td><td><span class="badge badge-yellow">因果一貫性</span></td><td>Amazon Dynamo, Riak</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== INTERVIEW TIPS ===== -->
+<section id="interview">
+  <div class="tip-section">
+    <h3>🎯 面接対策：分散システム理論の頻出質問</h3>
+
+    <div class="tip-item">
+      <span class="tip-icon">Q</span>
+      <div>
+        <strong style="color:var(--text);">CAP定理を説明してください。実際のシステムはどう選択しますか？</strong>
+        <p>「実用的な分散システムはネットワーク分断（P）を前提とするため、CとAのトレードオフになります。金融・在庫管理など正確さが重要なシステムはCP（ZooKeeper型）、ショッピングカート・SNSなど高可用性が重要なシステムはAP（Cassandra型）を選びます。さらにPACELC定理として、通常時にもレイテンシと一貫性のトレードオフが存在することを説明できると高評価です。」</p>
+      </div>
+    </div>
+
+    <div class="tip-item">
+      <span class="tip-icon">Q</span>
+      <div>
+        <strong style="color:var(--text);">Raftのリーダー選出を説明してください。</strong>
+        <p>「Followerがelection timeout（150〜300msランダム）を超えてHeartbeatを受け取らなければCandidateになり、Termをインクリメントして全ノードにVoteRequestを送ります。過半数の票を得るとLeaderになり、Heartbeatを送信してFollowerに存在を通知します。同時に複数CandidateになったらSplit Voteとなり次のTermで再選出。」</p>
+      </div>
+    </div>
+
+    <div class="tip-item">
+      <span class="tip-icon">Q</span>
+      <div>
+        <strong style="color:var(--text);">2PCとSagaの違いは？どちらをいつ使いますか？</strong>
+        <p>「2PCは強い原子性を保証しますが、コーディネーター障害でブロッキングが発生し、マイクロサービス間でDBトランザクションを共有できないため使いにくいです。Sagaは各ステップを独立したトランザクションとし、失敗時は補償トランザクションで巻き戻します。マイクロサービスアーキテクチャではSagaが標準的です。ビジネスロジックが複雑ならOrchestration型、疎結合を重視するならChoreography型を選びます。」</p>
+      </div>
+    </div>
+
+    <div class="tip-item">
+      <span class="tip-icon">Q</span>
+      <div>
+        <strong style="color:var(--text);">Eventual ConsistencyとStrong Consistencyの違いと、いつどちらを使うか？</strong>
+        <p>「Strong Consistencyは全読み取りが最新値を返し保証が強い一方、レイテンシが高くなります。Eventual ConsistencyはDNSやショッピングカートのように、少し古い値でも業務が成立し高可用性・低レイテンシが重要なケースで使います。銀行残高・在庫の最終確認など正確性が必須なケースはStrong Consistencyが必要です。」</p>
+      </div>
+    </div>
+
+    <div class="tip-item">
+      <span class="tip-icon">Q</span>
+      <div>
+        <strong style="color:var(--text);">ベクタークロックはLamportタイムスタンプと何が違うか？</strong>
+        <p>「Lamportタイムスタンプは『A→Bなら ts(A) &lt; ts(B)』を保証しますが、逆は真でありません。ベクタークロックは各ノードが全ノードのカウンターを保持するため、2つのイベントが因果関係があるか並行発生かを正確に判定できます。ただしノード数に比例してサイズが増えるというトレードオフがあります。」</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SUMMARY TABLE ===== -->
+<section id="summary">
+  <h2 class="section-title">まとめ：キーコンセプト早見表</h2>
+  <div class="table-wrap">
+    <table>
+      <tr><th>概念</th><th>一言説明</th><th>代表的な実装・事例</th></tr>
+      <tr><td>CAP定理</td><td>C・A・Pは同時に3つ満たせない</td><td>全分散DBの設計基盤</td></tr>
+      <tr><td>PACELC</td><td>通常時もL vs Cのトレードオフ</td><td>DynamoDB・Cassandraの設計</td></tr>
+      <tr><td>Linearizability</td><td>最強の一貫性保証</td><td>ZooKeeper・etcd</td></tr>
+      <tr><td>Eventual Consistency</td><td>最終的には収束</td><td>DNS・DynamoDB・Cassandra</td></tr>
+      <tr><td>Raft</td><td>理解しやすいコンセンサス</td><td>etcd・CockroachDB</td></tr>
+      <tr><td>2PC</td><td>原子的コミット、ブロッキングあり</td><td>XA Transaction</td></tr>
+      <tr><td>Saga</td><td>補償で巻き戻す長期トランザクション</td><td>マイクロサービス全般</td></tr>
+      <tr><td>Vector Clock</td><td>因果関係の完全追跡</td><td>Amazon Dynamo・Riak</td></tr>
+      <tr><td>Gossip</td><td>O(log n)でクラスター全体に伝播</td><td>Cassandra・Consul</td></tr>
+      <tr><td>Quorum (R+W&gt;N)</td><td>読み書きのオーバーラップで一貫性</td><td>Dynamo・Cassandra</td></tr>
+      <tr><td>TrueTime</td><td>GPS+原子時計で誤差範囲を保証</td><td>Google Spanner</td></tr>
+      <tr><td>HLC</td><td>物理+論理クロックのハイブリッド</td><td>CockroachDB</td></tr>
+    </table>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<!-- ===== DEEP DIVE SECTION ===== -->
+<div class="container">
+
+<!-- ===== DEEP DIVE 1: RAFT ===== -->
+<section id="deepdive-raft">
+  <h2 class="section-title">深掘り: Raftアルゴリズムの完全シミュレーション</h2>
+
+  <h3 class="sub-title">Election Timeout（150〜300ms乱数）の理由</h3>
+  <div class="card">
+    <p>Raftでは各ノードの Election Timeout を <strong>150〜300ms のランダム値</strong>に設定します。これが固定値だと、すべてのFollowerが同時にCandidateに昇格し、全員が同じTermでVote Requestを送り合う <strong>Split Vote</strong> が高確率で発生します。ランダム化することで、ほぼ必ず1ノードが先にタイムアウトし、他のノードからVoteを集める前に他のノードが起き上がらないようにします。</p>
+    <div class="info-box">
+      <p><strong>150〜300msという値の根拠：</strong>ネットワークRTTが一般的に数十ms以下であることを前提に、Heartbeat間隔（通常50ms）の3〜6倍に設定します。Heartbeatが正常に届いていればタイムアウトしない範囲で、かつ障害を素早く検知できる値として設計されています。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">Split Voteの発生と解決</h3>
+  <div class="card-grid">
+    <div class="card" style="border-color:rgba(239,68,68,0.4);">
+      <h4 style="color:var(--red);">Split Vote が起きる条件</h4>
+      <p>例：5ノードクラスターでNodeAとNodeBがほぼ同時にCandidateになりVote Requestを送ると、A=2票、B=2票（残り1票を分割）で過半数（3票）に届かない。</p>
+    </div>
+    <div class="card" style="border-color:rgba(16,185,129,0.4);">
+      <h4 style="color:var(--green);">自動解決の仕組み</h4>
+      <p>Split Vote 発生時、各CandidateはElection Timeoutが再び経過すると新しいTerm（+1）で再選出を開始します。ランダムなタイムアウトにより次回は一方が先行し、Split Voteが再発する確率は急速に低下します。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">AppendEntries RPCのフィールド詳細</h3>
+  <pre><code># AppendEntries RPC 構造体（Raft論文より）
+AppendEntriesRequest {
+  term:         int,   # Leaderの現在のTerm
+  leaderId:     int,   # LeaderのID（FollowerがClientをリダイレクトするために使用）
+  prevLogIndex: int,   # 追加する直前のログエントリのインデックス
+  prevLogTerm:  int,   # prevLogIndexのエントリのTerm
+  entries:      []Log, # 空=HeartBeat, 1つ以上=ログエントリ
+  leaderCommit: int,   # LeaderのcommitIndex（コミット済み最大インデックス）
+}
+
+AppendEntriesResponse {
+  term:    int,  # Followerの現在のTerm（LeaderのTermより大きければLeaderは退陣）
+  success: bool, # prevLogIndex/prevLogTermが一致すればtrue
+}</code></pre>
+  <div class="info-box">
+    <p><strong>prevLogIndex/prevLogTermの役割：</strong>Followerは自分のログが prevLogIndex の位置に prevLogTerm のエントリを持っているか確認します。一致しなければ <code>success=false</code> を返し、Leaderはより古いエントリから再送します（Log Matching Property の維持）。</p>
+  </div>
+
+  <h3 class="sub-title">Commit条件: 過半数(Quorum)への書き込み確認</h3>
+  <div class="card">
+    <p>Leaderは自分のログにエントリを追記後、全Followerに AppendEntries RPC を送信します。<strong>過半数（⌊N/2⌋+1）のノード</strong>がそのエントリをローカルに書き込んだことを確認した時点でコミットします。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>クラスター規模</th><th>過半数（Quorum）</th><th>許容障害数</th></tr>
+        <tr><td>3ノード</td><td>2</td><td>1</td></tr>
+        <tr><td>5ノード</td><td>3</td><td>2</td></tr>
+        <tr><td>7ノード</td><td>4</td><td>3</td></tr>
+      </table>
+    </div>
+    <div class="warn-box">
+      <p><strong>重要：</strong>Leaderは自分の現在のTermのエントリのみを過半数で直接コミットします。古いTermのエントリは、現在のTermのエントリがコミットされることで間接的にコミットされます（Raft Safety Property）。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">クラスターメンバー変更: Joint Consensus</h3>
+  <div class="card">
+    <p>ノードを追加・削除する際に直接変更すると、新旧2つのQuorumが同時に独立したLeaderを選出する危険性があります。Raftは <strong>Joint Consensus（共同合意）</strong>フェーズを用いてこれを防ぎます。</p>
+    <ol style="color:var(--text2);margin-left:1.5rem;line-height:2;">
+      <li><strong>C_old,new フェーズ：</strong>新旧両方の設定を含む特別な設定エントリをログに追記。この期間中は、旧クラスターと新クラスターの両方でQuorumが必要。</li>
+      <li><strong>C_new フェーズ：</strong>C_old,new がコミットされた後、新しい設定のみを含むエントリをログに追記してコミット。以降は新設定のみが有効。</li>
+    </ol>
+  </div>
+
+  <h3 class="sub-title">Raftを実装したシステムの比較</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>システム</th><th>用途</th><th>Raftの使い方</th><th>特記事項</th></tr>
+      <tr><td><strong>etcd</strong></td><td>設定管理・サービスディスカバリ</td><td>標準的なRaft実装（etcd/raft）</td><td>Kubernetesのバックエンド。raft.Nodeインターフェース公開</td></tr>
+      <tr><td><strong>CockroachDB</strong></td><td>分散NewSQL DB</td><td>Range（キー範囲）ごとにRaftグループ</td><td>Multi-Raftで数万のRaftグループを管理。HLCで外部一貫性</td></tr>
+      <tr><td><strong>TiKV</strong></td><td>分散KVストア（TiDB基盤）</td><td>Region（96MB単位）ごとにRaft</td><td>Multi-Raftと自動Regionスプリット。Leaderless readの最適化あり</td></tr>
+    </table>
+  </div>
+
+  <h3 class="sub-title">Raft状態機械の疑似実装（Python）</h3>
+  <pre><code>import threading, random, time
+from enum import Enum
+
+class Role(Enum):
+    FOLLOWER = "follower"
+    CANDIDATE = "candidate"
+    LEADER = "leader"
+
+class LogEntry:
+    def __init__(self, term: int, command):
+        self.term = term
+        self.command = command
+
+class RaftNode:
+    def __init__(self, node_id: int, peers: list):
+        self.id = node_id
+        self.peers = peers          # 他ノードへのRPCクライアント
+
+        # 永続化が必要な状態（ディスクに書く）
+        self.current_term = 0
+        self.voted_for = None
+        self.log = []               # List[LogEntry]
+
+        # 揮発性状態
+        self.role = Role.FOLLOWER
+        self.commit_index = 0
+        self.last_applied = 0
+        self.leader_id = None
+
+        # Leaderのみ保持
+        self.next_index = {}        # {peer_id: next_log_index}
+        self.match_index = {}       # {peer_id: last_replicated_index}
+
+        # タイムアウト管理
+        self._lock = threading.Lock()
+        self._reset_election_timer()
+
+    def _reset_election_timer(self):
+        """Election Timeout を 150〜300ms でリセット"""
+        self._election_timeout = random.uniform(0.15, 0.30)
+        self._last_heartbeat = time.time()
+
+    def _start_election(self):
+        """Election Timeoutが切れたらリーダー選出を開始"""
+        with self._lock:
+            self.current_term += 1
+            self.role = Role.CANDIDATE
+            self.voted_for = self.id
+            votes_received = 1  # 自分に投票
+
+        last_log_index = len(self.log) - 1
+        last_log_term = self.log[-1].term if self.log else 0
+
+        for peer in self.peers:
+            granted = peer.request_vote(
+                term=self.current_term,
+                candidate_id=self.id,
+                last_log_index=last_log_index,
+                last_log_term=last_log_term
+            )
+            if granted:
+                votes_received += 1
+
+        quorum = len(self.peers) // 2 + 1
+        if votes_received >= quorum:
+            self._become_leader()
+
+    def _become_leader(self):
+        with self._lock:
+            self.role = Role.LEADER
+            # next_index を自分のログ末尾+1で初期化
+            for peer in self.peers:
+                self.next_index[peer.id] = len(self.log)
+                self.match_index[peer.id] = -1
+        self._send_heartbeats()
+
+    def append_entries_handler(self, term, leader_id,
+                               prev_log_index, prev_log_term,
+                               entries, leader_commit):
+        """AppendEntries RPCを受け取る側の処理"""
+        with self._lock:
+            # 1. termが古ければ拒否
+            if term < self.current_term:
+                return False, self.current_term
+
+            # 2. HeartBeat受信→Election Timerリセット
+            self._reset_election_timer()
+            self.role = Role.FOLLOWER
+            self.leader_id = leader_id
+
+            # 3. prevLogの一致確認
+            if prev_log_index >= 0:
+                if len(self.log) <= prev_log_index:
+                    return False, self.current_term
+                if self.log[prev_log_index].term != prev_log_term:
+                    # 不一致: 以降のエントリを削除
+                    self.log = self.log[:prev_log_index]
+                    return False, self.current_term
+
+            # 4. 新エントリを追加
+            self.log[prev_log_index + 1:] = entries
+
+            # 5. commitIndexを更新
+            if leader_commit > self.commit_index:
+                self.commit_index = min(leader_commit, len(self.log) - 1)
+
+            return True, self.current_term</code></pre>
+</section>
+
+<!-- ===== DEEP DIVE 2: SPANNER ===== -->
+<section id="deepdive-spanner">
+  <h2 class="section-title">深掘り: Google Spannerのアーキテクチャ</h2>
+
+  <h3 class="sub-title">TrueTime API — Externally Consistent Distributed Transactionsの実現</h3>
+  <div class="card">
+    <p>Google Spannerは <strong>TrueTime API</strong> を使って、世界中に分散したノード間でも「時刻の誤差範囲が既知である」ことを利用し、外部一貫性（External Consistency = Linearizability）を実現します。</p>
+    <div class="info-box">
+      <p><strong>TrueTimeとは：</strong>GPS衛星と原子時計を各データセンターに設置し、<code>TT.now()</code> を呼ぶと現在時刻の「確実な範囲」 <code>[earliest, latest]</code> を返すAPIです。誤差は通常 <strong>±7ms以内（99パーセンタイル）</strong>。</p>
+    </div>
+    <pre><code># TrueTime API の概念
+TT.now() → TTInterval { earliest: time.Time, latest: time.Time }
+TT.after(t) → bool   # tが確実に過去かどうか（= TT.now().earliest > t）
+TT.before(t) → bool  # tが確実に未来かどうか</code></pre>
+    <p>Spannerはコミット時刻を <code>TT.now().latest</code> に設定し、<code>TT.after(commit_timestamp)</code> が true になるまで（誤差範囲が過ぎるまで）コミットを遅らせます（<strong>Commit Wait</strong>）。これにより、後続のトランザクションのstart_tsは必ず前のcommit_tsより大きくなり、外部一貫性が保証されます。</p>
+  </div>
+
+  <h3 class="sub-title">Paxos Groupsによるデータ分散</h3>
+  <div class="card">
+    <p>Spannerのデータは <strong>Tablet</strong>（CockroachDBのRangeに相当）という単位に分割され、各Tabletは複数のデータセンターにまたがる <strong>Paxos Group</strong> でレプリケーションされます。</p>
+    <div class="card-grid">
+      <div class="card">
+        <h4>Paxos Groupの構成</h4>
+        <ul style="color:var(--text2);margin-left:1.5rem;">
+          <li>1つのTablet = 1つのPaxos Group（通常5レプリカ）</li>
+          <li>各レプリカは異なるゾーン/データセンターに配置</li>
+          <li>Leaderレプリカが書き込みと強一貫性読み取りを担当</li>
+          <li>Followerレプリカは stale read（古いデータ読み取り）に対応</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>リーダーリース（Leader Lease）</h4>
+        <p>Spannerのリーダーは10秒間の「リース」を保持します。リース期間中はLeaderが自分のLeader権限を確信できるため、他のノードに問い合わせずに強一貫性読み取りを行えます。</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub-title">2フェーズコミットのオーバーヘッドとSpannerの最適化</h3>
+  <div class="card">
+    <p>複数Paxos Groupをまたぐトランザクション（分散トランザクション）には2PCが必要で、ラウンドトリップが追加されます。Spannerは以下の最適化を実施しています。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>課題</th><th>Spannerの解決策</th></tr>
+        <tr><td>2PCのコーディネーター障害</td><td>コーディネーター自体もPaxos Groupが担当し冗長化。障害時は別レプリカが引き継ぐ</td></tr>
+        <tr><td>Commit Waitのレイテンシ</td><td>通常数ms以内。TrueTimeの誤差が小さいほど短縮</td></tr>
+        <tr><td>読み取り専用トランザクション</td><td>2PCが不要。Snapshot Read（stale read）でレイテンシ大幅削減</td></tr>
+        <tr><td>ホットスポット</td><td>TabletのレンジをAutoSplitし、負荷の高いKeyRangeを自動分割</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3 class="sub-title">NewSQL（Spanner, CockroachDB, TiDB）の位置づけ</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>システム</th><th>一貫性</th><th>分散方式</th><th>主な採用例</th><th>特記</th></tr>
+      <tr><td>Google Spanner</td><td>External Consistency</td><td>Paxos Groups + TrueTime</td><td>Google内部全サービス</td><td>Cloud Spannerとして公開</td></tr>
+      <tr><td>CockroachDB</td><td>Serializable（SSI）</td><td>Range + Multi-Raft + HLC</td><td>金融・SaaS・ゲーム</td><td>PostgreSQL互換SQL</td></tr>
+      <tr><td>TiDB</td><td>Serializable</td><td>Region + Multi-Raft（TiKV）</td><td>大規模OLTP（中国系）</td><td>MySQL互換SQL、HTAPも対応</td></tr>
+      <tr><td>従来のRDB（MySQL）</td><td>Read Committed〜Serializable</td><td>Primary-Replica（手動シャード）</td><td>ほぼあらゆる用途</td><td>スケールに人手が必要</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== DEEP DIVE 3: TESTING ===== -->
+<section id="deepdive-testing">
+  <h2 class="section-title">深掘り: 分散システムのテスト手法</h2>
+
+  <h3 class="sub-title">Jepsen テスト</h3>
+  <div class="card">
+    <p><a href="https://jepsen.io" target="_blank">Jepsen</a> は Kyle Kingsbury (aphyr) が開発した分散システムの一貫性を検証するClojureフレームワークです。実際にネットワーク分断・ノード停止・クロックスキューを注入しながら並行した読み書き操作を行い、取得した履歴が宣言した一貫性モデル（例: linearizability）を満たしているかを検証します。</p>
+    <div class="card-grid">
+      <div class="card">
+        <h4>Jepsenが発見した主な問題（事例）</h4>
+        <ul style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;">
+          <li>MongoDB 2.6：ネットワーク分断時にデータロス</li>
+          <li>Cassandra：LWW（Last Write Wins）で不整合</li>
+          <li>Redis Sentinel：フェイルオーバー時のデータロス</li>
+          <li>Elasticsearch：分断時のデータ消失</li>
+          <li>TiDB：Serializable違反</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>テストの仕組み</h4>
+        <ol style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;line-height:1.8;">
+          <li>複数のDockerコンテナでクラスター構築</li>
+          <li>並行クライアントで読み書き操作</li>
+          <li>途中でネットワーク分断（iptables）注入</li>
+          <li>操作履歴を記録し線形化可能性をチェック（Knossos等）</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub-title">Chaos Testing</h3>
+  <div class="card">
+    <p>本番または本番に近い環境で、意図的に障害を注入してシステムの回復力を検証する手法です。Netflixが先駆けとして「Chaos Monkey」を開発・公開しました。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>障害種別</th><th>注入方法</th><th>ツール例</th></tr>
+        <tr><td>ノード停止</td><td>プロセスkill、EC2インスタンス停止</td><td>Chaos Monkey、Litmus</td></tr>
+        <tr><td>ネットワーク分断</td><td>iptablesでパケットドロップ</td><td>tc（Traffic Control）、Pumba</td></tr>
+        <tr><td>ネットワーク遅延</td><td>tc netemでレイテンシ追加</td><td><code>tc qdisc add dev eth0 netem delay 100ms</code></td></tr>
+        <tr><td>クロックスキュー</td><td>ntpdstopやadjtimeで時刻を意図的にずらす</td><td>Jepsen、ChaosBlade</td></tr>
+        <tr><td>ディスクフル</td><td>fallocateで大容量ファイル生成</td><td>Chaos Toolkit</td></tr>
+        <tr><td>CPU・メモリ飽和</td><td>stress-ngコマンド</td><td>ChaosMesh、Gremlin</td></tr>
+      </table>
+    </div>
+    <div class="success-box">
+      <p><strong>Blast Radius 制御：</strong>最初は1ノード・1サービス・本番トラフィックの1%など小さなスコープから始め、問題がなければ段階的に拡大します。影響範囲を事前に定義し、超えた場合は自動でroll backする仕組みが不可欠です。</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">TLA+（形式仕様言語）: 概念説明</h3>
+  <div class="card">
+    <p>TLA+（Temporal Logic of Actions）はLeslie Lampsonが設計した形式仕様言語で、分散アルゴリズムの正確性を数学的に証明するために使われます。AmazonはDynamoDB・S3・EBSなど多数の内部サービスのTLA+検証を行い、実際に重大なバグを発見したことを公表しています。</p>
+    <div class="card-grid">
+      <div class="card">
+        <h4>TLA+でできること</h4>
+        <ul style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;">
+          <li>状態空間の全探索（Model Checking）で不変条件を検証</li>
+          <li>あらゆる実行順序・障害パターンを網羅的にチェック</li>
+          <li>「この条件が常に成立するか」を証明</li>
+          <li>デッドロック・ライブネス違反を検出</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>限界</h4>
+        <ul style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;">
+          <li>状態数が膨大な系では計算爆発（State Space Explosion）</li>
+          <li>仕様と実装のギャップは保証できない</li>
+          <li>学習コストが高い（数学的論理の知識が必要）</li>
+          <li>Bounded Model Checking（TLC）は有限の状態のみ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub-title">Property-Based Testing</h3>
+  <div class="card">
+    <p>具体的なテストケースではなく <strong>「不変条件（Property）」</strong>を記述し、ランダムに生成した大量の入力でその条件が満たされるかを検証するアプローチです。QuickCheck（Haskell）やHypothesis（Python）が有名です。</p>
+    <pre><code># Hypothesis（Python）でベクタークロックのプロパティをテスト
+from hypothesis import given, strategies as st
+from vector_clock import VectorClock
+
+@given(
+    st.lists(st.tuples(st.text(min_size=1, max_size=1), st.integers(min_value=0, max_value=100)),
+             min_size=2, max_size=5)
+)
+def test_causality_preserved(events):
+    """
+    Property: AがBの前に発生した場合、A.clock < B.clock でなければならない
+    """
+    clocks = {}
+    for node_id, increment in events:
+        if node_id not in clocks:
+            clocks[node_id] = VectorClock(node_id)
+        clocks[node_id].tick()
+
+    # 因果関係の推移律を検証
+    nodes = list(clocks.values())
+    for i, a in enumerate(nodes):
+        for j, b in enumerate(nodes):
+            if a.happened_before(b):
+                # AがBの前ならBはAの後、反射律なし
+                assert not b.happened_before(a), \
+                    f"Causality violation: {a} happens-before {b} AND {b} happens-before {a}"</code></pre>
+  </div>
+</section>
+
+<!-- ===== EXERCISES ===== -->
+<section id="exercises">
+  <h2 class="section-title">実践演習</h2>
+
+  <!-- Exercise 1: CAP -->
+  <div class="card" style="border-color:rgba(99,102,241,0.5);">
+    <h3 class="sub-title" style="margin-top:0;">演習1: CAP定理の応用問題（5問）</h3>
+    <p>各シナリオでネットワーク分断が発生した際、<strong>CP（一貫性優先）</strong> か <strong>AP（可用性優先）</strong> のどちらを選ぶべきか、理由とともに答えてください。</p>
+
+    <h4>問1: 銀行の残高管理システム</h4>
+    <div class="warn-box">
+      <p><strong>シナリオ：</strong>Aリージョンでユーザーが100万円を振り込んだ直後にネットワーク分断が発生。Bリージョンでは残高更新がまだ反映されていない。</p>
+    </div>
+    <div class="success-box">
+      <p><strong>解答：CP（一貫性優先）</strong><br>
+      残高の二重引き出しや不整合は金融事故につながります。分断時はBリージョンへのリクエストを拒否（503返却）し、分断が解消してから一貫性のある状態でサービス再開します。採用例: Google Spanner, CockroachDB（金融グレード設定）</p>
+    </div>
+
+    <h4>問2: SNSのいいね数カウンター</h4>
+    <div class="warn-box">
+      <p><strong>シナリオ：</strong>人気投稿に毎秒1000いいねが届く。ネットワーク分断時に、一部ノードへのいいねが反映されていない。</p>
+    </div>
+    <div class="success-box">
+      <p><strong>解答：AP（可用性優先）</strong><br>
+      いいね数が「1234」か「1231」かは、ユーザー体験に実害がありません。CRDT（Counter）やLast Write Winsで最終的に収束させます。サービス停止の方が大きな問題です。採用例: Redis（非同期レプリケーション）、Cassandra Counter型</p>
+    </div>
+
+    <h4>問3: ゲームのリアルタイムランキング</h4>
+    <div class="warn-box">
+      <p><strong>シナリオ：</strong>対戦ゲームのリアルタイムランキングでネットワーク分断発生。分断された一方のサーバーは古いランキングを保持している。</p>
+    </div>
+    <div class="success-box">
+      <p><strong>解答：AP（可用性優先）</strong><br>
+      ランキングが数秒〜数分古くても、ゲームのプレイ継続性が最優先。古いランキングを表示しつつ、分断解消後に整合します。「数秒古いランキング」より「ゲームが接続できない」の方がUXが悪化します。</p>
+    </div>
+
+    <h4>問4: 医療システムの患者カルテ</h4>
+    <div class="warn-box">
+      <p><strong>シナリオ：</strong>医師がカルテを更新後に分断発生。別の医師が別拠点から同じカルテを参照・更新しようとしている。</p>
+    </div>
+    <div class="success-box">
+      <p><strong>解答：CP（一貫性優先）</strong><br>
+      古いカルテに基づいた投薬・処置は患者の命に関わります。分断時は読み取り専用モードに移行するか、エラーを返して医師に手動確認を求めます。患者の安全は可用性より優先されます。</p>
+    </div>
+
+    <h4>問5: 分散ロック（Mutex）の実装</h4>
+    <div class="warn-box">
+      <p><strong>シナリオ：</strong>複数ノードがクリティカルセクションへのアクセスに分散ロックを使用。ロックサービスとの通信が分断された。</p>
+    </div>
+    <div class="success-box">
+      <p><strong>解答：CP（一貫性優先）</strong><br>
+      ロックの目的は「同時に1つしかアクセスさせない」こと。AP（分断時もロック取得を許可）にすると複数ノードが同時にロックを保持できてしまいます。ZooKeeper・etcdはこのためにCP設計です。分断時はロック取得失敗（エラー）が正しい動作です。</p>
+    </div>
+  </div>
+
+  <!-- Exercise 2: Vector Clock -->
+  <div class="card" style="border-color:rgba(34,211,238,0.5);">
+    <h3 class="sub-title" style="margin-top:0;">演習2: 分散KVストアでの書き込み競合を解決する</h3>
+
+    <h4>シナリオ: 同時書き込み競合</h4>
+    <p>2ノードのKVストアで、ネットワーク分断中に同じキー <code>user:42:cart</code> に対して異なる値が書き込まれた場合を考えます。</p>
+    <pre><code># 分断前の状態（両ノードが同じ値を持つ）
+Node A: { "user:42:cart": ["book", "pen"] }    Vector Clock: {A:1, B:1}
+Node B: { "user:42:cart": ["book", "pen"] }    Vector Clock: {A:1, B:1}
+
+# 分断中（同時書き込み）
+Node A: ユーザーがpencilを追加
+  → value: ["book", "pen", "pencil"], VC: {A:2, B:1}
+
+Node B: ユーザーがnotebookを追加
+  → value: ["book", "pen", "notebook"], VC: {A:1, B:2}
+
+# 分断解消後の競合状態
+Node A が Node B に伝播: {A:2, B:1} vs {A:1, B:2}
+  → どちらも相手を「前の状態」とみなせない（並行書き込み）
+  → "sibling" として競合を検知</code></pre>
+
+    <h4>競合解決戦略の比較</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>戦略</th><th>仕組み</th><th>長所</th><th>短所</th><th>適用例</th></tr>
+        <tr><td>LWW（Last Write Wins）</td><td>タイムスタンプが新しい方を採用</td><td>シンプル・自動解決</td><td>データロスあり・クロックスキューに脆弱</td><td>Cassandraデフォルト、SNSタイムライン</td></tr>
+        <tr><td>マージ関数（CRDT）</td><td>両方の値を数学的に合成</td><td>データロスなし・自動解決</td><td>すべてのデータ型には適用できない</td><td>ショッピングカート（union）、いいね数（Counter）</td></tr>
+        <tr><td>ユーザー解決</td><td>競合をアプリに返し人間が判断</td><td>データロスなし・正確</td><td>UX悪化・リアルタイム性がない</td><td>Google Docs競合、GitHub merge conflict</td></tr>
+      </table>
+    </div>
+
+    <h4>Dynamo風のカート設計疑似コード</h4>
+    <pre><code>from typing import Dict, List, Any, Optional
+import json
+
+class VectorClock:
+    def __init__(self, clock: Dict[str, int] = None):
+        self.clock = clock or {}
+
+    def increment(self, node_id: str):
+        self.clock[node_id] = self.clock.get(node_id, 0) + 1
+
+    def dominates(self, other: 'VectorClock') -> bool:
+        """self が other より新しい（因果的に後）かどうか"""
+        return (all(self.clock.get(k, 0) >= other.clock.get(k, 0)
+                    for k in other.clock)
+                and any(self.clock.get(k, 0) > other.clock.get(k, 0)
+                        for k in other.clock))
+
+    def concurrent_with(self, other: 'VectorClock') -> bool:
+        """並行書き込みかどうか（どちらも相手を支配しない）"""
+        return (not self.dominates(other) and not other.dominates(self))
+
+
+class CartValue:
+    def __init__(self, items: List[str], vc: VectorClock):
+        self.items = items
+        self.vc = vc
+
+
+class DynamoStyleKV:
+    """Dynamo風のKVストア: 競合を検知し「siblings」として保存"""
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+        # 各キーに対してsiblings（並行バージョン）リストを保持
+        self.store: Dict[str, List[CartValue]] = {}
+
+    def write(self, key: str, items: List[str]) -> CartValue:
+        existing_siblings = self.store.get(key, [])
+
+        # 新しいVCは既存の全siblingを結合してインクリメント
+        merged_clock = {}
+        for sibling in existing_siblings:
+            for node, cnt in sibling.vc.clock.items():
+                merged_clock[node] = max(merged_clock.get(node, 0), cnt)
+
+        new_vc = VectorClock(merged_clock)
+        new_vc.increment(self.node_id)
+        new_value = CartValue(items, new_vc)
+        self.store[key] = [new_value]  # 書き込み時はsiblingを1つに
+        return new_value
+
+    def merge_siblings(self, siblings: List[CartValue]) -> Optional[CartValue]:
+        """カートの場合: union（和集合）でマージ"""
+        if not siblings:
+            return None
+        if len(siblings) == 1:
+            return siblings[0]
+
+        # 全itemsの和集合
+        merged_items = list(set(
+            item for s in siblings for item in s.items
+        ))
+        # VCは全siblingの要素ごとの最大値
+        merged_clock = {}
+        for s in siblings:
+            for node, cnt in s.vc.clock.items():
+                merged_clock[node] = max(merged_clock.get(node, 0), cnt)
+
+        return CartValue(merged_items, VectorClock(merged_clock))
+
+    def read_with_reconciliation(self, key: str) -> CartValue:
+        siblings = self.store.get(key, [])
+        return self.merge_siblings(siblings)
+
+
+# 使用例
+node_a = DynamoStyleKV("A")
+node_a.write("cart:42", ["book", "pen", "pencil"])
+node_b = DynamoStyleKV("B")
+node_b.write("cart:42", ["book", "pen", "notebook"])
+
+# 分断解消後のマージ（app層で処理）
+merged = node_a.merge_siblings([
+    node_a.store["cart:42"][0],
+    node_b.store["cart:42"][0]
+])
+print(merged.items)  # ["book", "pen", "pencil", "notebook"]</code></pre>
+  </div>
+
+  <!-- Exercise 3: Raft Failure Analysis -->
+  <div class="card" style="border-color:rgba(245,158,11,0.5);">
+    <h3 class="sub-title" style="margin-top:0;">演習3: Raftクラスターの障害シナリオ分析</h3>
+    <p>5ノードRaftクラスター（Node1=Leader, Node2〜5=Follower）で以下の障害が起きた場合、何が起こりどう回復するかを分析してください。</p>
+
+    <h4>シナリオA: リーダーノードが突然クラッシュ</h4>
+    <div class="card">
+      <ol style="color:var(--text2);margin-left:1.5rem;line-height:2;">
+        <li><strong>検知：</strong>Node1からのHeartbeatが止まり、Node2〜5のElection Timerが起動。最初にタイムアウトしたノード（例: Node3）がCandidateに昇格。</li>
+        <li><strong>選出：</strong>Node3がTerm=2でVote Requestを送信。Node2,4,5から合計3票（過半数）を獲得しLeaderに昇格。</li>
+        <li><strong>影響：</strong>Leaderクラッシュ直前のコミット済みエントリは全Followerに到達している（Durability保証）。未コミットエントリはnew Leaderが再送するか破棄（Term差分による自動調整）。</li>
+        <li><strong>クライアント：</strong>クラッシュ前のリクエストはタイムアウト。クライアントは冪等キーを使ってリトライ。新LeaderへのリダイレクトはFollowerの404/redirectレスポンスで案内。</li>
+        <li><strong>復旧時間：</strong>Election Timeout（150〜300ms）+ 選出処理（数十ms）= 通常 <strong>200〜500ms以内</strong>。</li>
+      </ol>
+    </div>
+
+    <h4>シナリオB: ネットワーク分断でクラスターが2+1に分かれた</h4>
+    <div class="card">
+      <div class="two-col">
+        <div>
+          <p><strong>ケース: 5ノードが3+2に分断</strong></p>
+          <ul style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;">
+            <li>3ノード側: 過半数（3/5）を保持。既存Leaderが生存していれば継続、なければ新Leader選出。<strong>正常動作</strong></li>
+            <li>2ノード側: 過半数未満。Election Timeoutが切れてもVoteを集められず。<strong>書き込み停止（CP保証）</strong></li>
+            <li>分断解消後: 2ノード側は新LeaderのTermに従いログを同期。古いLeaderだった場合は自動的にFollowerに降格。</li>
+          </ul>
+        </div>
+        <div>
+          <p><strong>ケース: 2+2+1 に3分割</strong></p>
+          <ul style="color:var(--text2);margin-left:1.2rem;font-size:0.9rem;">
+            <li>どのグループも過半数（3票）を取れない</li>
+            <li>全グループで書き込みが停止</li>
+            <li>既存Leaderが孤立した場合もHeartbeat応答なしでLease失効</li>
+            <li>分断解消後、最新TermのLeaderが統一クラスターを再構築</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h4>シナリオC: 2台が同時にElectionを開始した（Split Vote）</h4>
+    <div class="card">
+      <ol style="color:var(--text2);margin-left:1.5rem;line-height:2;">
+        <li>Node2とNode3がほぼ同時にTerm=2でVote Requestを送信。</li>
+        <li>Node4がNode2に、Node5がNode3にVoteを返す（残りのNodeは先着に投票済み）。</li>
+        <li>結果: Node2=2票(自分+Node4), Node3=2票(自分+Node5) → どちらも過半数3票に届かず選出失敗。</li>
+        <li>各Candidateは Election Timeout後（ランダム）に Term=3 で再選出。今度はランダムな時間差でどちらかが先行し成功する確率が高い。</li>
+        <li>繰り返し発生する確率は指数的に低下（ランダムタイムアウトのため）。通常2〜3回のElectionで収束。</li>
+      </ol>
+    </div>
+
+    <h4>シナリオD: ディスクがフルになったFollower</h4>
+    <div class="card">
+      <ol style="color:var(--text2);margin-left:1.5rem;line-height:2;">
+        <li><strong>影響：</strong>FollowerがAppendEntries RPCのログを書き込めず <code>success=false</code> を返し続ける。</li>
+        <li><strong>Quorum：</strong>他の4ノード中3ノードが正常なら、過半数（3票）は維持される。Leaderはディスクフルのフォロワーを無視してコミット可能。クラスターとしては正常稼働を維持。</li>
+        <li><strong>Risk：</strong>さらに別ノードが落ちると過半数を失う可能性。冗長性が実質的に低下している危険な状態。</li>
+        <li><strong>対処：</strong>アラートを上げてディスク拡張または古いログのスナップショット（Log Compaction）で空き容量確保。RaftのLog CompactionはSnapshotメカニズムで古いエントリを圧縮します。</li>
+        <li><strong>復旧：</strong>ディスク空き後、LeaderからLog全体のSnapshotを受け取り（InstallSnapshot RPC）、通常のAppendEntriesで差分を同期して正常Followerに復帰。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+</div><!-- /deep dive container -->
+
+<!-- FOOTER NAV -->
+<div class="footer-nav">
+  <a href="08_microservices.html">← Ch08 マイクロサービス</a>
+  <a href="00_index.html">🏠 目次へ</a>
+  <a href="10_scalability.html">Ch10 スケーラビリティ →</a>
+</div>
+
+</body>
+</html>

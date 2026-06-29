@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>負荷分散 & リバースプロキシ | システムデザイン学習</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  --ch-color:#ec4899;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.nav-links{display:flex;gap:16px;font-size:14px;flex-wrap:wrap;}
+.nav-links a{color:var(--text2);padding:6px 14px;border-radius:6px;border:1px solid transparent;transition:all .2s;}
+.nav-links a:hover{color:var(--text);border-color:var(--border);background:var(--surface2);text-decoration:none;}
+.nav-links a.current{color:var(--ch-color);border-color:rgba(236,72,153,.3);background:rgba(236,72,153,.08);}
+.nav-title{font-size:15px;font-weight:600;color:var(--accent);}
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#13151f 40%,#200d1a 100%);padding:72px 32px 56px;text-align:center;border-bottom:1px solid var(--border);}
+.hero-badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--ch-color);border:1px solid rgba(236,72,153,.3);border-radius:20px;padding:4px 16px;font-size:13px;margin-bottom:20px;}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,var(--text),var(--ch-color));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;}
+.hero p{font-size:17px;color:var(--text2);max-width:680px;margin:0 auto 32px;}
+.hero-stats{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 24px;text-align:center;}
+.stat-val{font-size:26px;font-weight:700;color:var(--ch-color);}
+.stat-label{font-size:12px;color:var(--text3);margin-top:4px;}
+.container{max-width:1100px;margin:0 auto;padding:0 32px;}
+section{padding:60px 0;border-bottom:1px solid var(--border);}
+h2{font-size:1.85rem;font-weight:700;margin-bottom:8px;}
+h2 .num{color:var(--ch-color);font-size:1rem;display:block;margin-bottom:6px;font-weight:600;letter-spacing:.05em;}
+.section-lead{color:var(--text2);font-size:16px;margin-bottom:36px;max-width:720px;}
+h3{font-size:1.2rem;font-weight:600;color:var(--accent2);margin:28px 0 10px;}
+h4{font-size:.97rem;font-weight:600;color:var(--accent3);margin:18px 0 8px;}
+p{color:var(--text2);margin-bottom:14px;}
+ul,ol{color:var(--text2);padding-left:24px;margin-bottom:14px;}
+li{margin-bottom:5px;}
+strong{color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px;margin-bottom:28px;}
+.card h4{margin-top:0;}
+.card-pink{border-left:3px solid var(--ch-color);}
+.card-cyan{border-left:3px solid var(--accent2);}
+.card-purple{border-left:3px solid var(--purple);}
+.card-green{border-left:3px solid var(--green);}
+.card-amber{border-left:3px solid var(--accent3);}
+.card-red{border-left:3px solid var(--red);}
+.highlight{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-left:3px solid var(--accent);border-radius:8px;padding:14px 18px;margin:14px 0;}
+.highlight.green{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);border-left-color:var(--green);}
+.highlight.amber{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);border-left-color:var(--accent3);}
+.highlight.red{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);border-left-color:var(--red);}
+.highlight.cyan{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.2);border-left-color:var(--accent2);}
+.highlight.pink{background:rgba(236,72,153,.08);border-color:rgba(236,72,153,.2);border-left-color:var(--ch-color);}
+pre{background:#0d0f18;border:1px solid var(--border);border-radius:10px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.65;}
+code{font-family:'Fira Code','Cascadia Code','Consolas',monospace;}
+pre code{color:#e2e8f0;}
+.cm{color:#475569;} .str{color:#10b981;} .kw{color:#a78bfa;} .fn{color:#22d3ee;} .nc{color:#f59e0b;} .op{color:#ec4899;}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;}
+th{background:var(--surface2);color:var(--text);padding:11px 15px;text-align:left;border:1px solid var(--border);}
+td{padding:10px 15px;border:1px solid var(--border);color:var(--text2);}
+tr:hover td{background:rgba(28,31,46,.6);}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;}
+.badge.green{background:rgba(16,185,129,.15);color:var(--green);}
+.badge.red{background:rgba(239,68,68,.15);color:var(--red);}
+.badge.amber{background:rgba(245,158,11,.15);color:var(--accent3);}
+.badge.blue{background:rgba(99,102,241,.15);color:var(--accent);}
+.badge.pink{background:rgba(236,72,153,.15);color:var(--ch-color);}
+.badge.cyan{background:rgba(34,211,238,.15);color:var(--accent2);}
+.svg-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:20px 0;overflow-x:auto;text-align:center;}
+.svg-caption{text-align:center;font-size:12px;color:var(--text3);margin-top:10px;}
+.algo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin:20px 0;}
+.algo-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.algo-card .algo-name{font-weight:700;color:var(--text);font-size:1rem;margin-bottom:6px;}
+.algo-card .algo-tag{display:inline-block;background:rgba(236,72,153,.15);color:var(--ch-color);border-radius:8px;padding:2px 10px;font-size:11px;margin-bottom:10px;}
+.tip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+.tip-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.tip-card .tip-num{font-size:30px;font-weight:800;color:rgba(236,72,153,.3);line-height:1;}
+.tip-card h4{color:var(--ch-color);margin:8px 0 8px;}
+.tip-card p{font-size:14px;margin:0;color:var(--text2);}
+.step-flow{display:flex;gap:0;margin:20px 0;flex-wrap:wrap;}
+.step{flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);padding:16px;text-align:center;position:relative;}
+.step:not(:last-child)::after{content:'→';position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:18px;z-index:1;}
+.step-num{font-size:22px;font-weight:800;color:var(--ch-color);opacity:.5;}
+.step-label{font-size:13px;color:var(--text2);margin-top:4px;}
+footer{padding:40px 32px;text-align:center;color:var(--text3);font-size:14px;border-top:1px solid var(--border);}
+.footer-nav{display:flex;justify-content:space-between;align-items:center;max-width:700px;margin:0 auto 20px;flex-wrap:wrap;gap:16px;}
+.footer-nav a{padding:10px 20px;border-radius:8px;border:1px solid var(--border);color:var(--text2);font-size:14px;transition:all .2s;}
+.footer-nav a:hover{border-color:var(--ch-color);color:var(--ch-color);text-decoration:none;background:rgba(236,72,153,.05);}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-title">⚡ システムデザイン</div>
+  <div class="nav-links">
+    <a href="00_index.html">🏠 Home</a>
+    <a href="05_caching.html">← Ch05 キャッシュ</a>
+    <a class="current" href="#">Ch06 負荷分散</a>
+    <a href="07_message_queues.html">Ch07 メッセージキュー →</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Chapter 06</div>
+  <h1>負荷分散 &amp; リバースプロキシ</h1>
+  <p>大規模システムの可用性・スループット・耐障害性を支える中核技術。L4/L7の違いからアルゴリズム、ヘルスチェック、グローバルルーティングまで網羅。</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-val">6</div><div class="stat-label">LBアルゴリズム</div></div>
+    <div class="stat"><div class="stat-val">L4/L7</div><div class="stat-label">レイヤー</div></div>
+    <div class="stat"><div class="stat-val">99.99%</div><div class="stat-label">目標可用性</div></div>
+    <div class="stat"><div class="stat-val">9</div><div class="stat-label">主要トピック</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- Section 1: ロードバランシングとは -->
+<!-- ============================================================ -->
+<section id="s1">
+  <h2><span class="num">SECTION 01</span>ロードバランシングとは</h2>
+  <p class="section-lead">単一サーバーには物理的な限界がある。ロードバランサーはその限界を超えるための最初の一手だ。</p>
+
+  <h3>単一サーバーの限界</h3>
+  <p>どれだけ高性能なサーバーでも、扱えるリクエスト数には上限がある。具体的には以下の3つのボトルネックが発生する。</p>
+
+  <div class="card-grid">
+    <div class="card card-red">
+      <h4>🔴 CPU の限界</h4>
+      <p>コア数・クロック周波数の上限。マルチスレッドでも並列処理可能数に限りがある。大量リクエストでCPU使用率100%に張り付き、レスポンスタイムが急増する。</p>
+    </div>
+    <div class="card card-amber">
+      <h4>🟡 メモリの限界</h4>
+      <p>物理メモリが枯渇するとスワップが発生し、レイテンシが100倍以上悪化。セッションデータやキャッシュで特に顕著。</p>
+    </div>
+    <div class="card card-cyan">
+      <h4>🔵 ネットワーク帯域の限界</h4>
+      <p>NICの最大スループット（例：10Gbps）を超えることはできない。動画配信・大量データ転送では特にボトルネックになりやすい。</p>
+    </div>
+  </div>
+
+  <h3>垂直スケーリング vs 水平スケーリング</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>垂直スケーリング（スケールアップ）</h4>
+      <ul>
+        <li>既存サーバーのCPU・RAM・ディスクを強化</li>
+        <li>シンプルだがハードウェアの物理的上限がある</li>
+        <li>コストが指数的に上昇（ハイエンドサーバーは高価）</li>
+        <li><strong>SPOFが残る</strong> — サーバーが1台なら停止でサービス全断</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>水平スケーリング（スケールアウト）</h4>
+      <ul>
+        <li>同スペックのサーバーを複数台追加</li>
+        <li>コストが線形に増加（汎用サーバーを利用可能）</li>
+        <li>理論上無限にスケール可能</li>
+        <li><strong>ロードバランサーが必須</strong>になる</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>SPOF の排除とフォールトトレランス</h3>
+  <p><strong>SPOF (Single Point of Failure)</strong> とは、障害が発生するとシステム全体が停止してしまう単一コンポーネントのこと。ロードバランサーは複数のバックエンドサーバーに分散することで、1台が落ちても残りが処理を継続できるようにする。</p>
+
+  <div class="highlight green">
+    <strong>可用性の計算:</strong> サーバー1台の可用性が 99% の場合、2台を並列にすると<br>
+    <code>1 - (1-0.99)² = 1 - 0.0001 = 99.99%</code> に向上する。
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="max-width:780px;width:100%">
+      <!-- 単一サーバー側 -->
+      <text x="180" y="24" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">単一サーバー構成</text>
+      <!-- Client -->
+      <rect x="20" y="100" width="80" height="40" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="60" y="125" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">クライアント</text>
+      <!-- Arrow -->
+      <line x1="100" y1="120" x2="155" y2="120" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-red)"/>
+      <!-- Server -->
+      <rect x="155" y="80" width="80" height="80" rx="8" fill="#1c1f2e" stroke="#ef4444" stroke-width="2"/>
+      <text x="195" y="118" text-anchor="middle" fill="#ef4444" font-size="12" font-family="sans-serif">サーバー</text>
+      <text x="195" y="132" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">SPOF!</text>
+      <!-- X mark -->
+      <line x1="155" y1="80" x2="235" y2="160" stroke="#ef4444" stroke-width="3" opacity=".5"/>
+      <line x1="235" y1="80" x2="155" y2="160" stroke="#ef4444" stroke-width="3" opacity=".5"/>
+
+      <!-- LB構成側 -->
+      <text x="590" y="24" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">ロードバランサー構成</text>
+      <!-- Client -->
+      <rect x="340" y="100" width="80" height="40" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="380" y="125" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">クライアント</text>
+      <!-- Arrow to LB -->
+      <line x1="420" y1="120" x2="468" y2="120" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+      <!-- LB -->
+      <rect x="468" y="90" width="80" height="60" rx="8" fill="rgba(236,72,153,.15)" stroke="#ec4899" stroke-width="2"/>
+      <text x="508" y="118" text-anchor="middle" fill="#ec4899" font-size="11" font-family="sans-serif">ロード</text>
+      <text x="508" y="132" text-anchor="middle" fill="#ec4899" font-size="11" font-family="sans-serif">バランサー</text>
+      <!-- Arrows to servers -->
+      <line x1="548" y1="105" x2="610" y2="65" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+      <line x1="548" y1="120" x2="610" y2="120" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+      <line x1="548" y1="135" x2="610" y2="175" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+      <!-- Servers -->
+      <rect x="610" y="40" width="70" height="40" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="645" y="65" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">Server 1</text>
+      <rect x="610" y="100" width="70" height="40" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="645" y="125" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">Server 2</text>
+      <rect x="610" y="155" width="70" height="40" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="645" y="180" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">Server 3</text>
+
+      <!-- Arrow defs -->
+      <defs>
+        <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+        <marker id="arrow-cyan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">左：単一サーバーはSPOF。右：ロードバランサーが複数サーバーへ分散し冗長性を確保。</div>
+  </div>
+
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 2: L4 vs L7 -->
+<!-- ============================================================ -->
+<section id="s2">
+  <h2><span class="num">SECTION 02</span>L4 vs L7 ロードバランサー</h2>
+  <p class="section-lead">OSIモデルのどのレイヤーで動作するかによって、速度・機能・適用シナリオが大きく異なる。</p>
+
+  <div class="card-grid">
+    <div class="card card-cyan">
+      <h4>L4 ロードバランサー（トランスポート層）</h4>
+      <p>TCP/UDPのヘッダー情報（IPアドレス・ポート番号）のみを見てルーティングする。HTTPの中身は見ない。</p>
+      <ul>
+        <li><strong>処理速度が非常に高速</strong>（パケット単位で転送）</li>
+        <li>プロトコル非依存（HTTP/FTP/SSH/SMTP すべて扱える）</li>
+        <li>コンテキストなし — リクエストの内容は不透明</li>
+        <li>SSL終端は不可（パケットを解釈しないため）</li>
+        <li>代表例：AWS NLB、HAProxy（TCPモード）、LVS</li>
+      </ul>
+    </div>
+    <div class="card card-pink">
+      <h4>L7 ロードバランサー（アプリケーション層）</h4>
+      <p>HTTPリクエストを完全にデコードし、URL・ヘッダー・Cookieなどの内容を見てルーティングする。</p>
+      <ul>
+        <li>コンテンツベースルーティング（<code>/api/*</code>→APIサーバー等）</li>
+        <li><strong>SSL/TLS終端</strong>が可能</li>
+        <li>ヘッダーの追加・変更・削除</li>
+        <li>A/Bテスト・カナリアデプロイに対応</li>
+        <li>代表例：AWS ALB、Nginx、Envoy、Traefik</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 820 260" xmlns="http://www.w3.org/2000/svg" style="max-width:820px;width:100%">
+      <!-- L4 side -->
+      <text x="185" y="20" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold" font-family="sans-serif">L4 Load Balancer</text>
+      <rect x="20" y="35" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="70" y="65" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">Client</text>
+      <line x1="120" y1="60" x2="148" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <!-- L4 LB box with layers -->
+      <rect x="148" y="30" width="120" height="140" rx="8" fill="#0d0f18" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="208" y="52" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">L4 LB</text>
+      <rect x="158" y="58" width="100" height="22" rx="4" fill="rgba(34,211,238,.15)" stroke="#22d3ee" stroke-width=".8"/>
+      <text x="208" y="74" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">TCP/UDP ヘッダ</text>
+      <rect x="158" y="84" width="100" height="22" rx="4" fill="rgba(42,45,62,.5)" stroke="#2a2d3e" stroke-width=".8"/>
+      <text x="208" y="100" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">HTTP ペイロード</text>
+      <text x="208" y="114" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">（未解析）</text>
+      <text x="208" y="135" text-anchor="middle" fill="#475569" font-size="9" font-family="sans-serif">👁 IPアドレス・ポートのみ</text>
+      <text x="208" y="150" text-anchor="middle" fill="#475569" font-size="9" font-family="sans-serif">✗ URL / Cookie 不可</text>
+      <!-- Arrows to servers L4 -->
+      <line x1="268" y1="70" x2="315" y2="55" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g2)"/>
+      <line x1="268" y1="90" x2="315" y2="100" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g2)"/>
+      <rect x="315" y="38" width="70" height="34" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="350" y="60" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">Server 1</text>
+      <rect x="315" y="83" width="70" height="34" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="350" y="105" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">Server 2</text>
+
+      <!-- Divider -->
+      <line x1="420" y1="15" x2="420" y2="245" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!-- L7 side -->
+      <text x="635" y="20" text-anchor="middle" fill="#ec4899" font-size="14" font-weight="bold" font-family="sans-serif">L7 Load Balancer</text>
+      <rect x="435" y="35" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="485" y="65" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">Client</text>
+      <line x1="535" y1="60" x2="563" y2="60" stroke="#ec4899" stroke-width="1.5" marker-end="url(#arr-p2)"/>
+      <!-- L7 LB box -->
+      <rect x="563" y="20" width="135" height="200" rx="8" fill="#0d0f18" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="630" y="42" text-anchor="middle" fill="#ec4899" font-size="11" font-family="sans-serif">L7 LB</text>
+      <rect x="573" y="48" width="115" height="20" rx="4" fill="rgba(34,211,238,.1)" stroke="#22d3ee" stroke-width=".8"/>
+      <text x="630" y="62" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">TCP/UDP ヘッダ</text>
+      <rect x="573" y="72" width="115" height="20" rx="4" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width=".8"/>
+      <text x="630" y="86" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">HTTP Method / URL / Path</text>
+      <rect x="573" y="96" width="115" height="20" rx="4" fill="rgba(236,72,153,.1)" stroke="#ec4899" stroke-width=".8"/>
+      <text x="630" y="110" text-anchor="middle" fill="#ec4899" font-size="9" font-family="sans-serif">Headers / Cookies</text>
+      <rect x="573" y="120" width="115" height="20" rx="4" fill="rgba(245,158,11,.1)" stroke="#f59e0b" stroke-width=".8"/>
+      <text x="630" y="134" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="sans-serif">Request Body</text>
+      <text x="630" y="158" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">✓ URL-based routing</text>
+      <text x="630" y="172" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">✓ SSL Termination</text>
+      <text x="630" y="186" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">✓ Header manipulation</text>
+      <!-- Arrows to servers L7 -->
+      <line x1="698" y1="75" x2="740" y2="55" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g2)"/>
+      <line x1="698" y1="115" x2="740" y2="115" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g2)"/>
+      <line x1="698" y1="155" x2="740" y2="175" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g2)"/>
+      <rect x="740" y="38" width="65" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="772" y="57" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">/api/*</text>
+      <rect x="740" y="100" width="65" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="772" y="119" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">/static/*</text>
+      <rect x="740" y="160" width="65" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="772" y="179" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">/ws/*</text>
+
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/></marker>
+        <marker id="arr-g2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#10b981"/></marker>
+        <marker id="arr-p2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ec4899"/></marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">L4はTCP/UDPヘッダのみを処理し高速。L7はHTTPを完全解析し細かなルーティングが可能。</div>
+  </div>
+
+  <h3>比較表</h3>
+  <table>
+    <tr><th>項目</th><th>L4 ロードバランサー</th><th>L7 ロードバランサー</th></tr>
+    <tr><td>動作レイヤー</td><td>OSI 第4層（TCP/UDP）</td><td>OSI 第7層（HTTP/HTTPS）</td></tr>
+    <tr><td>処理速度</td><td><span class="badge green">非常に高速</span></td><td><span class="badge amber">中程度</span></td></tr>
+    <tr><td>CPU負荷</td><td><span class="badge green">低い</span></td><td><span class="badge amber">高め</span></td></tr>
+    <tr><td>コンテンツルーティング</td><td><span class="badge red">不可</span></td><td><span class="badge green">可能</span></td></tr>
+    <tr><td>SSL終端</td><td><span class="badge red">不可</span></td><td><span class="badge green">可能</span></td></tr>
+    <tr><td>ヘッダー操作</td><td><span class="badge red">不可</span></td><td><span class="badge green">可能</span></td></tr>
+    <tr><td>プロトコル依存</td><td>なし（汎用）</td><td>HTTP/HTTPS 専用</td></tr>
+    <tr><td>主なユースケース</td><td>ゲーム・VoIP・大量TCP</td><td>Webアプリ・API・マイクロサービス</td></tr>
+    <tr><td>代表製品</td><td>AWS NLB、HAProxy TCP、LVS</td><td>AWS ALB、Nginx、Envoy、Traefik</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 3: アルゴリズム -->
+<!-- ============================================================ -->
+<section id="s3">
+  <h2><span class="num">SECTION 03</span>ロードバランシングアルゴリズム（全6種）</h2>
+  <p class="section-lead">どのサーバーにリクエストを転送するかを決めるロジック。ワークロードの特性に応じて選択が変わる。</p>
+
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-name">1. Round Robin</div>
+      <div class="algo-tag">均等分散</div>
+      <p>サーバーリストを順番に循環してリクエストを割り当てる。最もシンプルなアルゴリズム。</p>
+      <div class="highlight">
+        <strong>適用シナリオ:</strong> サーバーのスペックが均一で、リクエストの処理時間が同程度の場合。
+      </div>
+      <p><strong>欠点:</strong> 処理時間が長いリクエストが集中すると、一部サーバーがホットスポットになる。</p>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name">2. Weighted Round Robin</div>
+      <div class="algo-tag">重み付き均等分散</div>
+      <p>各サーバーに重みを設定し、重みに比例した頻度でリクエストを割り当てる。</p>
+      <div class="highlight amber">
+        <strong>例:</strong> Server A (weight=3) : Server B (weight=1) → A に 75%、B に 25% のリクエスト
+      </div>
+      <p><strong>適用シナリオ:</strong> サーバーのスペックに差がある場合（古いサーバーと新しいサーバーの混在）。</p>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name">3. Least Connections</div>
+      <div class="algo-tag">最小コネクション</div>
+      <p>現在のアクティブ接続数が最も少ないサーバーにリクエストを送る。</p>
+      <div class="highlight green">
+        <strong>適用シナリオ:</strong> 長時間持続するコネクション（WebSocket・DB・ファイル転送）で Round Robin より均等に分散できる。
+      </div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name">4. Weighted Least Connections</div>
+      <div class="algo-tag">重み付き最小コネクション</div>
+      <p>最小コネクション数を重みで割った値が最小のサーバーを選ぶ。</p>
+      <div class="highlight">
+        <code>スコア = active_connections / weight</code><br>
+        スコアが最小のサーバーを選択する。
+      </div>
+      <p>スペック差があり、かつ接続時間も不均一な場合に最適。</p>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name">5. IP Hash</div>
+      <div class="algo-tag">スティッキーセッション</div>
+      <p>クライアントのIPアドレスをハッシュ化し、常に同一サーバーへルーティングする。</p>
+      <div class="highlight amber">
+        <code>server_index = hash(client_ip) % server_count</code>
+      </div>
+      <p><strong>欠点:</strong> サーバー追加・削除でハッシュ値が変化し、セッションが切れる可能性がある。一貫性ハッシュ（Consistent Hashing）で改善可能。</p>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name">6. Power of Two Choices</div>
+      <div class="algo-tag">確率的・高スケール</div>
+      <p>ランダムに2台のサーバーを選び、接続数が少ない方を選択する。</p>
+      <div class="highlight cyan">
+        <strong>なぜ優れているか:</strong> 完全ランダムより大幅に均等な分散を実現し、最小コネクションよりも計算コストが低い。大規模クラスター（数百台以上）で特に有効。
+      </div>
+    </div>
+  </div>
+
+  <h3>アルゴリズム比較表</h3>
+  <table>
+    <tr><th>アルゴリズム</th><th>計算コスト</th><th>均等性</th><th>スティッキー</th><th>最適ユースケース</th></tr>
+    <tr><td>Round Robin</td><td><span class="badge green">O(1)</span></td><td>良好</td><td>なし</td><td>均一スペック・短時間リクエスト</td></tr>
+    <tr><td>Weighted Round Robin</td><td><span class="badge green">O(1)</span></td><td>重み依存</td><td>なし</td><td>スペック混在</td></tr>
+    <tr><td>Least Connections</td><td><span class="badge amber">O(n)</span></td><td>優秀</td><td>なし</td><td>長時間コネクション</td></tr>
+    <tr><td>Weighted Least Conn</td><td><span class="badge amber">O(n)</span></td><td>優秀</td><td>なし</td><td>スペック混在＋長時間</td></tr>
+    <tr><td>IP Hash</td><td><span class="badge green">O(1)</span></td><td>偏り可</td><td><span class="badge green">あり</span></td><td>セッションが必要な場合</td></tr>
+    <tr><td>Power of Two</td><td><span class="badge green">O(1)</span></td><td>非常に良好</td><td>なし</td><td>大規模クラスター</td></tr>
+  </table>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;width:100%">
+      <text x="380" y="18" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">Round Robin vs Least Connections — リクエスト分散の違い</text>
+      <!-- Round Robin -->
+      <text x="185" y="40" text-anchor="middle" fill="#22d3ee" font-size="12" font-family="sans-serif">Round Robin</text>
+      <!-- LB -->
+      <rect x="100" y="50" width="70" height="35" rx="6" fill="rgba(34,211,238,.15)" stroke="#22d3ee"/>
+      <text x="135" y="72" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">LB</text>
+      <!-- Servers with req counts -->
+      <rect x="220" y="48" width="60" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="250" y="68" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">S1: 3req</text>
+      <rect x="220" y="85" width="60" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="250" y="105" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">S2: 3req</text>
+      <rect x="220" y="122" width="60" height="30" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="250" y="142" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">S3: 3req</text>
+      <line x1="170" y1="63" x2="220" y2="63" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar3)"/>
+      <line x1="170" y1="68" x2="220" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar3)"/>
+      <line x1="170" y1="73" x2="220" y2="137" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar3)"/>
+      <text x="185" y="175" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">均等分散 ✓</text>
+
+      <!-- Divider -->
+      <line x1="380" y1="35" x2="380" y2="185" stroke="#2a2d3e" stroke-dasharray="4,4"/>
+
+      <!-- Least Connections -->
+      <text x="580" y="40" text-anchor="middle" fill="#ec4899" font-size="12" font-family="sans-serif">Least Connections</text>
+      <rect x="490" y="50" width="70" height="35" rx="6" fill="rgba(236,72,153,.15)" stroke="#ec4899"/>
+      <text x="525" y="72" text-anchor="middle" fill="#ec4899" font-size="10" font-family="sans-serif">LB</text>
+      <!-- Servers with different connections -->
+      <rect x="615" y="48" width="72" height="30" rx="5" fill="#1c1f2e" stroke="#ef4444"/>
+      <text x="651" y="68" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">S1: conn=8</text>
+      <rect x="615" y="85" width="72" height="30" rx="5" fill="#1c1f2e" stroke="#f59e0b"/>
+      <text x="651" y="105" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="sans-serif">S2: conn=5</text>
+      <rect x="615" y="122" width="72" height="30" rx="5" fill="#1c1f2e" stroke="#10b981" stroke-width="2"/>
+      <text x="651" y="142" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">S3: conn=2 ✓</text>
+      <!-- Only arrow to S3 (least) -->
+      <line x1="560" y1="67" x2="615" y2="137" stroke="#10b981" stroke-width="2" marker-end="url(#ar4)"/>
+      <text x="580" y="175" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">最も空いてるS3へ ✓</text>
+
+      <defs>
+        <marker id="ar3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#22d3ee"/></marker>
+        <marker id="ar4" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981"/></marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">Round Robin は機械的に順番に振るが、Least Connections は現在の負荷を見て最適なサーバーを選ぶ。</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 4: スティッキーセッション -->
+<!-- ============================================================ -->
+<section id="s4">
+  <h2><span class="num">SECTION 04</span>スティッキーセッション (Sticky Sessions)</h2>
+  <p class="section-lead">同一クライアントを常に同一サーバーへ振り向ける仕組み。なぜ必要で、なぜ問題なのかを理解する。</p>
+
+  <h3>なぜスティッキーセッションが必要か</h3>
+  <p>従来のWebアプリは、セッション情報（ログイン状態・カートの中身など）をサーバーのメモリに保持することが多い（<strong>ステートフルアーキテクチャ</strong>）。この場合、別のサーバーにリクエストが届くとセッション情報が見つからず、ログアウト状態として扱われてしまう。</p>
+
+  <div class="card-grid">
+    <div class="card card-cyan">
+      <h4>Cookie-based Stickiness（推奨）</h4>
+      <p>ロードバランサーが特定のCookieを発行・読み取り、サーバーを識別する。</p>
+      <ul>
+        <li>Nginxでは <code>sticky cookie</code> ディレクティブ</li>
+        <li>クライアントのIPが変わっても継続（モバイル回線切替等）</li>
+        <li>LBが発行するCookieは暗号化可能</li>
+      </ul>
+    </div>
+    <div class="card card-amber">
+      <h4>IP Hash Stickiness</h4>
+      <p>クライアントIPからサーバーを決定する。Cookieが使えない環境向け。</p>
+      <ul>
+        <li>NAT背後のクライアントは同一IPに見える問題</li>
+        <li>モバイルクライアントのIP変動で接続が切れる</li>
+        <li>サーバー台数変化でルーティングが変わる</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>スティッキーセッションの問題点</h3>
+  <div class="highlight red">
+    <strong>⚠️ 特定サーバーへの偏り:</strong> 一部のユーザーが長時間セッションを維持すると、特定サーバーへの負荷が集中する。Round Robin の均等分散の恩恵を失う。<br><br>
+    <strong>⚠️ スケールアウトの困難:</strong> サーバーを追加しても、既存セッションが旧サーバーに縛られるため、新サーバーへのトラフィック移行が遅い。<br><br>
+    <strong>⚠️ 障害時のセッション消失:</strong> スティッキー先のサーバーが落ちると、そのサーバーのセッション情報はすべて失われる。
+  </div>
+
+  <h3>解決策：分散セッションストア（ステートレス化）</h3>
+  <p>セッション情報をサーバーのメモリではなく、<strong>外部の分散ストレージ（Redisなど）</strong>に保存することで、どのサーバーへリクエストが届いてもセッションを取得できるようになる。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;width:100%">
+      <!-- Stateful side -->
+      <text x="185" y="18" text-anchor="middle" fill="#ef4444" font-size="12" font-family="sans-serif">ステートフル（問題あり）</text>
+      <rect x="20" y="30" width="65" height="30" rx="5" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="52" y="50" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Client</text>
+      <rect x="115" y="25" width="65" height="40" rx="6" fill="rgba(239,68,68,.1)" stroke="#ef4444"/>
+      <text x="147" y="50" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">LB</text>
+      <line x1="85" y1="45" x2="115" y2="45" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arR)"/>
+      <!-- Servers with session in memory -->
+      <rect x="220" y="22" width="80" height="45" rx="5" fill="#1c1f2e" stroke="#ef4444" stroke-width="2"/>
+      <text x="260" y="42" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">Server1</text>
+      <text x="260" y="56" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="sans-serif">sess: {uid:1}</text>
+      <rect x="220" y="75" width="80" height="45" rx="5" fill="#1c1f2e" stroke="#64748b"/>
+      <text x="260" y="95" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">Server2</text>
+      <text x="260" y="109" text-anchor="middle" fill="#475569" font-size="9" font-family="sans-serif">sess: なし ✗</text>
+      <line x1="180" y1="42" x2="220" y2="42" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arR)"/>
+      <text x="185" y="160" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">Server2へ届くとセッションなし！</text>
+
+      <!-- Divider -->
+      <line x1="380" y1="10" x2="380" y2="185" stroke="#2a2d3e" stroke-dasharray="4,4"/>
+
+      <!-- Stateless side -->
+      <text x="580" y="18" text-anchor="middle" fill="#10b981" font-size="12" font-family="sans-serif">ステートレス（解決策）</text>
+      <rect x="410" y="30" width="65" height="30" rx="5" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="442" y="50" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Client</text>
+      <rect x="500" y="25" width="65" height="40" rx="6" fill="rgba(16,185,129,.1)" stroke="#10b981"/>
+      <text x="532" y="50" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">LB</text>
+      <line x1="475" y1="45" x2="500" y2="45" stroke="#10b981" stroke-width="1.5" marker-end="url(#arG)"/>
+      <!-- Servers -->
+      <rect x="600" y="22" width="75" height="38" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="637" y="45" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Server1 ✓</text>
+      <rect x="600" y="68" width="75" height="38" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="637" y="91" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Server2 ✓</text>
+      <line x1="565" y1="42" x2="600" y2="38" stroke="#10b981" stroke-width="1.5" marker-end="url(#arG)"/>
+      <line x1="565" y1="48" x2="600" y2="78" stroke="#10b981" stroke-width="1.5" marker-end="url(#arG)"/>
+      <!-- Redis -->
+      <rect x="590" y="130" width="95" height="38" rx="8" fill="rgba(239,68,68,.15)" stroke="#ef4444" stroke-width="2"/>
+      <text x="637" y="148" text-anchor="middle" fill="#ef4444" font-size="11" font-family="sans-serif" font-weight="bold">Redis</text>
+      <text x="637" y="162" text-anchor="middle" fill="#ef4444" font-size="9" font-family="sans-serif">Session Store</text>
+      <line x1="637" y1="60" x2="637" y2="130" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="540" y="170" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">どのサーバーもRedisからセッション取得 ✓</text>
+
+      <defs>
+        <marker id="arR" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ef4444"/></marker>
+        <marker id="arG" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981"/></marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">Redisのような分散セッションストアを使うことでスティッキーセッション不要のステートレスアーキテクチャになる。</div>
+  </div>
+
+  <h3>セッション管理コード例（Node.js + Redis）</h3>
+  <pre><code><span class="cm">// express-session + connect-redis でセッションをRedisに保存</span>
+<span class="kw">const</span> <span class="fn">session</span> = <span class="fn">require</span>(<span class="str">'express-session'</span>);
+<span class="kw">const</span> RedisStore = <span class="fn">require</span>(<span class="str">'connect-redis'</span>)(session);
+<span class="kw">const</span> redis = <span class="fn">require</span>(<span class="str">'redis'</span>);
+
+<span class="kw">const</span> client = redis.<span class="fn">createClient</span>({
+  host: <span class="str">'redis-cluster.internal'</span>,
+  port: <span class="nc">6379</span>
+});
+
+app.<span class="fn">use</span>(<span class="fn">session</span>({
+  store: <span class="kw">new</span> <span class="fn">RedisStore</span>({ client }),
+  secret: process.env.SESSION_SECRET,
+  resave: <span class="kw">false</span>,
+  saveUninitialized: <span class="kw">false</span>,
+  cookie: {
+    secure: <span class="kw">true</span>,     <span class="cm">// HTTPS のみ</span>
+    httpOnly: <span class="kw">true</span>,   <span class="cm">// XSS対策</span>
+    maxAge: <span class="nc">1000</span> * <span class="nc">60</span> * <span class="nc">60</span> * <span class="nc">24</span>  <span class="cm">// 24時間</span>
+  }
+}));
+<span class="cm">// これでどのサーバーへルーティングされても同一セッションを参照できる</span></code></pre>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 5: ヘルスチェック -->
+<!-- ============================================================ -->
+<section id="s5">
+  <h2><span class="num">SECTION 05</span>ヘルスチェック</h2>
+  <p class="section-lead">死んだサーバーへのリクエスト転送を防ぐ仕組み。Active と Passive の2方式がある。</p>
+
+  <div class="card-grid">
+    <div class="card card-green">
+      <h4>Active ヘルスチェック（積極的確認）</h4>
+      <p>ロードバランサーが定期的にバックエンドサーバーへプローブリクエストを送信し、応答を確認する。</p>
+      <ul>
+        <li>設定間隔（例：5秒ごと）でエンドポイントを叩く</li>
+        <li>失敗が N 回連続した場合にサーバーをdown状態とする</li>
+        <li>回復後は slow start で徐々にトラフィックを戻す</li>
+        <li>Nginx Plus、AWS ALB、Envoyが対応</li>
+      </ul>
+    </div>
+    <div class="card card-amber">
+      <h4>Passive ヘルスチェック（受動的検知）</h4>
+      <p>実際のクライアントリクエストへの応答を監視し、エラーが続いた場合にサーバーを外す。</p>
+      <ul>
+        <li>追加のプローブトラフィックが不要</li>
+        <li>エラーが実際に出てから検知（少しラグがある）</li>
+        <li>Nginxの <code>max_fails</code> / <code>fail_timeout</code> が該当</li>
+        <li>無料版Nginxでも使用可能</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>ヘルスチェックの種類</h3>
+  <table>
+    <tr><th>種類</th><th>チェック方法</th><th>適用プロトコル</th><th>特徴</th></tr>
+    <tr><td>HTTP</td><td>GET /health → 200 OK</td><td>HTTP/HTTPS</td><td>アプリレベルの正常性確認</td></tr>
+    <tr><td>TCP</td><td>TCPコネクション確立確認</td><td>任意TCP</td><td>アプリ非依存・軽量</td></tr>
+    <tr><td>gRPC</td><td>gRPC Health Checking Protocol</td><td>gRPC</td><td>マイクロサービス向け</td></tr>
+    <tr><td>ICMP (Ping)</td><td>ping応答</td><td>全般</td><td>OSレベルのみ確認</td></tr>
+  </table>
+
+  <h3>Nginx upstream ヘルスチェック設定例</h3>
+  <pre><code><span class="cm"># /etc/nginx/conf.d/upstream.conf</span>
+<span class="kw">upstream</span> app_backend {
+    <span class="cm"># Passive health check</span>
+    <span class="fn">server</span> <span class="nc">10.0.1.10</span>:<span class="nc">8080</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.11</span>:<span class="nc">8080</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.12</span>:<span class="nc">8080</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span> backup;
+
+    <span class="cm"># keep-alive でバックエンドとのコネクションを再利用</span>
+    keepalive <span class="nc">32</span>;
+}
+
+<span class="kw">server</span> {
+    <span class="fn">listen</span> <span class="nc">80</span>;
+    location / {
+        <span class="fn">proxy_pass</span>       http://app_backend;
+        <span class="fn">proxy_next_upstream</span> error timeout http_500 http_502 http_503;
+        <span class="fn">proxy_next_upstream_tries</span> <span class="nc">2</span>;  <span class="cm"># 失敗時に別サーバーへリトライ</span>
+        <span class="fn">proxy_connect_timeout</span> <span class="nc">3s</span>;
+        <span class="fn">proxy_read_timeout</span>    <span class="nc">30s</span>;
+    }
+}</code></pre>
+
+  <pre><code><span class="cm"># Nginx Plus の Active Health Check 例</span>
+<span class="kw">upstream</span> app_backend {
+    zone backend <span class="nc">64k</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.10</span>:<span class="nc">8080</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.11</span>:<span class="nc">8080</span>;
+}
+
+<span class="kw">server</span> {
+    location / {
+        <span class="fn">proxy_pass</span> http://app_backend;
+        <span class="cm"># アクティブヘルスチェック（Nginx Plus機能）</span>
+        <span class="fn">health_check</span> interval=<span class="nc">5s</span> fails=<span class="nc">3</span> passes=<span class="nc">2</span> uri=/health;
+    }
+}
+<span class="cm"># interval: チェック間隔, fails: down判定の連続失敗数</span>
+<span class="cm"># passes: up復帰判定の連続成功数（slow start効果）</span></code></pre>
+
+  <div class="highlight cyan">
+    <strong>Slow Start（段階的復帰）の仕組み:</strong> 復帰したサーバーにいきなり全量のトラフィックを送ると、キャッシュが冷たい状態でサーバーが再び過負荷になる可能性がある。Slow Start では一定時間をかけて少しずつトラフィック割合を増やしていく。Nginxでは <code>slow_start=30s</code> で設定可能。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 6: リバースプロキシ -->
+<!-- ============================================================ -->
+<section id="s6">
+  <h2><span class="num">SECTION 06</span>リバースプロキシ</h2>
+  <p class="section-lead">クライアントの代理ではなく、サーバーの代理として動作するプロキシ。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;width:100%">
+      <!-- Forward Proxy -->
+      <text x="185" y="18" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">フォワードプロキシ</text>
+      <rect x="10" y="30" width="65" height="32" rx="5" fill="#1c1f2e" stroke="#a78bfa"/>
+      <text x="42" y="51" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="sans-serif">Client</text>
+      <line x1="75" y1="46" x2="108" y2="46" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arP)"/>
+      <rect x="108" y="28" width="80" height="36" rx="6" fill="rgba(167,139,250,.15)" stroke="#a78bfa"/>
+      <text x="148" y="51" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="sans-serif">Forward Proxy</text>
+      <line x1="188" y1="46" x2="222" y2="46" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arP)"/>
+      <rect x="222" y="30" width="65" height="32" rx="5" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="254" y="51" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Internet</text>
+      <text x="185" y="90" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">クライアントの代理</text>
+      <text x="185" y="105" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">（クライアント側に設置）</text>
+      <text x="185" y="120" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">用途：プロキシ設定、VPN、検閲回避</text>
+
+      <!-- Divider -->
+      <line x1="380" y1="10" x2="380" y2="210" stroke="#2a2d3e" stroke-dasharray="4,4"/>
+
+      <!-- Reverse Proxy -->
+      <text x="575" y="18" text-anchor="middle" fill="#ec4899" font-size="12" font-family="sans-serif">リバースプロキシ</text>
+      <rect x="400" y="30" width="65" height="32" rx="5" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="432" y="51" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">Client</text>
+      <line x1="465" y1="46" x2="498" y2="46" stroke="#ec4899" stroke-width="1.5" marker-end="url(#arPk)"/>
+      <rect x="498" y="24" width="90" height="44" rx="6" fill="rgba(236,72,153,.15)" stroke="#ec4899" stroke-width="2"/>
+      <text x="543" y="44" text-anchor="middle" fill="#ec4899" font-size="10" font-family="sans-serif">Reverse</text>
+      <text x="543" y="58" text-anchor="middle" fill="#ec4899" font-size="10" font-family="sans-serif">Proxy/LB</text>
+      <line x1="588" y1="38" x2="630" y2="28" stroke="#10b981" stroke-width="1.5" marker-end="url(#arGn)"/>
+      <line x1="588" y1="46" x2="630" y2="55" stroke="#10b981" stroke-width="1.5" marker-end="url(#arGn)"/>
+      <line x1="588" y1="54" x2="630" y2="82" stroke="#10b981" stroke-width="1.5" marker-end="url(#arGn)"/>
+      <rect x="630" y="14" width="70" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="665" y="32" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Server 1</text>
+      <rect x="630" y="42" width="70" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="665" y="60" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Server 2</text>
+      <rect x="630" y="70" width="70" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="665" y="88" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Server 3</text>
+      <text x="575" y="120" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">サーバーの代理</text>
+      <text x="575" y="135" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">（サーバー側に設置）</text>
+      <text x="575" y="150" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">SSL終端・キャッシュ・圧縮・LB・レート制限</text>
+
+      <defs>
+        <marker id="arP" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#a78bfa"/></marker>
+        <marker id="arPk" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ec4899"/></marker>
+        <marker id="arGn" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981"/></marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">フォワードプロキシはクライアント側に置かれクライアントを代理する。リバースプロキシはサーバー側に置かれサーバーを代理する。</div>
+  </div>
+
+  <h3>リバースプロキシの機能一覧</h3>
+  <div class="card-grid">
+    <div class="card card-pink"><h4>SSL/TLS 終端</h4><p>クライアントとの暗号化通信をリバースプロキシで終端し、バックエンドへはHTTPで転送。証明書管理を一元化できる。</p></div>
+    <div class="card card-cyan"><h4>圧縮（gzip/Brotli）</h4><p>レスポンスを圧縮してクライアントへ送信。バックエンドの負荷を増やさずに転送量を削減できる。</p></div>
+    <div class="card card-green"><h4>静的コンテンツキャッシュ</h4><p>画像・CSS・JSなどの静的ファイルをプロキシがキャッシュし、バックエンドへのリクエストを削減。</p></div>
+    <div class="card card-amber"><h4>レート制限</h4><p>特定IPやエンドポイントへのリクエスト数を制限し、DoS攻撃やAPIの過剰利用を防ぐ。</p></div>
+    <div class="card card-purple"><h4>ヘッダー操作</h4><p>X-Real-IPなどのカスタムヘッダーを追加し、バックエンドが本来のクライアントIPを取得できるようにする。</p></div>
+    <div class="card"><h4>WAF統合</h4><p>Web Application Firewallと連携し、SQLインジェクション・XSSなどの攻撃パターンを検知・ブロック。</p></div>
+  </div>
+
+  <h3>Nginx 設定例（upstream + SSL終端）</h3>
+  <pre><code><span class="cm"># /etc/nginx/sites-available/api.conf</span>
+<span class="kw">upstream</span> api_servers {
+    least_conn;  <span class="cm"># Least Connections アルゴリズム</span>
+    <span class="fn">server</span> <span class="nc">10.0.1.10</span>:<span class="nc">8080</span> weight=<span class="nc">3</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.11</span>:<span class="nc">8080</span> weight=<span class="nc">3</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span>;
+    <span class="fn">server</span> <span class="nc">10.0.1.12</span>:<span class="nc">8080</span> weight=<span class="nc">1</span> max_fails=<span class="nc">3</span> fail_timeout=<span class="nc">30s</span>;
+    keepalive <span class="nc">64</span>;
+}
+
+<span class="kw">server</span> {
+    <span class="fn">listen</span> <span class="nc">443</span> ssl http2;
+    server_name api.example.com;
+
+    <span class="cm"># SSL 終端（TLS Termination）</span>
+    ssl_certificate     /etc/ssl/certs/api.crt;
+    ssl_certificate_key /etc/ssl/private/api.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;  <span class="cm"># セッション再利用</span>
+    ssl_session_timeout <span class="nc">10m</span>;
+
+    <span class="cm"># gzip 圧縮</span>
+    gzip on;
+    gzip_types application/json text/plain;
+
+    location /api/ {
+        <span class="fn">proxy_pass</span>         http://api_servers;
+        proxy_http_version <span class="nc">1.1</span>;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection <span class="str">"upgrade"</span>;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        <span class="cm"># レート制限</span>
+        limit_req zone=api_limit burst=<span class="nc">20</span> nodelay;
+    }
+
+    <span class="cm"># 静的ファイルはキャッシュ</span>
+    location ~* \.(js|css|png|jpg|gif|ico)$ {
+        root /var/www/static;
+        expires <span class="nc">30d</span>;
+        add_header Cache-Control <span class="str">"public, immutable"</span>;
+    }
+}</code></pre>
+
+  <h3>HAProxy 設定例</h3>
+  <pre><code><span class="cm"># /etc/haproxy/haproxy.cfg</span>
+<span class="kw">global</span>
+    log /dev/log local0
+    maxconn <span class="nc">50000</span>
+    nbproc <span class="nc">2</span>
+
+<span class="kw">defaults</span>
+    mode http
+    timeout connect <span class="nc">5s</span>
+    timeout client  <span class="nc">30s</span>
+    timeout server  <span class="nc">30s</span>
+    option httplog
+    option forwardfor  <span class="cm"># X-Forwarded-For 追加</span>
+    option http-server-close
+
+<span class="kw">frontend</span> https_in
+    bind *:<span class="nc">443</span> ssl crt /etc/ssl/api.pem  <span class="cm"># SSL終端</span>
+    default_backend app_servers
+    acl is_api path_beg /api/
+    use_backend api_servers if is_api  <span class="cm"># コンテンツルーティング</span>
+
+<span class="kw">backend</span> app_servers
+    balance leastconn
+    option httpchk GET /health HTTP/1.1\r\nHost:\ localhost
+    http-check expect status 200
+    server app1 <span class="nc">10.0.1.10</span>:<span class="nc">8080</span> check inter <span class="nc">5s</span> rise <span class="nc">2</span> fall <span class="nc">3</span>
+    server app2 <span class="nc">10.0.1.11</span>:<span class="nc">8080</span> check inter <span class="nc">5s</span> rise <span class="nc">2</span> fall <span class="nc">3</span>
+    server app3 <span class="nc">10.0.1.12</span>:<span class="nc">8080</span> check inter <span class="nc">5s</span> rise <span class="nc">2</span> fall <span class="nc">3</span> backup</code></pre>
+
+  <h3>TLS の3つのモード</h3>
+  <table>
+    <tr><th>モード</th><th>説明</th><th>メリット</th><th>デメリット</th></tr>
+    <tr><td><strong>TLS Termination</strong></td><td>LBでTLS終端、バックエンドへはHTTP</td><td>証明書管理を一元化、バックエンドの負荷軽減</td><td>LB〜バックエンド間は暗号化なし</td></tr>
+    <tr><td><strong>TLS Passthrough</strong></td><td>LBはTLSパケットをそのまま転送</td><td>End-to-End暗号化。LBはパケット内容を見られない</td><td>L7ルーティング不可。コンテンツベース分散できない</td></tr>
+    <tr><td><strong>TLS Re-encryption</strong></td><td>LBでTLS終端→バックエンドへも別のTLSで再接続</td><td>End-to-End暗号化を維持しつつL7ルーティング可能</td><td>LBのCPU負荷増、証明書を2箇所管理</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 7: API ゲートウェイ -->
+<!-- ============================================================ -->
+<section id="s7">
+  <h2><span class="num">SECTION 07</span>API ゲートウェイ</h2>
+  <p class="section-lead">ロードバランサーよりも高レベルのロジックを担当する「スマートなフロントドア」。</p>
+
+  <h3>ロードバランサーとAPI Gatewayの役割の違い</h3>
+  <table>
+    <tr><th>機能</th><th>ロードバランサー</th><th>API Gateway</th></tr>
+    <tr><td>トラフィック分散</td><td><span class="badge green">主機能</span></td><td><span class="badge amber">副次機能</span></td></tr>
+    <tr><td>認証・認可</td><td><span class="badge red">基本なし</span></td><td><span class="badge green">JWT/OAuth検証</span></td></tr>
+    <tr><td>レート制限</td><td>基本的</td><td>API Key別・ユーザー別</td></tr>
+    <tr><td>リクエスト変換</td><td><span class="badge red">なし</span></td><td>リクエスト/レスポンス変換</td></tr>
+    <tr><td>サーキットブレーカー</td><td><span class="badge red">基本なし</span></td><td><span class="badge green">対応</span></td></tr>
+    <tr><td>ロギング・分析</td><td>基本的</td><td>詳細なAPIメトリクス</td></tr>
+    <tr><td>処理レイヤー</td><td>ネットワーク寄り</td><td>アプリケーション寄り</td></tr>
+  </table>
+
+  <h3>API Gateway の主要機能</h3>
+  <div class="card-grid">
+    <div class="card card-pink"><h4>認証・認可</h4><p>JWTトークン検証、OAuth 2.0フロー、APIキー管理。バックエンドサービスから認証ロジックを分離できる。</p></div>
+    <div class="card card-cyan"><h4>レート制限</h4><p>APIキー別・ユーザー別・エンドポイント別に細かくスロットリング設定。DDoS対策と課金プランの実装に利用。</p></div>
+    <div class="card card-green"><h4>リクエスト変換</h4><p>外部APIのレスポンスを内部フォーマットに変換。プロトコル変換（REST→gRPC等）も担える。</p></div>
+    <div class="card card-amber"><h4>サーキットブレーカー</h4><p>下流サービスの障害時に自動でフォールバックレスポンスを返し、障害の連鎖（カスケード障害）を防ぐ。</p></div>
+  </div>
+
+  <h3>BFF (Backend for Frontend) パターン</h3>
+  <p>モバイルアプリ・Webアプリ・サードパーティ向けに、それぞれ専用のAPI Gatewayを用意するパターン。各クライアントの要求に最適化したAPIを提供できる。</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;width:100%">
+      <!-- Clients -->
+      <rect x="10" y="100" width="80" height="35" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="50" y="123" text-anchor="middle" fill="#6366f1" font-size="11" font-family="sans-serif">Web App</text>
+      <rect x="10" y="160" width="80" height="35" rx="6" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="50" y="183" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">Mobile</text>
+      <rect x="10" y="220" width="80" height="35" rx="6" fill="#1c1f2e" stroke="#f59e0b"/>
+      <text x="50" y="243" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="sans-serif">3rd Party</text>
+
+      <!-- BFF Layer -->
+      <rect x="140" y="85" width="100" height="50" rx="8" fill="rgba(99,102,241,.15)" stroke="#6366f1" stroke-width="2"/>
+      <text x="190" y="108" text-anchor="middle" fill="#6366f1" font-size="10" font-family="sans-serif">Web BFF</text>
+      <text x="190" y="123" text-anchor="middle" fill="#6366f1" font-size="9" font-family="sans-serif">Auth + SSR data</text>
+      <rect x="140" y="145" width="100" height="50" rx="8" fill="rgba(34,211,238,.15)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="190" y="168" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">Mobile BFF</text>
+      <text x="190" y="183" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">Auth + compact JSON</text>
+      <rect x="140" y="205" width="100" height="50" rx="8" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="2"/>
+      <text x="190" y="228" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="sans-serif">Public API GW</text>
+      <text x="190" y="243" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="sans-serif">Rate limit + versioning</text>
+
+      <line x1="90" y1="117" x2="140" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arI)"/>
+      <line x1="90" y1="177" x2="140" y2="170" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arC)"/>
+      <line x1="90" y1="237" x2="140" y2="230" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arA)"/>
+
+      <!-- Backend services -->
+      <rect x="400" y="60" width="95" height="35" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="447" y="82" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">User Service</text>
+      <rect x="400" y="110" width="95" height="35" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="447" y="132" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Order Service</text>
+      <rect x="400" y="160" width="95" height="35" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="447" y="182" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Product Service</text>
+      <rect x="400" y="210" width="95" height="35" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="447" y="232" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">Payment Service</text>
+
+      <!-- Lines from BFFs to services -->
+      <line x1="240" y1="110" x2="400" y2="77" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="240" y1="115" x2="400" y2="127" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="240" y1="170" x2="400" y2="77" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="240" y1="175" x2="400" y2="177" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="240" y1="230" x2="400" y2="177" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="240" y1="235" x2="400" y2="227" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <text x="320" y="15" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">BFF (Backend for Frontend) パターン</text>
+      <text x="447" y="264" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">マイクロサービス</text>
+
+      <defs>
+        <marker id="arI" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/></marker>
+        <marker id="arC" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#22d3ee"/></marker>
+        <marker id="arA" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/></marker>
+      </defs>
+    </svg>
+    <div class="svg-caption">BFFパターン：クライアントの種類ごとに最適化されたAPIゲートウェイを用意する。</div>
+  </div>
+
+  <h3>Kong vs AWS API Gateway 比較</h3>
+  <table>
+    <tr><th>項目</th><th>Kong Gateway</th><th>AWS API Gateway</th></tr>
+    <tr><td>デプロイ形態</td><td>セルフホスト / Kong Cloud</td><td>フルマネージド（AWS）</td></tr>
+    <tr><td>プロトコル</td><td>REST / GraphQL / gRPC / WebSocket</td><td>REST / HTTP / WebSocket</td></tr>
+    <tr><td>プラグイン拡張</td><td><span class="badge green">豊富なプラグイン生態系</span></td><td>Lambda統合で拡張</td></tr>
+    <tr><td>レイテンシ</td><td>低（同一クラスター内）</td><td>中（マネージドサービス分）</td></tr>
+    <tr><td>コスト</td><td>インフラコスト＋運用コスト</td><td>APIコール数課金（低コストで始めやすい）</td></tr>
+    <tr><td>マルチクラウド</td><td><span class="badge green">対応</span></td><td>AWS専用</td></tr>
+    <tr><td>適用規模</td><td>大規模エンタープライズ</td><td>中小〜中規模・スタートアップ</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 8: グローバルロードバランシング -->
+<!-- ============================================================ -->
+<section id="s8">
+  <h2><span class="num">SECTION 08</span>グローバルロードバランシング</h2>
+  <p class="section-lead">データセンターやリージョンをまたいで世界規模のトラフィック分散を行う技術群。</p>
+
+  <div class="card-grid">
+    <div class="card card-cyan">
+      <h4>GeoDNS</h4>
+      <p>クライアントのDNSリゾルバーのIPアドレスを基に、地理的に近いデータセンターのIPアドレスを返す。</p>
+      <ul>
+        <li>DNSレベルで振り分けるため実装がシンプル</li>
+        <li>TTLによってフェイルオーバー速度に限界（通常30〜300秒）</li>
+        <li>例：AWS Route 53の地理的ルーティング</li>
+      </ul>
+    </div>
+    <div class="card card-purple">
+      <h4>Anycast ルーティング</h4>
+      <p>複数のデータセンターに同一のIPアドレスをアナウンス。BGPルーティングにより最も近いノードへ自動転送。</p>
+      <ul>
+        <li>クライアントからは単一IPに見える</li>
+        <li>BGPのコンバージェンス（数秒〜数分）でフェイルオーバー</li>
+        <li>例：Cloudflare・AWS Global Accelerator</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <h4>GSLB (Global Server Load Balancing)</h4>
+      <p>ヘルスチェック・レイテンシ・重みなどを組み合わせてグローバルにトラフィックを制御する高度なDNSベースLB。</p>
+      <ul>
+        <li>リアルタイムのヘルスチェックでフェイルオーバー</li>
+        <li>サーバー負荷に応じた動的な重み調整</li>
+        <li>例：F5 BIG-IP DNS、NS1</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>レイテンシベース vs 地理ベースルーティング</h3>
+  <table>
+    <tr><th>方式</th><th>ルーティング根拠</th><th>メリット</th><th>デメリット</th></tr>
+    <tr><td><strong>地理ベース</strong></td><td>クライアントの地理的位置</td><td>シンプル・予測可能</td><td>地理的に近くても遅い場合がある</td></tr>
+    <tr><td><strong>レイテンシベース</strong></td><td>実際の往復レイテンシ測定値</td><td>最も低レイテンシなリージョンへ</td><td>測定コスト・複雑</td></tr>
+    <tr><td><strong>重みベース</strong></td><td>設定された重み比率</td><td>カナリアリリース・段階移行に最適</td><td>手動管理が必要</td></tr>
+    <tr><td><strong>フェイルオーバー</strong></td><td>ヘルスチェック結果</td><td>プライマリ障害時に自動切替</td><td>DNSのTLLキャッシュによる遅延</td></tr>
+  </table>
+
+  <h3>リージョン間フェイルオーバーのフロー</h3>
+  <div class="step-flow">
+    <div class="step"><div class="step-num">1</div><div class="step-label">プライマリリージョン障害検知（ヘルスチェック失敗）</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-label">連続失敗N回でdownと判定</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-label">DNSの応答をセカンダリリージョンのIPへ更新</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-label">TTL経過後、クライアントが新IPを取得</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-label">セカンダリへのトラフィック移行完了</div></div>
+  </div>
+
+  <div class="highlight amber">
+    <strong>⚠️ DNS TTL の落とし穴:</strong> フェイルオーバー時間はDNSのTTL（Time To Live）に依存する。TTLが300秒（5分）なら、フェイルオーバー完了まで最大5分かかる。緊急時に備えてTTLを短く設定しておく（例：30秒）のが推奨だが、DNSサーバーへの問い合わせ頻度が上がるトレードオフがある。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- Section 9: コネクション最適化 -->
+<!-- ============================================================ -->
+<section id="s9">
+  <h2><span class="num">SECTION 09</span>コネクション最適化</h2>
+  <p class="section-lead">コネクション確立のオーバーヘッドを削減し、スループットとレイテンシを改善する。</p>
+
+  <h3>Keep-Alive と Connection Pooling</h3>
+  <div class="card-grid">
+    <div class="card card-green">
+      <h4>HTTP Keep-Alive</h4>
+      <p>一度確立したTCPコネクションを複数のHTTPリクエストで再利用する。</p>
+      <ul>
+        <li>TCPハンドシェイク（3-way handshake）のオーバーヘッドを削減</li>
+        <li>HTTP/1.1ではデフォルトで有効</li>
+        <li>HTTP/2は多重化でさらに効率化</li>
+      </ul>
+      <pre><code><span class="cm"># Nginx: バックエンドへのkeep-alive</span>
+<span class="kw">upstream</span> backend {
+  keepalive <span class="nc">32</span>;  <span class="cm"># 維持するコネクション数</span>
+}
+location / {
+  proxy_http_version <span class="nc">1.1</span>;
+  proxy_set_header Connection <span class="str">""</span>;
+}</code></pre>
+    </div>
+    <div class="card card-cyan">
+      <h4>Connection Pooling</h4>
+      <p>DBやマイクロサービスへのコネクションを事前に確立しておき、リクエストごとに再利用する。</p>
+      <ul>
+        <li>コネクション確立コスト（TCP+TLS）を分散</li>
+        <li>最大コネクション数でバックエンドを保護</li>
+        <li>プール枯渇時はキュー待機 or エラーを返す</li>
+      </ul>
+      <pre><code><span class="cm"># Node.js: pg connection pool</span>
+<span class="kw">const</span> pool = <span class="kw">new</span> Pool({
+  max: <span class="nc">20</span>,     <span class="cm">// 最大コネクション数</span>
+  idleTimeoutMillis: <span class="nc">30000</span>,
+  connectionTimeoutMillis: <span class="nc">2000</span>
+});</code></pre>
+    </div>
+  </div>
+
+  <h3>TLS セッション再利用（Session Resumption）</h3>
+  <p>TLSハンドシェイクは通常1〜2回のRTTを要する。セッション再利用によりこのオーバーヘッドを大幅に削減できる。</p>
+  <div class="card-grid">
+    <div class="card card-amber">
+      <h4>Session ID（TLS 1.2以前）</h4>
+      <p>サーバーがセッションIDを発行し、クライアントが次回のハンドシェイク時に提示する。サーバーがセッション情報をキャッシュする必要がある。複数サーバー環境では共有キャッシュが必要。</p>
+    </div>
+    <div class="card card-green">
+      <h4>Session Tickets（TLS 1.2/1.3）</h4>
+      <p>セッション情報をサーバーではなく暗号化されたticketとしてクライアントに返す。次回接続時にclientがticketを送信し、サーバーが復号して再利用。サーバー側でのセッションストレージが不要。</p>
+    </div>
+    <div class="card card-pink">
+      <h4>TLS 1.3 の 0-RTT</h4>
+      <p>TLS 1.3では0-RTT（Zero Round Trip Time Resumption）が導入。初回接続後の再接続で、最初のデータをハンドシェイクと同時に送信できる。<strong>注意:</strong> リプレイ攻撃のリスクがあるため、べき等なGETリクエストのみに使用するのが推奨。</p>
+    </div>
+  </div>
+
+  <pre><code><span class="cm"># Nginx TLS セッション再利用設定</span>
+<span class="kw">http</span> {
+    ssl_session_cache   shared:SSL:<span class="nc">50m</span>;  <span class="cm"># 全workerで共有するセッションキャッシュ</span>
+    ssl_session_timeout <span class="nc">1d</span>;              <span class="cm"># セッション有効期限</span>
+    ssl_session_tickets on;               <span class="cm"># Session Tickets 有効化</span>
+
+    <span class="cm"># TLS 1.3 0-RTT（注意して使用）</span>
+    ssl_protocols TLSv1.3;
+    ssl_early_data on;
+
+    <span class="cm"># 0-RTTリプレイ攻撃対策ヘッダー</span>
+    add_header Early-Data $ssl_early_data;
+}</code></pre>
+
+  <h3>バックエンドへの最大接続数調整</h3>
+  <div class="highlight cyan">
+    <strong>計算例:</strong> バックエンドサーバー1台が安定処理できる最大コネクション数を算出する。<br><br>
+    <code>最大コネクション数 = (CPU コア数) × (平均リクエスト処理時間[ms] / 1000ms) × 安全係数(0.7~0.8)</code><br><br>
+    例：8コア、平均処理時間50ms → <code>8 × (50/1000) × 0.75 ≈ 300接続</code>
+  </div>
+
+  <pre><code><span class="cm"># Nginx: バックエンドへの接続数制限</span>
+<span class="kw">upstream</span> backend {
+    server <span class="nc">10.0.1.10</span>:<span class="nc">8080</span>;
+
+    <span class="cm"># コネクション数上限（Nginx Plus）</span>
+    max_conns=<span class="nc">300</span>;      <span class="cm"># 最大アクティブ接続数</span>
+    max_fails=<span class="nc">3</span>;        <span class="cm"># この回数失敗でdown</span>
+    fail_timeout=<span class="nc">30s</span>;   <span class="cm"># down状態維持時間</span>
+
+    keepalive <span class="nc">64</span>;        <span class="cm"># keep-aliveコネクション数</span>
+    keepalive_requests <span class="nc">10000</span>;  <span class="cm"># 1コネクションで処理するリクエスト上限</span>
+    keepalive_timeout <span class="nc">75s</span>;     <span class="cm"># keep-aliveタイムアウト</span>
+}</code></pre>
+</section>
+
+<!-- ============================================================ -->
+<!-- Interview Tips -->
+<!-- ============================================================ -->
+<section id="tips" style="border-bottom:none;">
+  <h2><span class="num">INTERVIEW TIPS</span>面接でよく出る設計問題</h2>
+  <p class="section-lead">システムデザイン面接で負荷分散に関して問われるパターンと、回答のポイント。</p>
+
+  <div class="tip-grid">
+    <div class="tip-card">
+      <div class="tip-num">Q1</div>
+      <h4>「Twitterのようなシステムを設計せよ」</h4>
+      <p>最初に「まず単一サーバーでは何億ユーザーを捌けないため、水平スケーリングとロードバランサーが必要」と言及する。L7 LBでのルーティング（タイムライン /、メディア /cdn）を説明する。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">Q2</div>
+      <h4>「LBアルゴリズムを比較せよ」</h4>
+      <p>Round Robinの限界（長時間コネクション問題）→Least Connectionsの改善点→IP Hashのスティッキーセッション→Power of Twoの大規模向け利点、という流れで説明すると構造的でよい。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">Q3</div>
+      <h4>「99.99%の可用性を実現するには」</h4>
+      <p>LB自体のHAを言及する（Active-Active or Active-Standby）。ヘルスチェックの設定、自動フェイルオーバー、複数リージョンへのGSLB展開まで説明できるとベスト。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">Q4</div>
+      <h4>「セッション管理の問題点を挙げよ」</h4>
+      <p>サーバーサイドセッション→スティッキーセッションの必要性→その問題点（偏り・スケールアウト困難・障害時消失）→Redis分散セッションストアによる解決、という論理の流れを明確に。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">Q5</div>
+      <h4>「L4とL7はどう選ぶか」</h4>
+      <p>HTTPコンテンツルーティングが必要→L7。純粋なTCP/UDPや超高スループット→L4。ゲームサーバー・DNS・VoIPはL4。Webアプリ・APIはL7。両方使うケース（L4でL7をLB配下に置く）も言及できるとよい。</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-num">Q6</div>
+      <h4>「API GatewayとLBの違いは」</h4>
+      <p>LBはネットワークレベルのトラフィック分散が主。API GatewayはBizロジック（認証・レート制限・変換・サーキットブレーカー）を担う。両者は補完関係にあり、実際は共存することが多い。</p>
+    </div>
+  </div>
+
+  <div class="highlight pink" style="margin-top:32px;">
+    <strong>📝 まとめ：負荷分散の設計原則</strong><br><br>
+    <strong>1. ステートレス化が最優先</strong> — セッションをRedisに逃がし、どのサーバーへ振っても正しく動く設計にする。<br>
+    <strong>2. ヘルスチェックは必須</strong> — 死んだサーバーへの転送を自動回避。Active + Passiveの組み合わせが堅牢。<br>
+    <strong>3. アルゴリズムは目的に合わせる</strong> — 短時間リクエスト多数→Round Robin、長時間コネクション→Least Connections。<br>
+    <strong>4. 単一障害点を排除</strong> — LB自体も冗長化。プライマリ/セカンダリ構成かActive-Active構成で。<br>
+    <strong>5. 観測可能性（Observability）</strong> — LBのアクセスログ・接続数メトリクス・エラーレートを常時監視。
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  <div class="footer-nav">
+    <a href="05_caching.html">← Chapter 05：キャッシュ戦略</a>
+    <a href="00_index.html">🏠 目次へ</a>
+    <a href="07_message_queues.html">Chapter 07：メッセージキュー →</a>
+  </div>
+  <p>システムデザイン学習 | Chapter 06 — 負荷分散 &amp; リバースプロキシ</p>
+</footer>
+
+
+<!-- ============================================================ -->
+<!-- 深掘り & 実践演習セクション -->
+<!-- ============================================================ -->
+
+<section id="deep-nginx-internals">
+  <h2><span class="num">10</span>深掘り: Nginxの内部アーキテクチャ</h2>
+  <p class="section-lead">NginxがなぜC10K問題を解決できたか、内部構造から理解する。設定の意味を原理から把握することで最適なチューニングができる。</p>
+
+  <h3>イベント駆動型 vs スレッド型 — C10K問題の解決</h3>
+  <div class="card">
+    <div class="card-grid">
+      <div class="card card-red">
+        <h4>Apache Worker MPM（スレッド型）</h4>
+        <p>1リクエスト = 1スレッド（またはプロセス）で処理。スレッド生成コストと、1万コネクションでの1万スレッドによるコンテキストスイッチがボトルネック。</p>
+        <pre><code><span class="cm"># Apache httpd.conf</span>
+StartServers     4
+MinSpareThreads  25
+MaxSpareThreads  75
+ThreadsPerChild  25
+MaxRequestWorkers 150  <span class="cm"># 最大150スレッド</span>
+<span class="cm"># 1万コネクション → 1万スレッド → OOM</span></code></pre>
+      </div>
+      <div class="card card-green">
+        <h4>Nginx（イベント駆動型）</h4>
+        <p>シングルスレッドのイベントループ（epoll/kqueue）で全コネクションを非同期に管理。ノンブロッキングI/Oにより1ワーカーが数万コネクションを同時処理できる。</p>
+        <pre><code><span class="cm"># nginx.conf</span>
+<span class="cm"># CPU数に合わせてワーカーを設定</span>
+worker_processes auto;  <span class="cm"># CPUコア数</span>
+events {
+  use epoll;            <span class="cm"># Linuxの高効率I/Oイベント</span>
+  worker_connections 65535;
+  multi_accept on;      <span class="cm"># 一度に複数コネクション受け入れ</span>
+}
+<span class="cm"># 4コア × 65535 = 約26万コネクション同時処理可能</span></code></pre>
+      </div>
+    </div>
+    <div class="highlight cyan">
+      <strong>C10K問題:</strong> 2000年代初頭、1台のサーバーで同時1万コネクションを扱うことが技術的に困難だった問題。Nginxはイベント駆動により解決した。現在は「C10M問題（1000万コネクション）」が次の課題になっている。
+    </div>
+  </div>
+
+  <h3>Upstream Keepalive — バックエンドコネクション再利用</h3>
+  <div class="card">
+    <p>バックエンドサーバーとのTCPコネクションをプールして再利用する。毎リクエストでのTCPハンドシェイクコストを削減。</p>
+    <pre><code><span class="cm"># upstream keepalive の設定</span>
+upstream app_backend {
+    server 10.0.1.10:8080;
+    server 10.0.1.11:8080;
+    server 10.0.1.12:8080;
+
+    <span class="cm"># アイドルコネクションプールの最大数</span>
+    keepalive 32;
+    keepalive_requests 1000;   <span class="cm"># コネクションあたりの最大リクエスト数</span>
+    keepalive_timeout  60s;    <span class="cm"># アイドル接続のタイムアウト</span>
+}
+
+server {
+    location / {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;           <span class="cm"># HTTP/1.1 必須</span>
+        proxy_set_header Connection "";   <span class="cm"># Connection: close を上書き</span>
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+    <div class="highlight">
+      <strong>効果の目安:</strong> keepaliveなしでは1万QPS時に毎秒1万回のTCPハンドシェイク（3-wayハンドシェイクで約0.1ms × 1万 = 約1秒分の遅延）。keepalive 32設定でコネクション確立コストを大幅に削減。
+    </div>
+  </div>
+
+  <h3>レート制限 — limit_req / limit_conn</h3>
+  <div class="card">
+    <pre><code><span class="cm"># レート制限ゾーン定義（httpコンテキスト）</span>
+<span class="cm"># key: クライアントIP, ゾーンメモリ: 10MB, レート: 10req/秒</span>
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+<span class="cm"># 同時コネクション制限</span>
+limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
+
+server {
+    location /api/ {
+        <span class="cm"># バーストを20まで許可（burst=20 nodelay: 待機させずに即処理）</span>
+        limit_req zone=api_limit burst=20 nodelay;
+
+        <span class="cm"># 1IPからの同時コネクション数を10に制限</span>
+        limit_conn conn_limit 10;
+
+        <span class="cm"># 制限超過時のレスポンスコード</span>
+        limit_req_status 429;
+        limit_conn_status 503;
+
+        proxy_pass http://app_backend;
+    }
+
+    <span class="cm"># ログイン試行の厳格なレート制限</span>
+    location /auth/login {
+        limit_req zone=api_limit burst=5;  <span class="cm"># バースト少なめ</span>
+        proxy_pass http://auth_backend;
+    }
+}</code></pre>
+    <div class="highlight amber">
+      <strong>burst の動作:</strong> rate=10r/sでburst=20の場合、突発的な20リクエストは即処理し（nodelay指定時）、超過分は429を返す。nodedelayなしの場合は超過分をキューで待機させる（最大burst数まで）。
+    </div>
+  </div>
+
+  <h3>OpenResty（lua-nginx-module）による動的ルーティング</h3>
+  <div class="card">
+    <p>OpenRestyはNginxにLuaランタイムを組み込んだプラットフォーム。リクエスト処理中にビジネスロジックを実行できる。</p>
+    <pre><code><span class="cm"># Nginxの各フェーズでLuaを実行できる</span>
+<span class="cm"># access_by_lua: 認証チェック</span>
+<span class="cm"># rewrite_by_lua: URLリライト</span>
+<span class="cm"># content_by_lua: レスポンス生成</span>
+
+server {
+    location /api/ {
+        <span class="cm"># A/Bテスト: User-Agentでルーティング</span>
+        access_by_lua_block {
+            local user_agent = ngx.var.http_user_agent
+            if string.find(user_agent, "iPhone") then
+                ngx.var.upstream = "mobile_backend"
+            else
+                ngx.var.upstream = "web_backend"
+            end
+        }
+        proxy_pass http://$upstream;
+    }
+
+    location /auth/ {
+        <span class="cm"># JWT検証をNginx側で実施（バックエンドに届く前に）</span>
+        access_by_lua_block {
+            local jwt_token = ngx.req.get_headers()["Authorization"]
+            if not jwt_token then
+                ngx.status = 401
+                ngx.say('{"error":"unauthorized"}')
+                ngx.exit(401)
+            end
+            <span class="cm">-- JWT検証ロジック（redis-lua等で実装）</span>
+        }
+        proxy_pass http://app_backend;
+    }
+}</code></pre>
+  </div>
+</section>
+
+<section id="deep-ha-lb">
+  <h2><span class="num">11</span>深掘り: 高可用性ロードバランサーの設計</h2>
+  <p class="section-lead">ロードバランサー自体が単一障害点になることを防ぐ。VRRP・BGP・Anycastによる冗長化戦略を理解する。</p>
+
+  <h3>VRRP / Keepalived — Active-Standby構成</h3>
+  <div class="card">
+    <p>2台のNginxサーバーでVirtual IP (VIP)を共有し、プライマリが落ちた場合にセカンダリが自動でVIPを引き継ぐ。</p>
+    <pre><code><span class="cm"># keepalived.conf (プライマリNginx側)</span>
+vrrp_script check_nginx {
+    script "/bin/check_nginx.sh"   <span class="cm"># Nginxが動いているか確認</span>
+    interval 2                       <span class="cm"># 2秒ごとにチェック</span>
+    weight -20                       <span class="cm"># 失敗時にpriorityを20下げる</span>
+}
+
+vrrp_instance VI_1 {
+    state MASTER                     <span class="cm"># プライマリ</span>
+    interface eth0
+    virtual_router_id 51
+    priority 100                     <span class="cm"># セカンダリは50に設定</span>
+    advert_int 1                     <span class="cm"># VRRPアドバタイズ間隔</span>
+    authentication {
+        auth_type PASS
+        auth_pass secret123
+    }
+    virtual_ipaddress {
+        192.168.1.100/24             <span class="cm"># VIP（クライアントはここに接続）</span>
+    }
+    track_script {
+        check_nginx
+    }
+}
+
+<span class="cm">---</span>
+<span class="cm"># フェイルオーバーの流れ:</span>
+<span class="cm"># 1. プライマリのNginx障害</span>
+<span class="cm"># 2. check_nginx.sh が失敗 → priority 100-20=80</span>
+<span class="cm"># 3. セカンダリ(priority=50)より低くなったため</span>
+<span class="cm">#    セカンダリがMASTERに昇格</span>
+<span class="cm"># 4. VIP 192.168.1.100 がセカンダリに移動</span>
+<span class="cm"># 5. クライアントは約1〜2秒のダウン後に自動回復</span></code></pre>
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card card-green">
+        <h4>Active-Standby の特徴</h4>
+        <ul>
+          <li>実装が単純でデバッグしやすい</li>
+          <li>スタンバイ機はほぼアイドル（コスト無駄）</li>
+          <li>フェイルオーバー: 通常1〜2秒</li>
+          <li>小〜中規模サービスに適切</li>
+        </ul>
+      </div>
+      <div class="card card-cyan">
+        <h4>Active-Active の特徴</h4>
+        <ul>
+          <li>両LBが同時にトラフィックを処理</li>
+          <li>DNSラウンドロビンやBGP ECMPで分散</li>
+          <li>一方が落ちても残りが継続</li>
+          <li>大規模サービスでリソースを有効活用</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>BGP ECMP と Anycast</h3>
+  <div class="card">
+    <p><strong>BGP ECMP (Equal-Cost Multi-Path)</strong>: 複数の等コストパスが存在する場合、トラフィックを複数のロードバランサーに分散させるルーティング手法。ネットワーク層でのロードバランシング。</p>
+    <p><strong>Anycast</strong>: 同じIPアドレスを複数のデータセンターでアドバタイズし、ユーザーがネットワーク的に最も近いデータセンターに自動的にルーティングされる手法。CloudflareやFastlyのCDNで使われる。</p>
+    <pre><code><span class="cm"># Anycastの概念（BGP設定の例）</span>
+<span class="cm"># 東京DC・大阪DC・シンガポールDCが同じIPを持つ</span>
+<span class="cm"># Anycast IP: 203.0.113.1</span>
+
+<span class="cm"># 東京DCのBGP設定（FRRouting）</span>
+router bgp 65001
+  bgp router-id 10.0.1.1
+  neighbor 203.0.113.254 remote-as 65000  <span class="cm"># 上位ISP</span>
+  address-family ipv4 unicast
+    network 203.0.113.0/24               <span class="cm"># Anycast prefixをアドバタイズ</span>
+
+<span class="cm"># 大阪DCも同じ 203.0.113.0/24 をアドバタイズ</span>
+<span class="cm"># → 日本のユーザーは近い方のDCにルーティングされる</span>
+<span class="cm"># → DCが落ちるとBGPが引っ込み、別DCへ自動切替</span></code></pre>
+  </div>
+
+  <h3>DNS TTLとフェイルオーバーのトレードオフ</h3>
+  <table>
+    <tr><th>DNS TTL</th><th>フェイルオーバー速度</th><th>DNSサーバー負荷</th><th>キャッシュの恩恵</th><th>推奨場面</th></tr>
+    <tr><td>5秒</td><td><span class="badge green">極速（〜5秒）</span></td><td><span class="badge red">極高</span></td><td><span class="badge red">ほぼなし</span></td><td>事前フェイルオーバー切替直前</td></tr>
+    <tr><td>60秒</td><td><span class="badge green">速（〜1分）</span></td><td><span class="badge amber">高</span></td><td><span class="badge amber">少ない</span></td><td>高可用性が必要なサービス</td></tr>
+    <tr><td>300秒</td><td><span class="badge amber">中（〜5分）</span></td><td><span class="badge green">普通</span></td><td><span class="badge amber">中</span></td><td>一般的なWebサービス</td></tr>
+    <tr><td>3600秒</td><td><span class="badge red">遅（〜1時間）</span></td><td><span class="badge green">低</span></td><td><span class="badge green">大きい</span></td><td>変更の少ない静的サイト</td></tr>
+  </table>
+  <div class="highlight amber">
+    <strong>GTM（Global Traffic Manager）の活用:</strong> Route53・Cloudflare・NS1などのGTMサービスは、ヘルスチェックと連動してDNSレスポンスを動的に変更する。フェイルオーバー時にTTLを無視して即座に新しいIPを返せる（Negative TTLキャッシュへの対処は別途必要）。
+  </div>
+</section>
+
+<section id="practice-lb">
+  <h2><span class="num">12</span>実践演習</h2>
+  <p class="section-lead">100万QPS設計・Blue-Greenデプロイ・面接形式の設計問題で実力を鍛える。</p>
+
+  <h3>演習1: 100万QPS対応のNginx構成を設計する</h3>
+  <div class="card">
+    <h4>要件と計算</h4>
+    <pre><code><span class="cm"># 目標: 1,000,000 QPS</span>
+<span class="cm"># 1サーバー（32コア, 64GB RAM）での最大スループット想定</span>
+
+<span class="cm"># worker設定の計算</span>
+worker_processes 32;          <span class="cm"># CPUコア数と同じ</span>
+worker_connections 65535;     <span class="cm"># 1ワーカーあたりの同時接続数</span>
+<span class="cm"># 理論最大コネクション: 32 × 65535 ≈ 200万</span>
+
+<span class="cm"># 1サーバーのスループット上限</span>
+<span class="cm"># 各リクエストの処理時間: 1ms と仮定</span>
+<span class="cm"># 1ワーカー×1スレッドで: 1000 req/sec</span>
+<span class="cm"># 32ワーカー: 32,000 req/sec per server</span>
+<span class="cm"># 100万QPSには: 1,000,000 / 32,000 ≈ 32台のNginxが必要</span>
+<span class="cm"># BGP ECMPまたはDNSラウンドロビンで32台に分散</span></code></pre>
+
+    <h4>完全なNginx設定</h4>
+    <pre><code><span class="cm"># /etc/nginx/nginx.conf (本番用 100万QPS対応)</span>
+
+user nginx;
+worker_processes auto;          <span class="cm"># CPUコア数に自動設定</span>
+worker_rlimit_nofile 200000;    <span class="cm"># ファイルディスクリプタ上限</span>
+error_log /var/log/nginx/error.log warn;
+
+events {
+    use epoll;
+    worker_connections 65535;
+    multi_accept on;            <span class="cm"># 一度に複数接続受け入れ</span>
+}
+
+http {
+    <span class="cm"># バッファサイズ最適化</span>
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    keepalive_requests 10000;   <span class="cm"># KAコネクション再利用回数</span>
+
+    <span class="cm"># バッファサイズ（大きくするとメモリ消費増加に注意）</span>
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+    client_body_buffer_size 128k;
+    client_max_body_size 100m;
+
+    <span class="cm"># レート制限ゾーン</span>
+    limit_req_zone $binary_remote_addr zone=api:100m rate=100r/s;
+
+    upstream app_backend {
+        least_conn;             <span class="cm"># Least Connections アルゴリズム</span>
+        server 10.0.1.10:8080 weight=1 max_fails=3 fail_timeout=30s;
+        server 10.0.1.11:8080 weight=1 max_fails=3 fail_timeout=30s;
+        server 10.0.1.12:8080 weight=1 max_fails=3 fail_timeout=30s;
+        <span class="cm"># バックエンドとのKeepalive（重要）</span>
+        keepalive 32;
+        keepalive_requests 1000;
+        keepalive_timeout 60s;
+    }
+
+    server {
+        listen 443 ssl http2 reuseport;  <span class="cm"># reuseport: SO_REUSEPORT</span>
+        server_name api.example.com;
+
+        <span class="cm"># TLS 最適化</span>
+        ssl_certificate /etc/ssl/api.crt;
+        ssl_certificate_key /etc/ssl/api.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+        ssl_session_cache shared:SSL:100m;  <span class="cm"># セッション再利用（TLS高速化）</span>
+        ssl_session_timeout 1d;
+
+        location /api/ {
+            proxy_pass http://app_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_connect_timeout 3s;
+            proxy_read_timeout 30s;
+            proxy_next_upstream error timeout http_500;
+            limit_req zone=api burst=200 nodelay;
+        }
+    }
+}</code></pre>
+  </div>
+
+  <h3>演習2: Blue-Greenデプロイをロードバランサーで実現する</h3>
+  <div class="card">
+    <p>ゼロダウンタイムデプロイの実装。Blue（現行）とGreen（新バージョン）の2環境を用意し、LBでトラフィックを切り替える。</p>
+    <pre><code><span class="cm"># 段階1: Blue-Green upstream定義</span>
+upstream blue {
+    server 10.0.1.10:8080 weight=1;
+    server 10.0.1.11:8080 weight=1;
+    keepalive 32;
+}
+
+upstream green {
+    server 10.0.2.10:8080 weight=1;  <span class="cm"># 新バージョン</span>
+    server 10.0.2.11:8080 weight=1;
+    keepalive 32;
+}
+
+<span class="cm"># nginx.conf の変数でターゲットを切り替え</span>
+server {
+    location / {
+        <span class="cm"># map: Cookieやヘッダーでroutingを制御</span>
+        set $target blue;
+        if ($http_x_canary = "true") {
+            set $target green;
+        }
+        proxy_pass http://$target;
+    }
+}
+
+<span class="cm">---</span>
+<span class="cm"># 段階的トラフィック移行スクリプト</span>
+<span class="cm">#!/bin/bash</span>
+<span class="cm"># split_traffic.sh: Blue-Greenの段階的切り替え</span>
+NGINX_UPSTREAM=/etc/nginx/conf.d/upstream.conf
+
+<span class="cm"># Phase 1: 5%をGreenに</span>
+cat > $NGINX_UPSTREAM << EOF
+upstream app {
+    server blue_backend weight=19;
+    server green_backend weight=1;   # 5%
+}
+EOF
+nginx -s reload
+
+sleep 300  <span class="cm"># 5分間モニタリング</span>
+
+<span class="cm"># Phase 2: 25%をGreenに</span>
+cat > $NGINX_UPSTREAM << EOF
+upstream app {
+    server blue_backend weight=3;
+    server green_backend weight=1;   # 25%
+}
+EOF
+nginx -s reload
+
+sleep 600  <span class="cm"># 10分間モニタリング</span>
+
+<span class="cm"># Phase 3: 100%Greenに切り替え</span>
+cat > $NGINX_UPSTREAM << EOF
+upstream app {
+    server green_backend weight=1;   # 100%
+}
+EOF
+nginx -s reload</code></pre>
+
+    <div class="highlight green">
+      <strong>ヘルスチェックと組み合わせた安全な切り替え:</strong>
+      <ul style="margin-top:8px;">
+        <li>各フェーズでエラーレート・レイテンシ・CPU使用率を監視</li>
+        <li>異常を検知したら即座にBlueへロールバック（<code>nginx -s reload</code>は設定変更を無停止で反映）</li>
+        <li>Nginx PlusのDynamic Upstream APIを使うと設定ファイル変更なしでリロードなしの切り替えが可能</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>演習3: スティッキーセッションなしのスケールアウト設計（面接問題）</h3>
+  <div class="card" style="border-color:rgba(99,102,241,0.4);">
+    <p class="section-lead" style="margin-bottom:24px;"><strong>問題文:</strong> スティッキーセッションを使わずに、ユーザーセッションを維持しながら複数サーバーにスケールアウトするにはどうするか？</p>
+
+    <h4>解答の構成（面接での模範回答）</h4>
+    <div class="card-grid">
+      <div class="card card-green">
+        <h4>方法1: 分散セッションストア（推奨）</h4>
+        <p>セッション情報をRedisに保存。全アプリサーバーが同じRedisを参照。</p>
+        <pre><code><span class="cm"># express-session + Redis</span>
+<span class="kw">const</span> session = require(<span class="str">'express-session'</span>);
+<span class="kw">const</span> RedisStore = require(<span class="str">'connect-redis'</span>)(session);
+
+app.use(session({
+  store: <span class="kw">new</span> RedisStore({
+    client: redisClient,
+    ttl: 1800   <span class="cm">// 30分</span>
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: <span class="kw">false</span>,
+  saveUninitialized: <span class="kw">false</span>
+}));
+<span class="cm">// どのサーバーへ届いてもRedisからセッション取得</span></code></pre>
+      </div>
+      <div class="card card-cyan">
+        <h4>方法2: JWTによるステートレス認証</h4>
+        <p>セッション情報をJWTトークンに含めてクライアント側に保存。サーバー側は検証のみ。</p>
+        <pre><code><span class="cm">// JWTの発行</span>
+<span class="kw">const</span> token = jwt.sign({
+  userId: user.id,
+  role: user.role,
+  exp: Math.floor(Date.now() / 1000) + 3600
+}, process.env.JWT_SECRET);
+
+<span class="cm">// 検証（どのサーバーでも同じ秘密鍵で検証）</span>
+<span class="kw">const</span> decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+<span class="cm">// 利点: サーバー側状態なし・水平スケール容易</span>
+<span class="cm">// 欠点: トークン失効が困難（ブロックリストが必要）</span></code></pre>
+      </div>
+    </div>
+
+    <h4>方法別トレードオフ比較</h4>
+    <table>
+      <tr><th>方法</th><th>実装難度</th><th>スケール性</th><th>セキュリティ</th><th>ログアウト即時性</th></tr>
+      <tr><td>スティッキーセッション</td><td><span class="badge green">低</span></td><td><span class="badge red">低（偏り）</span></td><td><span class="badge amber">中</span></td><td><span class="badge green">即時</span></td></tr>
+      <tr><td>Redis分散セッション</td><td><span class="badge amber">中</span></td><td><span class="badge green">高</span></td><td><span class="badge green">高</span></td><td><span class="badge green">即時</span></td></tr>
+      <tr><td>JWT（ステートレス）</td><td><span class="badge amber">中</span></td><td><span class="badge green">最高</span></td><td><span class="badge amber">中</span></td><td><span class="badge red">困難（Redisブロックリスト要）</span></td></tr>
+    </table>
+
+    <div class="highlight">
+      <strong>面接での加点ポイント:</strong>
+      <ul style="margin-top:8px;">
+        <li>「セッションハイジャック対策として、セッションIDローテーション（ログイン後にIDを再生成）とSecure/HttpOnly/SameSite Cookieフラグを必ず設定する」</li>
+        <li>「大規模サービスでは、Redisのセッションストアも冗長化（Redis Cluster）が必要。Redisが単一障害点にならないよう注意」</li>
+        <li>「JWTのaccess tokenは短命（15分）にし、refresh tokenをRedisで管理することでログアウト即時性とスケーラビリティを両立できる」</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

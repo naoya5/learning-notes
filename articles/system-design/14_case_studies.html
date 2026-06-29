@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch14 実践ケーススタディ | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;font-size:15px}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px}
+
+/* NAV */
+.topnav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.topnav a{color:var(--text2);font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid transparent;transition:all .2s}
+.topnav a:hover{border-color:var(--border);color:var(--text);text-decoration:none}
+.topnav .current{color:var(--accent2);border-color:var(--accent2);background:rgba(34,211,238,.07)}
+.topnav .sep{color:var(--text3)}
+
+/* HERO */
+.hero{padding:64px 24px 48px;max-width:1100px;margin:0 auto;text-align:center}
+.hero-badge{display:inline-block;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4);color:var(--accent);padding:4px 14px;border-radius:20px;font-size:12px;letter-spacing:.08em;margin-bottom:20px}
+.hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.15;margin-bottom:16px}
+.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--text2);font-size:17px;max-width:700px;margin:0 auto 32px}
+.hero-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-size:28px;font-weight:800;color:var(--accent2)}
+.stat-label{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* TOC */
+.toc{max-width:1100px;margin:0 auto 48px;padding:0 24px}
+.toc-inner{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 32px}
+.toc-inner h2{font-size:14px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.toc-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);transition:.2s}
+.toc-item:hover{border-color:var(--accent);text-decoration:none}
+.toc-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.toc-text{font-size:13px;color:var(--text)}
+
+/* MAIN */
+.main{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+
+/* CASE STUDY */
+.case-study{margin-bottom:80px}
+.cs-header{border-radius:16px;padding:36px 40px;margin-bottom:32px;position:relative;overflow:hidden}
+.cs-header::before{content:'';position:absolute;inset:0;opacity:.07}
+.cs-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-bottom:8px}
+.cs-title{font-size:clamp(22px,4vw,36px);font-weight:800;margin-bottom:10px}
+.cs-subtitle{font-size:15px;opacity:.75;max-width:600px}
+
+.cs1 .cs-header{background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(99,102,241,.08));border:1px solid rgba(99,102,241,.3)}
+.cs2 .cs-header{background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(34,211,238,.06));border:1px solid rgba(34,211,238,.3)}
+.cs3 .cs-header{background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.06));border:1px solid rgba(245,158,11,.3)}
+.cs4 .cs-header{background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(167,139,250,.06));border:1px solid rgba(167,139,250,.3)}
+.cs5 .cs-header{background:linear-gradient(135deg,rgba(16,185,129,.2),rgba(16,185,129,.06));border:1px solid rgba(16,185,129,.3)}
+
+/* SECTION */
+.section{margin-bottom:32px}
+.section-title{font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';display:inline-block;width:3px;height:18px;border-radius:2px;background:currentColor}
+
+/* CARDS/GRIDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px}
+.card h3{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:700px){.two-col,.three-col{grid-template-columns:1fr}}
+
+/* REQ LIST */
+.req-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.req-list li{display:flex;align-items:flex-start;gap:8px;font-size:14px;color:var(--text2)}
+.req-list li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+.req-list li.warn::before{content:'⚡';color:var(--accent3)}
+
+/* ESTIMATE TABLE */
+.est-table{width:100%;border-collapse:collapse;font-size:13px}
+.est-table th{text-align:left;padding:8px 12px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);font-size:12px;letter-spacing:.05em}
+.est-table td{padding:9px 12px;border-bottom:1px solid rgba(42,45,62,.7);color:var(--text2)}
+.est-table tr:last-child td{border-bottom:none}
+.est-table td:first-child{color:var(--text);font-weight:500}
+.est-table .hl{color:var(--accent3);font-weight:700}
+
+/* CODE BLOCK */
+.code-block{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto;margin:8px 0}
+.code-block pre{margin:0;color:#c9d1d9;font-size:12.5px;line-height:1.6}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e}.num{color:#79c0ff}.tp{color:#ffa657}
+
+/* SVG DIAGRAM */
+.diagram-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;overflow-x:auto;margin-bottom:8px}
+.diagram-wrap svg{display:block;max-width:100%;height:auto}
+
+/* CALLOUT */
+.callout{border-radius:10px;padding:16px 20px;margin:16px 0;display:flex;gap:12px;align-items:flex-start}
+.callout-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.callout-body{flex:1}
+.callout-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.callout-text{font-size:13px;color:var(--text2)}
+.callout.blue{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3)}
+.callout.blue .callout-title{color:var(--accent)}
+.callout.cyan{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25)}
+.callout.cyan .callout-title{color:var(--accent2)}
+.callout.amber{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25)}
+.callout.amber .callout-title{color:var(--accent3)}
+.callout.green{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25)}
+.callout.green .callout-title{color:var(--green)}
+.callout.red{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25)}
+.callout.red .callout-title{color:var(--red)}
+
+/* COMPARISON TABLE */
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-table th{padding:10px 14px;background:var(--surface2);font-size:12px;letter-spacing:.05em;text-align:left;color:var(--text3)}
+.cmp-table th:first-child{border-radius:8px 0 0 0}
+.cmp-table th:last-child{border-radius:0 8px 0 0}
+.cmp-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table td:first-child{color:var(--text);font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin:0 2px}
+.badge-g{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-r{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-y{background:rgba(245,158,11,.15);color:var(--accent3)}
+.badge-b{background:rgba(99,102,241,.15);color:var(--accent)}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:64px 0}
+
+/* TRADEOFF BOX */
+.tradeoff-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.tradeoff-grid{grid-template-columns:1fr}}
+.tradeoff-item{background:var(--surface2);border-radius:8px;padding:14px 16px}
+.tradeoff-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.tradeoff-label.pros{color:var(--green)}
+.tradeoff-label.cons{color:var(--red)}
+.tradeoff-item p{font-size:13px;color:var(--text2)}
+
+/* SUMMARY */
+.summary-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;margin-top:64px}
+.summary-section h2{font-size:24px;font-weight:800;margin-bottom:8px;color:var(--accent2)}
+.summary-section .desc{color:var(--text2);margin-bottom:32px}
+.pattern-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.pattern-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.pattern-card h3{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px}
+.pattern-card p{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* FOOTER NAV */
+.footer-nav{border-top:1px solid var(--border);padding:32px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;max-width:1100px;margin:0 auto}
+.fn-link{display:flex;align-items:center;gap:8px;color:var(--text2);padding:10px 18px;border:1px solid var(--border);border-radius:8px;font-size:14px;transition:.2s}
+.fn-link:hover{border-color:var(--accent);color:var(--text);text-decoration:none}
+.fn-link .arr{color:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <a href="00_index.html">🏠 ホーム</a>
+  <span class="sep">›</span>
+  <a href="13_observability.html">← Ch13 可観測性</a>
+  <span class="sep">›</span>
+  <span class="current">Ch14 実践ケーススタディ</span>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">CHAPTER 14 — CAPSTONE</div>
+  <h1>実践<span>ケーススタディ</span></h1>
+  <p>理論を統合する5つの本格システム設計。要件定義からスケール戦略まで、面接で問われる実践的な設計判断をすべて網羅する。</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">ケーススタディ</div></div>
+    <div class="stat"><div class="stat-num">20+</div><div class="stat-label">SVGアーキテクチャ図</div></div>
+    <div class="stat"><div class="stat-num">50+</div><div class="stat-label">設計判断のポイント</div></div>
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label">面接対応</div></div>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-inner">
+    <h2>目次</h2>
+    <div class="toc-grid">
+      <a href="#cs1" class="toc-item">
+        <div class="toc-num" style="background:rgba(99,102,241,.2);color:var(--accent)">1</div>
+        <div class="toc-text">URL短縮サービス (TinyURL)</div>
+      </a>
+      <a href="#cs2" class="toc-item">
+        <div class="toc-num" style="background:rgba(34,211,238,.15);color:var(--accent2)">2</div>
+        <div class="toc-text">Twitterタイムライン</div>
+      </a>
+      <a href="#cs3" class="toc-item">
+        <div class="toc-num" style="background:rgba(245,158,11,.15);color:var(--accent3)">3</div>
+        <div class="toc-text">YouTube動画配信</div>
+      </a>
+      <a href="#cs4" class="toc-item">
+        <div class="toc-num" style="background:rgba(167,139,250,.15);color:var(--purple)">4</div>
+        <div class="toc-text">分散KVストア</div>
+      </a>
+      <a href="#cs5" class="toc-item">
+        <div class="toc-num" style="background:rgba(16,185,129,.15);color:var(--green)">5</div>
+        <div class="toc-text">チャットアプリ</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ============================================================ -->
+<!-- CASE STUDY 1: TinyURL -->
+<!-- ============================================================ -->
+<div class="case-study cs1" id="cs1">
+  <div class="cs-header">
+    <div class="cs-tag">Case Study 01</div>
+    <div class="cs-title">URL短縮サービス (TinyURL)</div>
+    <div class="cs-subtitle">シンプルに見えて奥が深い。ID生成・リダイレクト・キャッシュ戦略の本質を学ぶ</div>
+  </div>
+
+  <!-- 要件定義 -->
+  <div class="section">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li>長いURLを短縮URLに変換する</li>
+          <li>短縮URLにアクセスすると元URLへリダイレクト</li>
+          <li>カスタムエイリアス（任意の文字列）の指定</li>
+          <li>URLの有効期限設定（デフォルト: 無期限）</li>
+          <li>アクセス統計（クリック数、地域情報）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>100M DAU（デイリーアクティブユーザー）</li>
+          <li>読み取り / 書き込み比率 = 100 : 1</li>
+          <li>可用性 99.9%（年間ダウンタイム8.7時間以下）</li>
+          <li class="warn">リダイレクトレイテンシ &lt; 10ms（キャッシュ）</li>
+          <li>短縮URLは推測困難であること（セキュリティ）</li>
+          <li>スケーラブル：将来10倍のトラフィックに対応</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャパシティ見積もり -->
+  <div class="section">
+    <div class="section-title">キャパシティ見積もり</div>
+    <div class="card">
+      <table class="est-table">
+        <thead><tr><th>項目</th><th>計算</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>DAU</td><td>—</td><td>100,000,000</td></tr>
+          <tr><td>書き込みQPS（URL短縮）</td><td>100M × 1% / 86,400s</td><td class="hl">≈ 1,157 req/s</td></tr>
+          <tr><td>読み取りQPS（リダイレクト）</td><td>1,157 × 100</td><td class="hl">≈ 115,740 req/s</td></tr>
+          <tr><td>1レコードサイズ</td><td>短縮URL(7B) + 元URL(100B) + メタ(50B)</td><td>≈ 500B</td></tr>
+          <tr><td>1日の書き込みデータ量</td><td>1,157 × 86,400 × 500B</td><td>≈ 50GB/day</td></tr>
+          <tr><td>5年間のストレージ</td><td>50GB × 365 × 5</td><td class="hl">≈ 91TB</td></tr>
+          <tr><td>キャッシュサイズ（20%のURLが80%のトラフィック）</td><td>115,740 × 86,400 × 0.2 × 500B</td><td>≈ 1TB/day → Redis 200GB</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 高レベル設計 -->
+  <div class="section">
+    <div class="section-title">高レベル設計</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 860 280" xmlns="http://www.w3.org/2000/svg" style="min-width:600px">
+        <defs>
+          <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+          </marker>
+          <marker id="arr1c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+          </marker>
+        </defs>
+        <!-- Client -->
+        <rect x="20" y="105" width="100" height="70" rx="10" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="70" y="137" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Client</text>
+        <text x="70" y="155" text-anchor="middle" fill="#94a3b8" font-size="10">Browser / App</text>
+        <!-- LB -->
+        <rect x="175" y="105" width="110" height="70" rx="10" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="230" y="133" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Load</text>
+        <text x="230" y="149" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Balancer</text>
+        <text x="230" y="165" text-anchor="middle" fill="#94a3b8" font-size="10">Round Robin</text>
+        <!-- API Servers -->
+        <rect x="345" y="70" width="115" height="50" rx="10" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="402" y="93" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">API Server 1</text>
+        <text x="402" y="109" text-anchor="middle" fill="#94a3b8" font-size="10">Stateless</text>
+        <rect x="345" y="135" width="115" height="50" rx="10" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="402" y="158" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">API Server 2</text>
+        <text x="402" y="174" text-anchor="middle" fill="#94a3b8" font-size="10">Stateless</text>
+        <rect x="345" y="200" width="115" height="50" rx="10" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="402" y="223" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">API Server 3</text>
+        <text x="402" y="239" text-anchor="middle" fill="#94a3b8" font-size="10">Stateless</text>
+        <!-- Cache -->
+        <rect x="530" y="80" width="130" height="60" rx="10" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="595" y="106" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">Redis Cache</text>
+        <text x="595" y="124" text-anchor="middle" fill="#94a3b8" font-size="10">短縮URL → 元URL</text>
+        <!-- DB -->
+        <rect x="530" y="165" width="130" height="70" rx="10" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="595" y="191" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">MySQL DB</text>
+        <text x="595" y="207" text-anchor="middle" fill="#94a3b8" font-size="10">Primary / Replica</text>
+        <text x="595" y="223" text-anchor="middle" fill="#94a3b8" font-size="10">シャーディング</text>
+        <!-- ID Generator -->
+        <rect x="700" y="90" width="130" height="55" rx="10" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="765" y="114" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700">ID Generator</text>
+        <text x="765" y="130" text-anchor="middle" fill="#94a3b8" font-size="10">Base62 Encode</text>
+        <!-- Analytics -->
+        <rect x="700" y="170" width="130" height="55" rx="10" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="765" y="194" text-anchor="middle" fill="#10b981" font-size="12" font-weight="700">Analytics</text>
+        <text x="765" y="210" text-anchor="middle" fill="#94a3b8" font-size="10">Kafka + Spark</text>
+        <!-- Arrows -->
+        <line x1="120" y1="140" x2="173" y2="140" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <line x1="285" y1="130" x2="343" y2="115" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <line x1="285" y1="140" x2="343" y2="160" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <line x1="285" y1="155" x2="343" y2="210" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <line x1="460" y1="110" x2="528" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr1c)"/>
+        <line x1="460" y1="160" x2="528" y2="190" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <line x1="660" y1="108" x2="698" y2="112" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <line x1="660" y1="185" x2="698" y2="195" stroke="#10b981" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <!-- Labels -->
+        <text x="143" y="130" fill="#94a3b8" font-size="10">HTTPS</text>
+        <text x="430" y="108" fill="#22d3ee" font-size="10">Cache Hit</text>
+        <text x="430" y="175" fill="#94a3b8" font-size="10">Cache Miss</text>
+      </svg>
+    </div>
+
+    <div class="callout blue">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">ポイント: ステートレス設計</div>
+        <div class="callout-text">APIサーバーはセッション情報を持たないステートレス設計にする。これにより水平スケールが容易になり、任意のサーバーにリクエストをルーティング可能。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ID生成 -->
+  <div class="section">
+    <div class="section-title">ID生成戦略</div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Base62エンコード</h3>
+      <p style="color:var(--text2);font-size:14px;margin-bottom:12px">使用文字: <code style="color:var(--accent2)">a-z A-Z 0-9</code>（62文字）。7文字の場合: 62⁷ ≈ <strong style="color:var(--accent3)">3,521億</strong>の一意キー</p>
+    </div>
+    <div class="code-block">
+      <pre><span class="cm">-- 短縮URLの例</span>
+<span class="str">https://tiny.url/ab3Kp9x</span>  <span class="cm">-- 7文字のBase62 = 十分な一意性</span>
+
+<span class="cm">-- Base62エンコード (Python風の擬似コード)</span>
+<span class="kw">def</span> <span class="fn">encode_base62</span>(num: <span class="tp">int</span>) -> <span class="tp">str</span>:
+    chars = <span class="str">"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"</span>
+    result = []
+    <span class="kw">while</span> num > <span class="num">0</span>:
+        result.append(chars[num % <span class="num">62</span>])
+        num //= <span class="num">62</span>
+    <span class="kw">return</span> <span class="str">''</span>.join(reversed(result)).zfill(<span class="num">7</span>)</pre>
+    </div>
+
+    <table class="cmp-table" style="margin-top:16px">
+      <thead><tr><th>方式</th><th>メリット</th><th>デメリット</th><th>推奨場面</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>UUID v4</td>
+          <td>実装が簡単、分散生成可能</td>
+          <td>128ビット、URLには長い、衝突確率は低いが0ではない</td>
+          <td><span class="badge badge-y">小規模</span></td>
+        </tr>
+        <tr>
+          <td>連番ID + Base62</td>
+          <td>衝突なし、短い、予測可能な増加</td>
+          <td>単一SPOF（採番サーバー）、推測されやすい</td>
+          <td><span class="badge badge-b">中規模</span></td>
+        </tr>
+        <tr>
+          <td>ZooKeeper採番</td>
+          <td>分散対応、衝突なし保証</td>
+          <td>ZooKeeper依存、レイテンシ増加</td>
+          <td><span class="badge badge-g">大規模</span></td>
+        </tr>
+        <tr>
+          <td>MD5/SHA-1の先頭7文字</td>
+          <td>実装簡単</td>
+          <td>ハッシュ衝突の可能性</td>
+          <td><span class="badge badge-r">非推奨</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- リダイレクト -->
+  <div class="section">
+    <div class="section-title">リダイレクト戦略: 301 vs 302</div>
+    <table class="cmp-table">
+      <thead><tr><th>HTTPステータス</th><th>キャッシュ動作</th><th>サーバー負荷</th><th>アクセスカウント</th><th>推奨</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>301 Moved Permanently</td>
+          <td>ブラウザにキャッシュ（次回はサーバー不要）</td>
+          <td><span class="badge badge-g">低</span></td>
+          <td><span class="badge badge-r">計測不可</span></td>
+          <td>パフォーマンス優先</td>
+        </tr>
+        <tr>
+          <td>302 Found</td>
+          <td>毎回サーバーにリクエスト</td>
+          <td><span class="badge badge-r">高</span></td>
+          <td><span class="badge badge-g">正確に計測可能</span></td>
+          <td>分析・トラッキング優先</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout amber">
+      <div class="callout-icon">⚡</div>
+      <div class="callout-body">
+        <div class="callout-title">設計判断</div>
+        <div class="callout-text">アクセス統計が要件にある場合は302を選ぶ。ただし高トラフィックではRedisでのカウント集計を非同期で行い、リダイレクト自体のレイテンシには影響させない。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- データモデル -->
+  <div class="section">
+    <div class="section-title">データモデル</div>
+    <div class="code-block">
+      <pre><span class="cm">-- URL短縮テーブル</span>
+<span class="kw">CREATE TABLE</span> urls (
+    short_code      <span class="tp">VARCHAR(10)</span>     <span class="kw">PRIMARY KEY</span>,
+    original_url    <span class="tp">TEXT</span>            <span class="kw">NOT NULL</span>,
+    user_id         <span class="tp">BIGINT</span>          <span class="kw">REFERENCES</span> users(id),
+    created_at      <span class="tp">TIMESTAMP</span>       <span class="kw">NOT NULL DEFAULT</span> <span class="fn">NOW()</span>,
+    expires_at      <span class="tp">TIMESTAMP</span>,      <span class="cm">-- NULLなら無期限</span>
+    click_count     <span class="tp">BIGINT</span>          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    is_custom       <span class="tp">BOOLEAN</span>         <span class="kw">DEFAULT</span> <span class="kw">FALSE</span>,
+    <span class="kw">INDEX</span> idx_user_id (user_id),
+    <span class="kw">INDEX</span> idx_expires_at (expires_at)
+);
+
+<span class="cm">-- アクセスログ（分析用、別テーブル or Kafkaで非同期）</span>
+<span class="kw">CREATE TABLE</span> url_clicks (
+    id              <span class="tp">BIGINT</span>          <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+    short_code      <span class="tp">VARCHAR(10)</span>     <span class="kw">NOT NULL</span>,
+    clicked_at      <span class="tp">TIMESTAMP</span>       <span class="kw">NOT NULL</span>,
+    user_agent      <span class="tp">VARCHAR(255)</span>,
+    ip_address      <span class="tp">VARCHAR(45)</span>,    <span class="cm">-- IPv6対応</span>
+    country_code    <span class="tp">CHAR(2)</span>,
+    <span class="kw">INDEX</span> idx_short_code_time (short_code, clicked_at)
+);</pre>
+    </div>
+  </div>
+
+  <!-- スケール戦略 -->
+  <div class="section">
+    <div class="section-title">スケール戦略</div>
+    <div class="three-col">
+      <div class="card">
+        <h3>キャッシュ戦略</h3>
+        <ul class="req-list">
+          <li>Redis Cluster：読み取り100:1比率に対応</li>
+          <li>LRU方式でホットURLをキャッシュ</li>
+          <li>TTL = URLの有効期限と同期</li>
+          <li>Cache-Aside パターン採用</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>DB シャーディング</h3>
+        <ul class="req-list">
+          <li>short_code の先頭1文字でシャード分割</li>
+          <li>62シャードで均等分散</li>
+          <li>各シャードに Primary/Replica</li>
+          <li>ルーティングレイヤーで透過的に</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>CDN / グローバル</h3>
+        <ul class="req-list">
+          <li>301の場合、CDNでキャッシュ可能</li>
+          <li>地域ごとにエッジノードを配置</li>
+          <li>DNS GeolocationでDCを振り分け</li>
+          <li>Active-Active マルチリージョン</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- トレードオフ -->
+  <div class="section">
+    <div class="section-title">トレードオフまとめ</div>
+    <div class="tradeoff-grid">
+      <div class="tradeoff-item">
+        <div class="tradeoff-label pros">設計のポイント（良い点）</div>
+        <p>キャッシュ活用でリダイレクトをほぼメモリ完結、ステートレスAPIで水平スケール容易、Base62で短く予測困難なURL</p>
+      </div>
+      <div class="tradeoff-item">
+        <div class="tradeoff-label cons">注意すべきトレードオフ</div>
+        <p>ID生成のSPOF問題（Zookeeper/Snowflakeで解決）、カスタムURL衝突の防止（ロック機構必要）、有効期限切れURLの定期クリーンアップ（バッチ処理）</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- CASE STUDY 2: Twitter Timeline -->
+<!-- ============================================================ -->
+<div class="case-study cs2" id="cs2">
+  <div class="cs-header">
+    <div class="cs-tag">Case Study 02</div>
+    <div class="cs-title">Twitterタイムライン設計</div>
+    <div class="cs-subtitle">Push vs Pull のファンアウト問題と、有名人問題（Celebrity Problem）をどう解決するか</div>
+  </div>
+
+  <!-- 要件定義 -->
+  <div class="section">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li>ツイートの投稿（テキスト・画像・動画）</li>
+          <li>他ユーザーのフォロー / アンフォロー</li>
+          <li>ホームタイムラインの表示（フォロー中のツイート）</li>
+          <li>ユーザープロフィールタイムライン</li>
+          <li>ツイートの検索</li>
+          <li>リツイート / いいね</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>300M DAU</li>
+          <li>1日あたり500Mツイート投稿</li>
+          <li class="warn">タイムライン表示 &lt; 200ms</li>
+          <li>可用性 99.9%</li>
+          <li>Eventually Consistent（結果整合性で可）</li>
+          <li>スケールアウト可能な設計</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャパシティ -->
+  <div class="section">
+    <div class="section-title">キャパシティ見積もり</div>
+    <div class="card">
+      <table class="est-table">
+        <thead><tr><th>項目</th><th>計算</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>ツイート書き込みQPS</td><td>500M / 86,400</td><td class="hl">≈ 5,787 req/s</td></tr>
+          <tr><td>ピーク時 QPS（×3）</td><td>5,787 × 3</td><td class="hl">≈ 17,361 req/s</td></tr>
+          <tr><td>タイムライン読み取りQPS</td><td>300M × 5回/日 / 86,400</td><td class="hl">≈ 17,361 req/s</td></tr>
+          <tr><td>テキストツイートサイズ</td><td>tweet_id(8) + user_id(8) + text(280B) + meta(30B)</td><td>≈ 300B/tweet</td></tr>
+          <tr><td>1日のツイートデータ</td><td>500M × 300B</td><td>≈ 150GB/day</td></tr>
+          <tr><td>10年のテキストデータ</td><td>150GB × 365 × 10</td><td class="hl">≈ 1.5PB</td></tr>
+          <tr><td>メディア（20%に画像、平均1MB）</td><td>100M × 1MB/day</td><td>≈ 100TB/day</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 高レベル設計 -->
+  <div class="section">
+    <div class="section-title">高レベル設計 — ツイート投稿フロー</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" style="min-width:600px">
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+          </marker>
+        </defs>
+        <!-- User -->
+        <rect x="15" y="120" width="90" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="60" y="148" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">User</text>
+        <text x="60" y="163" text-anchor="middle" fill="#94a3b8" font-size="10">POST /tweet</text>
+        <!-- API GW -->
+        <rect x="160" y="120" width="100" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="210" y="146" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">API</text>
+        <text x="210" y="162" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">Gateway</text>
+        <!-- Tweet Service -->
+        <rect x="320" y="120" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="380" y="146" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Tweet</text>
+        <text x="380" y="162" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Service</text>
+        <!-- Tweet DB -->
+        <rect x="320" y="220" width="120" height="55" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="380" y="245" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">Tweet DB</text>
+        <text x="380" y="261" text-anchor="middle" fill="#94a3b8" font-size="10">Cassandra</text>
+        <!-- Message Queue -->
+        <rect x="500" y="120" width="130" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="565" y="146" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Message</text>
+        <text x="565" y="162" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Queue (Kafka)</text>
+        <!-- Fanout Service -->
+        <rect x="695" y="80" width="130" height="55" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="760" y="104" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">Fanout</text>
+        <text x="760" y="120" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">Service</text>
+        <!-- Timeline Cache -->
+        <rect x="695" y="165" width="130" height="55" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="760" y="189" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Timeline</text>
+        <text x="760" y="205" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Cache (Redis)</text>
+        <!-- Notification -->
+        <rect x="695" y="245" width="130" height="45" rx="8" fill="#1c1f2e" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="760" y="270" text-anchor="middle" fill="#94a3b8" font-size="11">Notification Svc</text>
+        <!-- Arrows -->
+        <line x1="105" y1="150" x2="158" y2="150" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="260" y1="150" x2="318" y2="150" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="380" y1="180" x2="380" y2="218" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="440" y1="150" x2="498" y2="150" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="630" y1="140" x2="693" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="760" y1="135" x2="760" y2="163" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="630" y1="160" x2="693" y2="265" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr2)"/>
+        <!-- Labels -->
+        <text x="460" y="140" fill="#94a3b8" font-size="10">非同期</text>
+        <text x="400" y="210" fill="#a78bfa" font-size="10">永続化</text>
+      </svg>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">高レベル設計 — タイムライン取得フロー</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 860 220" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+        <defs>
+          <marker id="arr2b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+          </marker>
+        </defs>
+        <!-- User -->
+        <rect x="15" y="85" width="90" height="50" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="60" y="108" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">User</text>
+        <text x="60" y="124" text-anchor="middle" fill="#94a3b8" font-size="10">GET /timeline</text>
+        <!-- Timeline Service -->
+        <rect x="165" y="85" width="120" height="50" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="225" y="108" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">Timeline</text>
+        <text x="225" y="124" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">Service</text>
+        <!-- Cache Check -->
+        <rect x="355" y="30" width="140" height="50" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="425" y="53" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Redis Timeline</text>
+        <text x="425" y="69" text-anchor="middle" fill="#10b981" font-size="11">Cache (Push)</text>
+        <!-- Tweet Fetch -->
+        <rect x="355" y="140" width="140" height="50" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="425" y="163" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">Tweet DB</text>
+        <text x="425" y="179" text-anchor="middle" fill="#a78bfa" font-size="11">(Celebrity Pull)</text>
+        <!-- Merge & Rank -->
+        <rect x="570" y="85" width="130" height="50" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="635" y="108" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Merge &</text>
+        <text x="635" y="124" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Rank</text>
+        <!-- Return -->
+        <rect x="760" y="85" width="85" height="50" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="802" y="113" text-anchor="middle" fill="#e2e8f0" font-size="11">Response</text>
+        <!-- Arrows -->
+        <line x1="105" y1="110" x2="163" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2b)"/>
+        <line x1="285" y1="100" x2="353" y2="65" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2b)"/>
+        <line x1="285" y1="120" x2="353" y2="155" stroke="#a78bfa" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr2b)"/>
+        <line x1="495" y1="60" x2="568" y2="98" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2b)"/>
+        <line x1="495" y1="160" x2="568" y2="122" stroke="#a78bfa" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr2b)"/>
+        <line x1="700" y1="110" x2="758" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2b)"/>
+        <!-- Labels -->
+        <text x="300" y="80" fill="#10b981" font-size="10">通常ユーザー</text>
+        <text x="300" y="148" fill="#a78bfa" font-size="10">有名人フォロー時</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Fan-out -->
+  <div class="section">
+    <div class="section-title">Push vs Pull — Fan-outモデルの詳細</div>
+    <table class="cmp-table">
+      <thead><tr><th>モデル</th><th>仕組み</th><th>メリット</th><th>デメリット</th><th>向いているケース</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Push on Write<br><span style="color:var(--text3);font-size:11px">(Fan-out on Write)</span></td>
+          <td>ツイート時に全フォロワーのタイムラインキャッシュに書き込む</td>
+          <td>読み取り超高速（キャッシュから返すだけ）</td>
+          <td>フォロワー数百万のユーザーは書き込みが膨大（有名人問題）</td>
+          <td><span class="badge badge-b">フォロワー少ない一般ユーザー</span></td>
+        </tr>
+        <tr>
+          <td>Pull on Read<br><span style="color:var(--text3);font-size:11px">(Fan-out on Read)</span></td>
+          <td>タイムライン表示時にフォロー中の全ツイートを動的集約</td>
+          <td>書き込み負荷が低い、キャッシュが不要</td>
+          <td>読み取りが遅い（フォロー数が多いと複数DBクエリ）</td>
+          <td><span class="badge badge-b">有名人アカウント</span></td>
+        </tr>
+        <tr>
+          <td><strong>Hybrid</strong><br><span style="color:var(--green);font-size:11px">推奨</span></td>
+          <td>フォロワー &lt; 1万 → Push / フォロワー ≥ 1万 → Pull</td>
+          <td>両方のメリットを享受</td>
+          <td>実装が複雑、閾値の調整が必要</td>
+          <td><span class="badge badge-g">本番Twitterと同等</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout cyan">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">ポイント: Celebrity Problem（有名人問題）</div>
+        <div class="callout-text">Elon Muskのような1.5億フォロワーのユーザーがツイートすると、Push方式では1.5億件のキャッシュ書き込みが発生。これはキュー詰まりと書き込みストームを引き起こす。Hybridアプローチでは有名人のツイートはキャッシュに書き込まず、読み取り時にリアルタイムで取得・マージする。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Cache Design -->
+  <div class="section">
+    <div class="section-title">Redisによるタイムラインキャッシュ設計</div>
+    <div class="code-block">
+      <pre><span class="cm">-- Redisデータ構造: Sorted Set (ZSet)</span>
+<span class="cm">-- Key: timeline:{user_id}</span>
+<span class="cm">-- Score: タイムスタンプ (UNIX epoch, 降順)</span>
+<span class="cm">-- Member: tweet_id</span>
+
+<span class="cm">-- タイムラインへのツイート追加 (Fan-out時)</span>
+ZADD timeline:<span class="num">12345</span> <span class="num">1703952000</span> tweet:<span class="num">98765</span>
+
+<span class="cm">-- タイムライン取得 (最新20件)</span>
+ZREVRANGE timeline:<span class="num">12345</span> <span class="num">0</span> <span class="num">19</span> WITHSCORES
+
+<span class="cm">-- キャッシュサイズ制御: 最大800件を保持、古いものを削除</span>
+ZREMRANGEBYRANK timeline:<span class="num">12345</span> <span class="num">0</span> -<span class="num">801</span>
+
+<span class="cm">-- パイプラインで複数ユーザーに一括配信 (Lua Script)</span>
+<span class="kw">local</span> followers = redis.call(<span class="str">'SMEMBERS'</span>, <span class="str">'followers:'</span> .. tweet_author_id)
+<span class="kw">for</span> _, follower_id <span class="kw">in</span> ipairs(followers) <span class="kw">do</span>
+    redis.call(<span class="str">'ZADD'</span>, <span class="str">'timeline:'</span> .. follower_id, timestamp, tweet_id)
+    redis.call(<span class="str">'ZREMRANGEBYRANK'</span>, <span class="str">'timeline:'</span> .. follower_id, <span class="num">0</span>, -<span class="num">801</span>)
+<span class="kw">end</span></pre>
+    </div>
+  </div>
+
+  <!-- データモデル -->
+  <div class="section">
+    <div class="section-title">データモデル</div>
+    <div class="code-block">
+      <pre><span class="cm">-- Cassandra: ツイートテーブル (高書き込みに最適)</span>
+<span class="kw">CREATE TABLE</span> tweets (
+    tweet_id        <span class="tp">UUID</span>            <span class="kw">PRIMARY KEY</span>,
+    user_id         <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    content         <span class="tp">TEXT</span>,
+    media_urls      <span class="tp">LIST&lt;TEXT&gt;</span>,
+    created_at      <span class="tp">TIMESTAMP</span>,
+    like_count      <span class="tp">COUNTER</span>,
+    retweet_count   <span class="tp">COUNTER</span>
+);
+
+<span class="cm">-- フォロー関係 (Graph DB or MySQL)</span>
+<span class="kw">CREATE TABLE</span> follows (
+    follower_id     <span class="tp">BIGINT</span>          <span class="kw">NOT NULL</span>,
+    followee_id     <span class="tp">BIGINT</span>          <span class="kw">NOT NULL</span>,
+    created_at      <span class="tp">TIMESTAMP</span>       <span class="kw">DEFAULT</span> <span class="fn">NOW()</span>,
+    <span class="kw">PRIMARY KEY</span> (follower_id, followee_id),
+    <span class="kw">INDEX</span> idx_followee (followee_id)  <span class="cm">-- フォロワー一覧取得用</span>
+);
+
+<span class="cm">-- ユーザーテーブル</span>
+<span class="kw">CREATE TABLE</span> users (
+    user_id         <span class="tp">BIGINT</span>          <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+    username        <span class="tp">VARCHAR(50)</span>     <span class="kw">UNIQUE NOT NULL</span>,
+    display_name    <span class="tp">VARCHAR(100)</span>,
+    follower_count  <span class="tp">BIGINT</span>          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    is_celebrity    <span class="tp">BOOLEAN</span>         <span class="kw">DEFAULT</span> <span class="kw">FALSE</span>  <span class="cm">-- Hybrid戦略フラグ</span>
+);</pre>
+    </div>
+  </div>
+
+  <!-- トレードオフ -->
+  <div class="section">
+    <div class="section-title">トレードオフまとめ</div>
+    <div class="tradeoff-grid">
+      <div class="tradeoff-item">
+        <div class="tradeoff-label pros">採用した設計とその理由</div>
+        <p>Hybrid Fan-out で通常ユーザーのタイムラインを高速化。Cassandraでツイートデータの高スループット書き込みに対応。RedisのSorted Setでタイムラインをメモリ管理。</p>
+      </div>
+      <div class="tradeoff-item">
+        <div class="tradeoff-label cons">残る課題と解決アプローチ</div>
+        <p>タイムラインの結果整合性（数秒の遅延は許容）。有名人フォロワーへの配信タイムラグをMergeで補完。フォロー解除後の古いキャッシュ無効化（Lazy Delete）。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- CASE STUDY 3: YouTube -->
+<!-- ============================================================ -->
+<div class="case-study cs3" id="cs3">
+  <div class="cs-header">
+    <div class="cs-tag">Case Study 03</div>
+    <div class="cs-title">YouTube / 動画配信サービス設計</div>
+    <div class="cs-subtitle">大容量動画のアップロードパイプライン、トランスコーディング、アダプティブストリーミングの全貌</div>
+  </div>
+
+  <!-- 要件定義 -->
+  <div class="section">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li>動画のアップロード（最大4K、10GB）</li>
+          <li>動画のストリーミング再生</li>
+          <li>複数解像度での自動変換（360p〜4K）</li>
+          <li>タイトル・説明・タグによる検索</li>
+          <li>いいね・コメント・チャンネル登録</li>
+          <li>レコメンデーション</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>2B MAU（月間アクティブユーザー）</li>
+          <li>1日あたり500時間分/分のアップロード</li>
+          <li class="warn">動画再生開始まで &lt; 2秒（バッファリング）</li>
+          <li>グローバルに低レイテンシ（CDN必須）</li>
+          <li>可用性 99.9%</li>
+          <li>ストレージコスト最適化</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 見積もり -->
+  <div class="section">
+    <div class="section-title">キャパシティ見積もり</div>
+    <div class="card">
+      <table class="est-table">
+        <thead><tr><th>項目</th><th>計算</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>1日のアップロード量</td><td>500時間/分 × 60分 × 24時間 = 720,000時間</td><td>≈ 720,000 h/day</td></tr>
+          <tr><td>元動画ストレージ/日</td><td>720,000時間 × 3,600s × 10Mbps / 8</td><td class="hl">≈ 3.2TB/day</td></tr>
+          <tr><td>トランスコード後（5解像度）</td><td>3.2TB × 5</td><td>≈ 16TB/day</td></tr>
+          <tr><td>5年間のストレージ</td><td>16TB × 365 × 5</td><td class="hl">≈ 29PB</td></tr>
+          <tr><td>CDN帯域（同時視聴1億人×5Mbps）</td><td>100M × 5Mbps</td><td class="hl">≈ 500Tbps</td></tr>
+          <tr><td>視聴 vs アップロード比率</td><td>—</td><td>約200:1 (読み取り優位)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- アップロードパイプライン -->
+  <div class="section">
+    <div class="section-title">動画アップロードパイプライン</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" style="min-width:640px">
+        <defs>
+          <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+          </marker>
+        </defs>
+        <!-- Client Upload -->
+        <rect x="10" y="130" width="110" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="65" y="154" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Client</text>
+        <text x="65" y="170" text-anchor="middle" fill="#94a3b8" font-size="10">分割アップロード</text>
+        <text x="65" y="182" text-anchor="middle" fill="#94a3b8" font-size="10">(Multipart)</text>
+        <!-- Raw Storage -->
+        <rect x="175" y="130" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="235" y="154" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Raw Video</text>
+        <text x="235" y="170" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Storage (S3)</text>
+        <text x="235" y="185" text-anchor="middle" fill="#94a3b8" font-size="10">元ファイル保存</text>
+        <!-- Message Queue -->
+        <rect x="355" y="130" width="130" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="420" y="154" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Message Queue</text>
+        <text x="420" y="170" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">(Kafka)</text>
+        <text x="420" y="185" text-anchor="middle" fill="#94a3b8" font-size="10">トランスコードジョブ</text>
+        <!-- Transcoder Workers -->
+        <rect x="545" y="60" width="120" height="50" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="605" y="82" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Worker: 360p</text>
+        <text x="605" y="98" text-anchor="middle" fill="#94a3b8" font-size="10">FFmpeg</text>
+        <rect x="545" y="130" width="120" height="50" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="605" y="152" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Worker: 720p</text>
+        <text x="605" y="168" text-anchor="middle" fill="#94a3b8" font-size="10">FFmpeg</text>
+        <rect x="545" y="200" width="120" height="50" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="605" y="222" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Worker: 1080p</text>
+        <text x="605" y="238" text-anchor="middle" fill="#94a3b8" font-size="10">FFmpeg</text>
+        <rect x="545" y="270" width="120" height="40" rx="8" fill="#1c1f2e" stroke="#64748b" stroke-width="1"/>
+        <text x="605" y="294" text-anchor="middle" fill="#64748b" font-size="11">Worker: 4K</text>
+        <!-- Encoded Storage -->
+        <rect x="730" y="100" width="120" height="60" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="790" y="124" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Encoded Video</text>
+        <text x="790" y="140" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Storage (S3)</text>
+        <!-- CDN -->
+        <rect x="730" y="190" width="120" height="55" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="790" y="214" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="700">CDN</text>
+        <text x="790" y="230" text-anchor="middle" fill="#94a3b8" font-size="10">CloudFront等</text>
+        <!-- Metadata DB -->
+        <rect x="355" y="250" width="130" height="55" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="420" y="274" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">Metadata DB</text>
+        <text x="420" y="290" text-anchor="middle" fill="#94a3b8" font-size="10">MySQL + Elasticsearch</text>
+        <!-- Arrows -->
+        <line x1="120" y1="160" x2="173" y2="160" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <line x1="295" y1="160" x2="353" y2="160" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <line x1="485" y1="155" x2="543" y2="90" stroke="#f59e0b" stroke-width="1.3" marker-end="url(#arr3)"/>
+        <line x1="485" y1="160" x2="543" y2="160" stroke="#f59e0b" stroke-width="1.3" marker-end="url(#arr3)"/>
+        <line x1="485" y1="165" x2="543" y2="220" stroke="#f59e0b" stroke-width="1.3" marker-end="url(#arr3)"/>
+        <line x1="665" y1="90" x2="728" y2="122" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <line x1="665" y1="155" x2="728" y2="130" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <line x1="665" y1="225" x2="728" y2="148" stroke="#10b981" stroke-width="1.3" marker-end="url(#arr3)"/>
+        <line x1="790" y1="160" x2="790" y2="188" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <line x1="485" y1="175" x2="485" y2="250" stroke="#a78bfa" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#arr3)"/>
+        <!-- DAG Label -->
+        <rect x="185" y="15" width="260" height="30" rx="6" fill="rgba(245,158,11,.1)" stroke="rgba(245,158,11,.3)" stroke-width="1"/>
+        <text x="315" y="35" text-anchor="middle" fill="#f59e0b" font-size="11">DAGスケジューラがWorker群を並列実行管理</text>
+      </svg>
+    </div>
+
+    <div class="callout amber">
+      <div class="callout-icon">⚡</div>
+      <div class="callout-body">
+        <div class="callout-title">DAG（有向非循環グラフ）によるジョブ管理</div>
+        <div class="callout-text">トランスコードは複数のステップ（動画分割 → 並列エンコード → サムネイル生成 → マージ → メタデータ更新）をDAGで管理する。各ノードはコンポーネント（タスク）、エッジは依存関係を表す。AirflowやAWS Step Functionsに相当する。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- アダプティブストリーミング -->
+  <div class="section">
+    <div class="section-title">アダプティブビットレートストリーミング (ABR)</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>DASH / HLS の仕組み</h3>
+        <ul class="req-list">
+          <li>動画を2〜10秒のセグメントに分割</li>
+          <li>各セグメントを複数のビットレートで用意</li>
+          <li>マニフェストファイル（.m3u8 / .mpd）で解像度一覧を提供</li>
+          <li>クライアントがネット速度に応じてセグメントを動的選択</li>
+          <li>回線が遅ければ低解像度に、速ければ高解像度に自動切替</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>CDN設計のポイント</h3>
+        <ul class="req-list">
+          <li>人気動画はエッジノードにプリロード（Pre-warming）</li>
+          <li>GeoIPで最寄りのエッジにルーティング</li>
+          <li>Long-tail動画はOriginからオンデマンドフェッチ</li>
+          <li>Cold Start軽減：再生開始直後は低解像度セグメント先読み</li>
+          <li>Range Requestによる部分取得（シーク対応）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- データモデル -->
+  <div class="section">
+    <div class="section-title">データモデル</div>
+    <div class="code-block">
+      <pre><span class="cm">-- 動画メタデータ (MySQL)</span>
+<span class="kw">CREATE TABLE</span> videos (
+    video_id        <span class="tp">VARCHAR(11)</span>     <span class="kw">PRIMARY KEY</span>,   <span class="cm">-- YouTube風11文字ID</span>
+    user_id         <span class="tp">BIGINT</span>          <span class="kw">NOT NULL</span>,
+    title           <span class="tp">VARCHAR(255)</span>    <span class="kw">NOT NULL</span>,
+    description     <span class="tp">TEXT</span>,
+    duration_sec    <span class="tp">INT</span>             <span class="kw">NOT NULL</span>,
+    status          <span class="tp">ENUM</span>(<span class="str">'uploading'</span>,<span class="str">'processing'</span>,<span class="str">'published'</span>,<span class="str">'failed'</span>),
+    view_count      <span class="tp">BIGINT</span>          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    like_count      <span class="tp">BIGINT</span>          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    created_at      <span class="tp">TIMESTAMP</span>       <span class="kw">DEFAULT</span> <span class="fn">NOW()</span>,
+    thumbnail_url   <span class="tp">VARCHAR(512)</span>,
+    <span class="kw">FULLTEXT INDEX</span> ft_title_desc (title, description)
+);
+
+<span class="cm">-- 動画ファイル情報 (各解像度)</span>
+<span class="kw">CREATE TABLE</span> video_files (
+    video_id        <span class="tp">VARCHAR(11)</span>     <span class="kw">NOT NULL</span>,
+    resolution      <span class="tp">ENUM</span>(<span class="str">'360p'</span>,<span class="str">'720p'</span>,<span class="str">'1080p'</span>,<span class="str">'4k'</span>),
+    file_url        <span class="tp">VARCHAR(512)</span>    <span class="kw">NOT NULL</span>,
+    file_size_mb    <span class="tp">DECIMAL(10,2)</span>,
+    bitrate_kbps    <span class="tp">INT</span>,
+    <span class="kw">PRIMARY KEY</span> (video_id, resolution)
+);
+
+<span class="cm">-- コメント (Cassandra: 高書き込み・時系列)</span>
+<span class="kw">CREATE TABLE</span> comments (
+    video_id        <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    comment_id      <span class="tp">TIMEUUID</span>        <span class="kw">NOT NULL</span>,   <span class="cm">-- 時刻ベースUUID</span>
+    user_id         <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    content         <span class="tp">TEXT</span>,
+    <span class="kw">PRIMARY KEY</span> (video_id, comment_id)
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (comment_id <span class="kw">DESC</span>);</pre>
+    </div>
+  </div>
+
+  <!-- トレードオフ -->
+  <div class="section">
+    <div class="section-title">トレードオフまとめ</div>
+    <div class="tradeoff-grid">
+      <div class="tradeoff-item">
+        <div class="tradeoff-label pros">重要設計判断</div>
+        <p>動画と非動画データを分離（オブジェクトストレージ vs RDB）。非同期パイプラインでアップロード後のUXをブロックしない。CDNにより世界規模でレイテンシを均一化。</p>
+      </div>
+      <div class="tradeoff-item">
+        <div class="tradeoff-label cons">コスト最適化の課題</div>
+        <p>ストレージコスト削減: 90日アクセスなし動画をS3 Glacier(コールドストレージ)に移行。人気上位1%の動画がトラフィックの95%を占めるため、エッジキャッシュ集中が有効。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- CASE STUDY 4: Distributed KV Store -->
+<!-- ============================================================ -->
+<div class="case-study cs4" id="cs4">
+  <div class="cs-header">
+    <div class="cs-tag">Case Study 04</div>
+    <div class="cs-title">分散KVストア（DynamoDB風）</div>
+    <div class="cs-subtitle">コンシステントハッシング・LSMツリー・Gossipプロトコルで99.99%可用性を実現する内部設計</div>
+  </div>
+
+  <!-- 要件定義 -->
+  <div class="section">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li><code>Get(key)</code> — 値の取得</li>
+          <li><code>Put(key, value)</code> — 値の設定・更新</li>
+          <li><code>Delete(key)</code> — 値の削除</li>
+          <li>キーとバリューのサイズは10KB以下</li>
+          <li>データの永続化保証</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>可用性 99.99%（年間ダウンタイム52分以下）</li>
+          <li class="warn">読み取りレイテンシ &lt; 1ms（P99）</li>
+          <li>水平スケールアウト可能</li>
+          <li>CAP定理: APを優先（Availability + Partition Tolerance）</li>
+          <li>自動障害検知と復旧</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- コンシステントハッシング -->
+  <div class="section">
+    <div class="section-title">コンシステントハッシング</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 560 340" xmlns="http://www.w3.org/2000/svg" style="min-width:400px">
+        <!-- Hash ring circle -->
+        <circle cx="280" cy="170" r="130" fill="none" stroke="#2a2d3e" stroke-width="2"/>
+        <!-- Virtual nodes on ring -->
+        <!-- Node A at top -->
+        <circle cx="280" cy="40" r="22" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+        <text x="280" y="44" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">A1</text>
+        <!-- Node B right-top -->
+        <circle cx="387" cy="80" r="22" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+        <text x="387" y="84" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">B1</text>
+        <!-- Node C right -->
+        <circle cx="410" cy="170" r="22" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2"/>
+        <text x="410" y="174" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">C1</text>
+        <!-- Node B right-bottom -->
+        <circle cx="387" cy="260" r="22" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+        <text x="387" y="264" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">B2</text>
+        <!-- Node A bottom -->
+        <circle cx="280" cy="300" r="22" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+        <text x="280" y="304" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">A2</text>
+        <!-- Node C left-bottom -->
+        <circle cx="173" cy="260" r="22" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2"/>
+        <text x="173" y="264" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">C2</text>
+        <!-- Node A left -->
+        <circle cx="150" cy="170" r="22" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+        <text x="150" y="174" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">A3</text>
+        <!-- Node B left-top -->
+        <circle cx="173" cy="80" r="22" fill="#1c1f2e" stroke="#22d3ee" stroke-width="2"/>
+        <text x="173" y="84" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">B3</text>
+        <!-- Data point (key) -->
+        <circle cx="350" cy="55" r="8" fill="#ef4444" stroke="#fff" stroke-width="1"/>
+        <text x="365" y="48" fill="#ef4444" font-size="10" font-weight="700">key:x</text>
+        <!-- Arrow from key to node B1 -->
+        <path d="M 350 60 Q 370 68 382 75" stroke="#ef4444" stroke-width="1.5" fill="none" stroke-dasharray="4,2"/>
+        <!-- Center label -->
+        <text x="280" y="162" text-anchor="middle" fill="#94a3b8" font-size="12">ハッシュ</text>
+        <text x="280" y="178" text-anchor="middle" fill="#94a3b8" font-size="12">リング</text>
+        <!-- Legend -->
+        <rect x="10" y="280" width="12" height="12" rx="2" fill="#a78bfa"/>
+        <text x="27" y="291" fill="#94a3b8" font-size="11">物理ノードA (3仮想)</text>
+        <rect x="10" y="300" width="12" height="12" rx="2" fill="#22d3ee"/>
+        <text x="27" y="311" fill="#94a3b8" font-size="11">物理ノードB (3仮想)</text>
+        <rect x="10" y="320" width="12" height="12" rx="2" fill="#f59e0b"/>
+        <text x="27" y="331" fill="#94a3b8" font-size="11">物理ノードC (2仮想)</text>
+        <!-- Replication arrows -->
+        <text x="280" y="20" text-anchor="middle" fill="#64748b" font-size="10">時計回りに次のN=3ノードへレプリケーション</text>
+      </svg>
+    </div>
+
+    <div class="callout blue">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">バーチャルノードの重要性</div>
+        <div class="callout-text">物理ノード1台をリング上に複数の仮想ノードとして配置することで、データ分散が均等になる。ノード追加/削除時の再配置量も最小化できる。例えば物理ノード3台に対し各々100個の仮想ノードを配置すると、300点のハッシュ値でリングを分割する。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quorum -->
+  <div class="section">
+    <div class="section-title">データレプリケーションとQuorum</div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Quorum パラメータ (N, W, R)</h3>
+      <table class="est-table">
+        <thead><tr><th>パラメータ</th><th>意味</th><th>推奨値</th><th>効果</th></tr></thead>
+        <tbody>
+          <tr><td>N（レプリカ数）</td><td>データを保持するノード数</td><td class="hl">N = 3</td><td>1台障害でもデータ保持</td></tr>
+          <tr><td>W（書き込みQuorum）</td><td>書き込み成功に必要なノード数</td><td class="hl">W = 2</td><td>過半数確認で強い一貫性</td></tr>
+          <tr><td>R（読み取りQuorum）</td><td>読み取り成功に必要なノード数</td><td class="hl">R = 2</td><td>W + R &gt; N で強一貫性</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <table class="cmp-table">
+      <thead><tr><th>設定</th><th>特性</th><th>向くケース</th></tr></thead>
+      <tbody>
+        <tr><td>W=1, R=1</td><td>最速だが一貫性弱い</td><td>セッションカウンター等</td></tr>
+        <tr><td>W=1, R=N</td><td>書き込み高速、読み取り低速だが強一貫</td><td>書き込み多、読み取り少</td></tr>
+        <tr><td>W=N, R=1</td><td>書き込み低速だが読み取り強一貫</td><td>設定値、参照データ</td></tr>
+        <tr><td>W=2, R=2 (N=3)</td><td>バランス重視（推奨）</td><td>汎用KVストア</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- LSM Tree -->
+  <div class="section">
+    <div class="section-title">書き込みパス — LSMツリー構造</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg" style="min-width:560px">
+        <defs>
+          <marker id="arr4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa"/>
+          </marker>
+        </defs>
+        <!-- Write Request -->
+        <rect x="10" y="115" width="90" height="50" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="55" y="138" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Write</text>
+        <text x="55" y="154" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Request</text>
+        <!-- WAL -->
+        <rect x="155" y="115" width="110" height="50" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="210" y="135" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">WAL</text>
+        <text x="210" y="151" text-anchor="middle" fill="#94a3b8" font-size="10">Write-Ahead Log</text>
+        <text x="210" y="163" text-anchor="middle" fill="#94a3b8" font-size="10">永続化保証</text>
+        <!-- MemTable -->
+        <rect x="325" y="100" width="120" height="80" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="385" y="125" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">MemTable</text>
+        <text x="385" y="143" text-anchor="middle" fill="#94a3b8" font-size="10">メモリ上のソート済み</text>
+        <text x="385" y="157" text-anchor="middle" fill="#94a3b8" font-size="10">バッファ（Red-Black Tree）</text>
+        <text x="385" y="171" text-anchor="middle" fill="#f59e0b" font-size="10">閾値超でフラッシュ</text>
+        <!-- SSTable L0 -->
+        <rect x="500" y="40" width="140" height="45" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="570" y="60" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">L0: SSTable</text>
+        <text x="570" y="75" text-anchor="middle" fill="#94a3b8" font-size="10">新しい（最近フラッシュ）</text>
+        <!-- SSTable L1 -->
+        <rect x="500" y="110" width="140" height="45" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.3"/>
+        <text x="570" y="130" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">L1: SSTable</text>
+        <text x="570" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">Compaction済み</text>
+        <!-- SSTable L2 -->
+        <rect x="500" y="180" width="140" height="45" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1"/>
+        <text x="570" y="200" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">L2: SSTable</text>
+        <text x="570" y="215" text-anchor="middle" fill="#94a3b8" font-size="10">古い（大容量）</text>
+        <!-- Bloom Filter -->
+        <rect x="690" y="105" width="120" height="55" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="750" y="128" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Bloom Filter</text>
+        <text x="750" y="144" text-anchor="middle" fill="#94a3b8" font-size="10">存在確認を高速化</text>
+        <text x="750" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">（確率的データ構造）</text>
+        <!-- Compaction label -->
+        <rect x="500" y="240" width="140" height="30" rx="6" fill="rgba(34,211,238,.08)" stroke="rgba(34,211,238,.3)" stroke-width="1"/>
+        <text x="570" y="259" text-anchor="middle" fill="#22d3ee" font-size="10">Compaction: L0→L1→L2</text>
+        <!-- Arrows -->
+        <line x1="100" y1="140" x2="153" y2="140" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr4)"/>
+        <line x1="265" y1="140" x2="323" y2="140" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr4)"/>
+        <line x1="445" y1="125" x2="498" y2="68" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr4)"/>
+        <line x1="640" y1="130" x2="688" y2="130" stroke="#10b981" stroke-width="1.3" stroke-dasharray="4,2" marker-end="url(#arr4)"/>
+        <!-- Compaction arrow -->
+        <path d="M 570 85 L 570 108" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arr4)"/>
+        <path d="M 570 155 L 570 178" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arr4)"/>
+        <!-- Read path label -->
+        <text x="420" y="250" fill="#64748b" font-size="10">読み取り: MemTable → L0 → L1 → L2 (Bloom Filterで高速化)</text>
+      </svg>
+    </div>
+
+    <div class="callout cyan">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">Bloom Filterの役割</div>
+        <div class="callout-text">「キーが存在しないこと」を高速に判定する確率的データ構造。偽陽性（ないのにあると言う）はあるが偽陰性はない。存在しないキーの検索でSSTableのディスクI/Oを回避し、読み取り性能を大幅改善する。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gossip Protocol -->
+  <div class="section">
+    <div class="section-title">障害検知 — Gossipプロトコル</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>Gossipプロトコルの仕組み</h3>
+        <ul class="req-list">
+          <li>各ノードがランダムなピアにハートビートを定期送信</li>
+          <li>受信ノードはその情報を別のランダムなピアに転送</li>
+          <li>感染モデルで全ノードに状態が伝播（O(log N)）</li>
+          <li>特定のコーディネーターが不要（分散型）</li>
+          <li>一定時間ハートビートがなければそのノードを障害と判断</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>ベクタークロック（競合解決）</h3>
+        <ul class="req-list">
+          <li>各更新に[ノードID: バージョン番号]のベクターを付与</li>
+          <li>競合発生時: 複数バージョンをクライアントに返す</li>
+          <li>クライアント側で最終的な値を決定（Application-level）</li>
+          <li>DynamoDBの「Last Write Wins」または「Vector Clock」</li>
+          <li>簡略化: タイムスタンプによるLWW（Last Write Wins）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- コンポーネントまとめ -->
+  <div class="section">
+    <div class="section-title">コアコンポーネントまとめ</div>
+    <div class="three-col">
+      <div class="card">
+        <h3>データ分散</h3>
+        <ul class="req-list">
+          <li>コンシステントハッシング</li>
+          <li>バーチャルノード（均等分散）</li>
+          <li>N=3レプリカ（耐障害性）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>書き込みパス</h3>
+        <ul class="req-list">
+          <li>WAL（クラッシュ復旧）</li>
+          <li>MemTable（高速インメモリ）</li>
+          <li>SSTable + Compaction（ディスク）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>読み取り最適化</h3>
+        <ul class="req-list">
+          <li>MemTable優先検索</li>
+          <li>Bloom Filter（不存在高速判定）</li>
+          <li>SSTableのインデックスキャッシュ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- トレードオフ -->
+  <div class="section">
+    <div class="section-title">トレードオフまとめ</div>
+    <div class="tradeoff-grid">
+      <div class="tradeoff-item">
+        <div class="tradeoff-label pros">APシステムの設計哲学</div>
+        <p>DynamoDB/Cassandraは可用性を最優先。ネットワーク分断時も書き込みを受け付け、結果整合性で最終的に収束。"Always writable"を実現するためにベクタークロックで競合を追跡。</p>
+      </div>
+      <div class="tradeoff-item">
+        <div class="tradeoff-label cons">LSMツリーのデメリット</div>
+        <p>Read Amplification（複数レベルを検索）とWrite Amplification（Compaction時の多重書き込み）が発生。頻繁なCompactionはI/O負荷を上げるため、タイミングとレベル構成の調整が必要。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- CASE STUDY 5: Chat App -->
+<!-- ============================================================ -->
+<div class="case-study cs5" id="cs5">
+  <div class="cs-header">
+    <div class="cs-tag">Case Study 05</div>
+    <div class="cs-title">チャットアプリ設計（WhatsApp / LINE風）</div>
+    <div class="cs-subtitle">WebSocketによるリアルタイム双方向通信、メッセージ永続化、オンライン状態管理を完全設計</div>
+  </div>
+
+  <!-- 要件定義 -->
+  <div class="section">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li>1対1チャット（テキスト・画像・ファイル）</li>
+          <li>グループチャット（最大500人）</li>
+          <li>オンライン状態の表示</li>
+          <li>メッセージの既読確認（1チェック・2チェック）</li>
+          <li>プッシュ通知（オフライン時）</li>
+          <li>メッセージ履歴の保存・検索</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>500M DAU</li>
+          <li>1日あたり1,000億メッセージ</li>
+          <li class="warn">メッセージ配信遅延 &lt; 100ms</li>
+          <li>可用性 99.99%</li>
+          <li>E2E暗号化対応</li>
+          <li>メッセージの順序保証（1対1チャット内）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャパシティ -->
+  <div class="section">
+    <div class="section-title">キャパシティ見積もり</div>
+    <div class="card">
+      <table class="est-table">
+        <thead><tr><th>項目</th><th>計算</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>メッセージQPS</td><td>100B / 86,400</td><td class="hl">≈ 1,157,407 msg/s</td></tr>
+          <tr><td>1メッセージサイズ</td><td>msg_id(8) + 送受信ID(16) + text(100B) + meta(20B)</td><td>≈ 150B</td></tr>
+          <tr><td>1日のストレージ</td><td>100B × 150B</td><td>≈ 15TB/day</td></tr>
+          <tr><td>5年のストレージ</td><td>15TB × 365 × 5</td><td class="hl">≈ 27PB</td></tr>
+          <tr><td>同時WebSocket接続数</td><td>500M × 40%がアクティブ</td><td class="hl">≈ 200M接続</td></tr>
+          <tr><td>チャットサーバー必要台数</td><td>200M / 65,535接続 (max ports)</td><td>≈ 3,000台</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- WebSocket設計 -->
+  <div class="section">
+    <div class="section-title">WebSocketによるリアルタイム接続設計</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 860 260" xmlns="http://www.w3.org/2000/svg" style="min-width:600px">
+        <defs>
+          <marker id="arr5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+          </marker>
+          <marker id="arr5b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+          </marker>
+        </defs>
+        <!-- User A -->
+        <rect x="10" y="100" width="90" height="60" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="55" y="124" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">User A</text>
+        <text x="55" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">iPhone</text>
+        <text x="55" y="154" text-anchor="middle" fill="#10b981" font-size="10">● Online</text>
+        <!-- Chat Server 1 -->
+        <rect x="170" y="85" width="130" height="90" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="235" y="110" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Chat Server 1</text>
+        <text x="235" y="126" text-anchor="middle" fill="#94a3b8" font-size="10">WebSocket</text>
+        <text x="235" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Connections:</text>
+        <text x="235" y="155" text-anchor="middle" fill="#22d3ee" font-size="10">A, C, D ...</text>
+        <text x="235" y="168" text-anchor="middle" fill="#94a3b8" font-size="10">Stateful</text>
+        <!-- Message Queue -->
+        <rect x="375" y="90" width="130" height="80" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="440" y="115" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Message Queue</text>
+        <text x="440" y="131" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">(Kafka)</text>
+        <text x="440" y="150" text-anchor="middle" fill="#94a3b8" font-size="10">Topic: chat-{room_id}</text>
+        <text x="440" y="164" text-anchor="middle" fill="#94a3b8" font-size="10">順序保証</text>
+        <!-- Chat Server 2 -->
+        <rect x="580" y="85" width="130" height="90" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="645" y="110" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Chat Server 2</text>
+        <text x="645" y="126" text-anchor="middle" fill="#94a3b8" font-size="10">WebSocket</text>
+        <text x="645" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Connections:</text>
+        <text x="645" y="155" text-anchor="middle" fill="#22d3ee" font-size="10">B, E, F ...</text>
+        <text x="645" y="168" text-anchor="middle" fill="#94a3b8" font-size="10">Stateful</text>
+        <!-- User B -->
+        <rect x="775" y="100" width="80" height="60" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="815" y="124" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">User B</text>
+        <text x="815" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Android</text>
+        <text x="815" y="154" text-anchor="middle" fill="#10b981" font-size="10">● Online</text>
+        <!-- Message DB -->
+        <rect x="375" y="200" width="130" height="50" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="440" y="222" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">Message DB</text>
+        <text x="440" y="238" text-anchor="middle" fill="#94a3b8" font-size="10">Cassandra</text>
+        <!-- Service Discovery -->
+        <rect x="220" y="10" width="420" height="35" rx="6" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+        <text x="430" y="31" text-anchor="middle" fill="#10b981" font-size="11">Service Discovery (ZooKeeper/etcd): User → Chat Server のマッピング管理</text>
+        <!-- Arrows -->
+        <!-- A → Server1 (WebSocket双方向) -->
+        <line x1="100" y1="128" x2="168" y2="128" stroke="#10b981" stroke-width="2" marker-end="url(#arr5)"/>
+        <line x1="170" y1="136" x2="102" y2="136" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr5)"/>
+        <!-- Server1 → Queue -->
+        <line x1="300" y1="128" x2="373" y2="128" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr5)"/>
+        <!-- Queue → Server2 -->
+        <line x1="505" y1="128" x2="578" y2="128" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr5)"/>
+        <!-- Server2 → B (WebSocket双方向) -->
+        <line x1="710" y1="128" x2="773" y2="128" stroke="#10b981" stroke-width="2" marker-end="url(#arr5)"/>
+        <line x1="775" y1="136" x2="712" y2="136" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr5)"/>
+        <!-- Queue → DB -->
+        <line x1="440" y1="170" x2="440" y2="198" stroke="#a78bfa" stroke-width="1.3" stroke-dasharray="4,2" marker-end="url(#arr5)"/>
+        <!-- Labels -->
+        <text x="133" y="122" fill="#10b981" font-size="10">WS</text>
+        <text x="331" y="122" fill="#f59e0b" font-size="10">Pub</text>
+        <text x="540" y="122" fill="#f59e0b" font-size="10">Sub</text>
+        <text x="732" y="122" fill="#10b981" font-size="10">WS</text>
+      </svg>
+    </div>
+
+    <div class="callout green">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">ポイント: なぜWebSocketか</div>
+        <div class="callout-text">HTTPはリクエスト/レスポンスモデルのため、リアルタイム配信にはLong Pollingかサーバーサイドプッシュが必要。WebSocketは初回ハンドシェイク後に双方向の永続接続を確立するため、チャットのような低レイテンシ配信に最適。ただしステートフルなのでLBは「スティッキーセッション」または「IPハッシュ」を使う必要がある。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- メッセージ配信フロー -->
+  <div class="section">
+    <div class="section-title">メッセージ配信の詳細フロー</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 880 200" xmlns="http://www.w3.org/2000/svg" style="min-width:600px">
+        <defs>
+          <marker id="arr5c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+          </marker>
+        </defs>
+        <!-- Steps -->
+        <rect x="10" y="75" width="80" height="50" rx="6" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="50" y="97" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="700">①送信者</text>
+        <text x="50" y="112" text-anchor="middle" fill="#94a3b8" font-size="10">WS送信</text>
+
+        <rect x="145" y="75" width="90" height="50" rx="6" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="190" y="93" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="700">②Chat Server</text>
+        <text x="190" y="107" text-anchor="middle" fill="#94a3b8" font-size="10">ACK返却</text>
+        <text x="190" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">msg_id付与</text>
+
+        <rect x="295" y="75" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="345" y="93" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700">③Kafka</text>
+        <text x="345" y="107" text-anchor="middle" fill="#94a3b8" font-size="10">Pub/Sub</text>
+        <text x="345" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">順序保証</text>
+
+        <rect x="455" y="75" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="505" y="93" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">④Cassandra</text>
+        <text x="505" y="107" text-anchor="middle" fill="#94a3b8" font-size="10">永続化</text>
+        <text x="505" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">msg_id順</text>
+
+        <rect x="620" y="45" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="670" y="63" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">⑤受信者</text>
+        <text x="670" y="78" text-anchor="middle" fill="#94a3b8" font-size="10">オンライン</text>
+        <text x="670" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">→WS配信</text>
+
+        <rect x="620" y="115" width="100" height="50" rx="6" fill="#1c1f2e" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="670" y="133" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="700">⑤受信者</text>
+        <text x="670" y="148" text-anchor="middle" fill="#94a3b8" font-size="10">オフライン</text>
+        <text x="670" y="163" text-anchor="middle" fill="#94a3b8" font-size="10">→Push通知</text>
+
+        <rect x="775" y="45" width="95" height="50" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="822" y="67" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">⑥既読確認</text>
+        <text x="822" y="82" text-anchor="middle" fill="#94a3b8" font-size="10">2チェック✓✓</text>
+        <text x="822" y="95" text-anchor="middle" fill="#94a3b8" font-size="10">WS逆送信</text>
+
+        <rect x="775" y="115" width="95" height="50" rx="6" fill="#1c1f2e" stroke="#94a3b8" stroke-width="1.3"/>
+        <text x="822" y="137" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="700">⑥後続配信</text>
+        <text x="822" y="152" text-anchor="middle" fill="#94a3b8" font-size="10">接続時に</text>
+        <text x="822" y="165" text-anchor="middle" fill="#94a3b8" font-size="10">未読取得</text>
+
+        <!-- Arrows -->
+        <line x1="90" y1="100" x2="143" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr5c)"/>
+        <line x1="235" y1="100" x2="293" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr5c)"/>
+        <line x1="395" y1="100" x2="453" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr5c)"/>
+        <line x1="555" y1="95" x2="618" y2="72" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr5c)"/>
+        <line x1="555" y1="110" x2="618" y2="135" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="4,2" marker-end="url(#arr5c)"/>
+        <line x1="720" y1="68" x2="773" y2="68" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr5c)"/>
+        <line x1="720" y1="138" x2="773" y2="138" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="4,2" marker-end="url(#arr5c)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- データモデル -->
+  <div class="section">
+    <div class="section-title">データモデル — Cassandraの選択理由</div>
+    <div class="callout amber">
+      <div class="callout-icon">⚡</div>
+      <div class="callout-body">
+        <div class="callout-title">なぜCassandraか</div>
+        <div class="callout-text">チャットデータは「特定チャットルームの最新N件を取得」という時系列クエリが主。Cassandraのパーティションキー(chat_id)でデータをノード分散し、クラスタリングキー(message_id降順)で時系列ソートを実現。高書き込みスループット(100万msg/s)かつ線形スケールが可能。MySQLでは書き込みボトルネックになる。</div>
+      </div>
+    </div>
+    <div class="code-block">
+      <pre><span class="cm">-- Cassandraスキーマ: メッセージテーブル</span>
+<span class="kw">CREATE TABLE</span> messages (
+    chat_id         <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,   <span class="cm">-- パーティションキー</span>
+    message_id      <span class="tp">BIGINT</span>          <span class="kw">NOT NULL</span>,   <span class="cm">-- Snowflake ID (時刻ベース)</span>
+    sender_id       <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    content         <span class="tp">TEXT</span>,
+    msg_type        <span class="tp">TINYINT</span>,        <span class="cm">-- 1:text 2:image 3:video 4:file</span>
+    media_url       <span class="tp">VARCHAR(512)</span>,
+    sent_at         <span class="tp">TIMESTAMP</span>,
+    status          <span class="tp">TINYINT</span>,        <span class="cm">-- 1:sent 2:delivered 3:read</span>
+    <span class="kw">PRIMARY KEY</span> (chat_id, message_id)
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (message_id <span class="kw">DESC</span>)
+  <span class="kw">AND</span> default_time_to_live = <span class="num">63072000</span>;  <span class="cm">-- 2年でTTL自動削除</span>
+
+<span class="cm">-- グループチャット参加者</span>
+<span class="kw">CREATE TABLE</span> group_members (
+    group_id        <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    user_id         <span class="tp">UUID</span>            <span class="kw">NOT NULL</span>,
+    role            <span class="tp">TINYINT</span>         <span class="kw">DEFAULT</span> <span class="num">0</span>,  <span class="cm">-- 0:member 1:admin</span>
+    joined_at       <span class="tp">TIMESTAMP</span>,
+    <span class="kw">PRIMARY KEY</span> (group_id, user_id)
+);
+
+<span class="cm">-- プレゼンス管理 (Redis)</span>
+<span class="cm">-- HSET presence:{user_id} status "online" last_seen {timestamp}</span>
+<span class="cm">-- EXPIRE presence:{user_id} 30  ← 30秒TTL, ハートビートで更新</span>
+
+<span class="cm">-- Snowflake IDの構造 (64bit)</span>
+<span class="cm">-- | 41bit timestamp | 10bit datacenter+machine | 12bit sequence |</span>
+<span class="cm">-- → ミリ秒単位で単調増加、時刻ソートも可能</span></pre>
+    </div>
+  </div>
+
+  <!-- グループチャット -->
+  <div class="section">
+    <div class="section-title">グループチャットのファンアウト問題</div>
+    <table class="cmp-table">
+      <thead><tr><th>グループサイズ</th><th>配信戦略</th><th>実装</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>小グループ (〜20人)</td>
+          <td>Push: 全メンバーのWebSocket接続を探して直接配信</td>
+          <td>Redis HashでuserID→serverIDマッピング</td>
+        </tr>
+        <tr>
+          <td>中グループ (20〜200人)</td>
+          <td>Pub/Sub: KafkaトピックにPublish、各チャットサーバーがSubscribe</td>
+          <td>Topic: group-{group_id}</td>
+        </tr>
+        <tr>
+          <td>大グループ (200〜500人)</td>
+          <td>Fan-out Service: 専用ワーカーが非同期で順次配信</td>
+          <td>最終的にはPull（次回接続時に未読取得）も組み合わせ</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- オンライン状態 -->
+  <div class="section">
+    <div class="section-title">オンライン状態管理 — HeartbeatとRedis</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>プレゼンス管理の仕組み</h3>
+        <ul class="req-list">
+          <li>クライアントが5秒ごとにハートビートを送信</li>
+          <li>サーバーがRedisに <code>presence:{user_id}</code> を更新（TTL=30秒）</li>
+          <li>TTL切れ = オフラインと判定（自動）</li>
+          <li>フォロー中ユーザーのステータス変化をWebSocketでPush通知</li>
+          <li>大規模では結果整合性（多少の遅延は許容）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>既読確認の実装</h3>
+        <ul class="req-list">
+          <li>1チェック（✓）: サーバーがメッセージを受信</li>
+          <li>2チェック（✓✓）: 受信者のデバイスに配信完了</li>
+          <li>青チェック（✓✓）: 受信者がメッセージを開封</li>
+          <li>配信確認: ACKをサーバー経由で送信者に逆送信</li>
+          <li>オフライン中は再接続時にまとめてACK処理</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- トレードオフ -->
+  <div class="section">
+    <div class="section-title">トレードオフまとめ</div>
+    <div class="tradeoff-grid">
+      <div class="tradeoff-item">
+        <div class="tradeoff-label pros">設計の核心判断</div>
+        <p>WebSocket+KafkaでリアルタイムかつスケーラブルなアーキテクチャをWebSocket接続の多数のサーバーで管理。Cassandraの時系列パーティショニングで数十億メッセージの書き込みに対応。Redisでプレゼンス情報をサブ秒で管理。</p>
+      </div>
+      <div class="tradeoff-item">
+        <div class="tradeoff-label cons">複雑さのトレードオフ</div>
+        <p>WebSocketはステートフルなのでスケールアウト時の接続移行が難しい。メッセージ順序保証（Snowflake ID）とAt-least-once配信の組み合わせで重複除去が必要。E2E暗号化はサーバー側でのメッセージ内容検索を不可能にする。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- FINAL SUMMARY: 面接必須パターン -->
+<!-- ============================================================ -->
+<div class="summary-section">
+  <h2>面接でシステムデザインを語る際の必須パターン一覧</h2>
+  <p class="desc">5つのケーススタディで登場した設計パターンを体系化。面接では「なぜその選択をしたか」のトレードオフを必ず説明できるようにしておく。</p>
+
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <h3>Base62 URL エンコード</h3>
+      <p>a-z/A-Z/0-9の62文字で7桁→35億の一意空間。UUID代替として短くて予測困難なIDを生成。URL短縮・短縮コード生成に必須。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>301 vs 302 リダイレクト</h3>
+      <p>301はブラウザキャッシュで高速だがアクセス計測不可。302は毎回サーバーヒットで計測可能。要件次第で選択する。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Hybrid Fan-out（Push+Pull）</h3>
+      <p>Twitterの有名人問題解決策。フォロワー閾値（1万人）でPush（Write-time fan-out）とPull（Read-time fan-out）を切り替える。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Redis Sorted Set タイムライン</h3>
+      <p>ZADD + ZREVRANGE でタイムスタンプスコアのツイートリストを管理。O(log N)の追加、O(log N + M)の範囲取得。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>動画トランスコードパイプライン</h3>
+      <p>アップロード→オブジェクトストレージ→Kafkaキュー→DAG管理のWorker群→複数解像度→CDN。非同期・並列処理が鍵。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>アダプティブビットレート（ABR）</h3>
+      <p>DASH/HLSでセグメントを複数品質で用意し、クライアントが回線速度に応じて動的選択。Cold Startは低品質から始める。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>コンシステントハッシング</h3>
+      <p>ハッシュリング上にノードとキーを配置。ノード追加/削除時のデータ移動を最小化。バーチャルノードで均等分散を実現。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Quorum (N, W, R)</h3>
+      <p>N=レプリカ数、W=書き込み確認数、R=読み取り確認数。W+R>Nで強一貫性。W=1,R=1で高可用性低一貫性。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>LSMツリー（MemTable + SSTable）</h3>
+      <p>書き込みを順次ディスクに追記（高速）。MemTable→L0→L1→L2のCompactionで読み取り最適化。Cassandra/RocksDBが採用。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Bloom Filter</h3>
+      <p>確率的データ構造で「キーが存在しないこと」を高速判定。偽陰性なし（ないと言ったら確実にない）。LSMツリーのRead最適化に不可欠。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Gossipプロトコル</h3>
+      <p>P2P方式でノード状態をO(log N)で全体伝播。中央コーディネーター不要の分散障害検知。Cassandraが採用。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>WebSocket + Kafka</h3>
+      <p>WebSocketで永続双方向接続（リアルタイム）、Kafkaでサーバー間メッセージルーティング。チャット/通知系の標準構成。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Snowflake ID</h3>
+      <p>41bit時刻+10bit機械ID+12bitシーケンスの64bit ID。時刻順ソート可能、分散生成、毎秒4096IDまでSPOFなし。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>プレゼンス管理（Redis TTL）</h3>
+      <p>HeartbeatでRedisキーをUPDATE（TTL=30秒）。TTL切れ=オフライン。大規模では結果整合性（数秒の遅延を許容）。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>CDN プリウォーミング</h3>
+      <p>公開前に人気コンテンツをエッジノードへ事前配布。Cold Start時のOriginへの集中アクセスを防ぐ。動画・画像配信の必須戦略。</p>
+    </div>
+    <div class="pattern-card">
+      <h3>CAP定理の実践的選択</h3>
+      <p>CP（一貫性優先）: 銀行・決済。AP（可用性優先）: SNS・チャット。ネットワーク分断は避けられないのでCまたはAの選択が核心。</p>
+    </div>
+  </div>
+
+  <!-- 面接フレームワーク -->
+  <div style="margin-top:40px">
+    <div class="section-title">システムデザイン面接の進め方フレームワーク</div>
+    <div class="two-col" style="margin-top:16px">
+      <div class="card">
+        <h3>5ステップアプローチ（45分）</h3>
+        <ul class="req-list">
+          <li><strong style="color:var(--accent2)">Step 1 (5分)</strong> — 要件定義と制約の確認</li>
+          <li><strong style="color:var(--accent2)">Step 2 (5分)</strong> — キャパシティ見積もり（QPS/ストレージ）</li>
+          <li><strong style="color:var(--accent2)">Step 3 (10分)</strong> — 高レベル設計（ブロック図）</li>
+          <li><strong style="color:var(--accent2)">Step 4 (15分)</strong> — 詳細設計（重要コンポーネント）</li>
+          <li><strong style="color:var(--accent2)">Step 5 (10分)</strong> — ボトルネック特定とスケール戦略</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>面接で差をつけるポイント</h3>
+        <ul class="req-list">
+          <li>要件を決めつけず必ず確認・仮定を明示する</li>
+          <li>トレードオフを両面から説明する（メリット・デメリット）</li>
+          <li>「なぜそのDB/プロトコルを選ぶか」を根拠と共に説明</li>
+          <li>スケールの話は数字（QPS/ストレージ）を根拠に進める</li>
+          <li>SPOF（単一障害点）を自ら指摘して改善案を提示する</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ケーススタディ 一覧 -->
+  <div style="margin-top:40px">
+    <div class="section-title">5ケーススタディ 設計判断サマリー</div>
+    <div style="overflow-x:auto;margin-top:16px">
+      <table class="cmp-table" style="min-width:700px">
+        <thead>
+          <tr>
+            <th>システム</th>
+            <th>スケールの核心課題</th>
+            <th>キーDB選択</th>
+            <th>重要パターン</th>
+            <th>CAP選択</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>URL短縮</td>
+            <td>読み取り100:1比率</td>
+            <td>MySQL + Redis</td>
+            <td>Base62, Cache-Aside, シャーディング</td>
+            <td><span class="badge badge-b">CP</span></td>
+          </tr>
+          <tr>
+            <td>Twitterタイムライン</td>
+            <td>有名人のファンアウト問題</td>
+            <td>Cassandra + Redis ZSet</td>
+            <td>Hybrid Fan-out, Push/Pull切り替え</td>
+            <td><span class="badge badge-g">AP</span></td>
+          </tr>
+          <tr>
+            <td>YouTube動画配信</td>
+            <td>大容量動画のグローバル配信</td>
+            <td>S3 + MySQL + Elasticsearch</td>
+            <td>DAGパイプライン, ABR, CDN Pre-warm</td>
+            <td><span class="badge badge-g">AP</span></td>
+          </tr>
+          <tr>
+            <td>分散KVストア</td>
+            <td>データ分散と障害耐性の両立</td>
+            <td>LSMツリー（自前実装）</td>
+            <td>コンシステントハッシング, Quorum, Gossip</td>
+            <td><span class="badge badge-g">AP</span></td>
+          </tr>
+          <tr>
+            <td>チャットアプリ</td>
+            <td>200M同時WebSocket接続</td>
+            <td>Cassandra + Redis</td>
+            <td>WebSocket+Kafka, Snowflake ID, Heartbeat</td>
+            <td><span class="badge badge-g">AP</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ============================================================
+     ケーススタディ 6: レートリミットサービス
+     ============================================================ -->
+<div class="main">
+<hr class="divider">
+<div class="case-study" style="background:var(--surface);border:1px solid rgba(244,63,94,.3);border-radius:16px;padding:32px;margin-bottom:48px;">
+  <div class="cs-tag" style="color:#f43f5e;">ケーススタディ 6</div>
+  <div class="cs-title" style="font-size:clamp(20px,3vw,32px);font-weight:800;margin-bottom:8px;">分散レートリミットサービスの設計</div>
+  <div class="cs-subtitle" style="color:var(--text2);">10万QPS、マルチテナント、分散環境でのAPIレートリミット</div>
+
+  <div class="section" style="margin-top:28px;">
+    <div class="section-title">要件定義</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>機能要件</h3>
+        <ul class="req-list">
+          <li>テナント/ユーザー単位でAPIリクエスト数を制限</li>
+          <li>固定ウィンドウ・スライディングウィンドウ・Token Bucket をサポート</li>
+          <li>リミット超過時は HTTP 429 + Retry-After ヘッダを返す</li>
+          <li>テナントごとにレートを動的設定可能（DB管理）</li>
+          <li>10万 QPS の処理能力</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>非機能要件</h3>
+        <ul class="req-list">
+          <li>P99レイテンシ < 5ms（パスス通過時の追加遅延）</li>
+          <li>Redis障害時のフェイルオープン/クローズ切り替え可能</li>
+          <li>マルチリージョン対応</li>
+          <li class="warn">厳密な精度より速度を優先（若干の超過は許容）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Sliding Window Log の Redis 実装（Lua Script）</div>
+    <div class="code-block"><pre><span class="cm">-- sliding_window.lua: Redis EVAL で原子的に実行</span>
+<span class="kw">local</span> key = KEYS[1]          <span class="cm">-- "ratelimit:{user_id}:{endpoint}"</span>
+<span class="kw">local</span> now = tonumber(ARGV[1]) <span class="cm">-- 現在時刻（ミリ秒）</span>
+<span class="kw">local</span> window = tonumber(ARGV[2]) <span class="cm">-- ウィンドウサイズ（ミリ秒）: 60000</span>
+<span class="kw">local</span> limit = tonumber(ARGV[3])  <span class="cm">-- 上限: 100</span>
+
+<span class="cm">-- 1. ウィンドウ外の古いエントリを削除</span>
+redis.call(<span class="str">'ZREMRANGEBYSCORE'</span>, key, <span class="num">0</span>, now - window)
+
+<span class="cm">-- 2. 現在のカウントを取得</span>
+<span class="kw">local</span> count = redis.call(<span class="str">'ZCARD'</span>, key)
+
+<span class="cm">-- 3. 上限チェック</span>
+<span class="kw">if</span> count >= limit <span class="kw">then</span>
+  <span class="kw">return</span> {<span class="num">0</span>, count, limit}  <span class="cm">-- 拒否: {allowed, current, limit}</span>
+<span class="kw">end</span>
+
+<span class="cm">-- 4. 現在のリクエストを記録（スコア=タイムスタンプ、メンバー=ユニークID）</span>
+redis.call(<span class="str">'ZADD'</span>, key, now, now .. <span class="str">'-'</span> .. math.random(100000))
+redis.call(<span class="str">'EXPIRE'</span>, key, math.ceil(window / <span class="num">1000</span>) + <span class="num">1</span>)
+
+<span class="kw">return</span> {<span class="num">1</span>, count + <span class="num">1</span>, limit}  <span class="cm">-- 許可</span></pre></div>
+
+    <div class="code-block"><pre><span class="cm"># Python クライアントからの呼び出し</span>
+<span class="kw">import</span> redis, time
+
+r = redis.Redis(host=<span class="str">'localhost'</span>)
+
+<span class="kw">with open</span>(<span class="str">'sliding_window.lua'</span>) <span class="kw">as</span> f:
+    lua_script = r.register_script(f.read())
+
+<span class="kw">def</span> <span class="fn">check_rate_limit</span>(user_id: str, endpoint: str, limit: int = <span class="num">100</span>) -> dict:
+    key = f<span class="str">"ratelimit:{user_id}:{endpoint}"</span>
+    now_ms = <span class="fn">int</span>(time.time() * <span class="num">1000</span>)
+    window_ms = <span class="num">60000</span>  <span class="cm"># 1分</span>
+
+    result = lua_script(keys=[key], args=[now_ms, window_ms, limit])
+    allowed, current, lim = result
+
+    <span class="kw">return</span> {
+        <span class="str">"allowed"</span>: <span class="fn">bool</span>(allowed),
+        <span class="str">"remaining"</span>: max(<span class="num">0</span>, lim - current),
+        <span class="str">"retry_after"</span>: <span class="num">60</span> <span class="kw">if not</span> allowed <span class="kw">else</span> <span class="kw">None</span>
+    }</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Token Bucket の分散 Redis 実装</div>
+    <div class="code-block"><pre><span class="cm">-- token_bucket.lua: バースト対応レートリミット</span>
+<span class="kw">local</span> key = KEYS[1]
+<span class="kw">local</span> capacity = tonumber(ARGV[1])  <span class="cm">-- バケット容量: 100</span>
+<span class="kw">local</span> fill_rate = tonumber(ARGV[2]) <span class="cm">-- 補充レート: 10トークン/秒</span>
+<span class="kw">local</span> now = tonumber(ARGV[3])       <span class="cm">-- 現在時刻（秒）</span>
+<span class="kw">local</span> tokens_requested = tonumber(ARGV[4]) <span class="cm">-- 消費トークン数: 1</span>
+
+<span class="kw">local</span> last = redis.call(<span class="str">'HGETALL'</span>, key)
+<span class="kw">local</span> tokens = capacity
+<span class="kw">local</span> last_time = now
+
+<span class="kw">if</span> #last > <span class="num">0</span> <span class="kw">then</span>
+  tokens = tonumber(last[<span class="num">2</span>])
+  last_time = tonumber(last[<span class="num">4</span>])
+  <span class="cm">-- 経過時間に応じてトークンを補充</span>
+  <span class="kw">local</span> elapsed = now - last_time
+  tokens = math.min(capacity, tokens + elapsed * fill_rate)
+<span class="kw">end</span>
+
+<span class="kw">if</span> tokens >= tokens_requested <span class="kw">then</span>
+  tokens = tokens - tokens_requested
+  redis.call(<span class="str">'HMSET'</span>, key, <span class="str">'tokens'</span>, tokens, <span class="str">'last_time'</span>, now)
+  redis.call(<span class="str">'EXPIRE'</span>, key, math.ceil(capacity / fill_rate) + <span class="num">1</span>)
+  <span class="kw">return</span> {<span class="num">1</span>, math.floor(tokens)}  <span class="cm">-- 許可</span>
+<span class="kw">else</span>
+  <span class="kw">return</span> {<span class="num">0</span>, math.floor(tokens)}  <span class="cm">-- 拒否</span>
+<span class="kw">end</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">フェイルオープン vs フェイルクローズの判断基準</div>
+    <div class="two-col">
+      <div class="callout blue">
+        <div class="callout-icon">🔓</div>
+        <div class="callout-body">
+          <div class="callout-title">フェイルオープン（Redis障害時に許可）</div>
+          <div class="callout-text">Redisに接続できない場合、すべてのリクエストを通す。<br><strong>適用場面:</strong> 収益に直結するAPI（決済、認証）。ダウンタイムのコストがDDoSより高い場合。<br><strong>リスク:</strong> Redis障害中は無制限アクセスが可能。</div>
+        </div>
+      </div>
+      <div class="callout red">
+        <div class="callout-icon">🔒</div>
+        <div class="callout-body">
+          <div class="callout-title">フェイルクローズ（Redis障害時に拒否）</div>
+          <div class="callout-text">Redisに接続できない場合、すべてのリクエストを拒否（HTTP 503）。<br><strong>適用場面:</strong> セキュリティクリティカルなAPI。スクレイピング防止など。<br><strong>リスク:</strong> Redis障害がサービス全体のダウンに直結。</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout amber">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <div class="callout-title">推奨: ローカルキャッシュによるハイブリッド</div>
+        <div class="callout-text">Redis障害時はプロセス内のin-memoryカウンター（ローカルリミット）にフォールバック。精度は落ちるが完全な障害伝播を防ぐ。複数インスタンスが独立してカウントするため、合計は若干多めになるがサービスは継続できる。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">マルチリージョン: 階層設計</div>
+    <div class="card">
+      <h3>ローカルカウンター + グローバル集約の2層構造</h3>
+      <div class="code-block"><pre><span class="cm"># グローバルリミット: 1000 req/min</span>
+<span class="cm"># リージョン割り当て（東京: 60%, 大阪: 40%）</span>
+<span class="cm">#   東京ローカルリミット: 600 req/min</span>
+<span class="cm">#   大阪ローカルリミット: 400 req/min</span>
+<span class="cm">#</span>
+<span class="cm"># メリット: リージョン間通信なしでlow latency判定</span>
+<span class="cm"># デメリット: リージョンをまたいだリクエストは若干超過する可能性</span>
+
+<span class="kw">class</span> <span class="tp">MultiRegionRateLimiter</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, region: str, global_limit: int, region_weight: float):
+        self.local_limit = <span class="fn">int</span>(global_limit * region_weight)
+        self.local_redis = <span class="fn">RedisClient</span>(region=region)
+        <span class="cm"># グローバルRedis（定期的に同期）</span>
+        self.global_redis = <span class="fn">RedisClient</span>(region=<span class="str">"global"</span>)
+
+    <span class="kw">def</span> <span class="fn">is_allowed</span>(self, key: str) -> <span class="fn">bool</span>:
+        <span class="cm"># まずローカルで高速チェック</span>
+        local_count = self.local_redis.incr(f<span class="str">"local:{key}"</span>)
+        <span class="kw">if</span> local_count > self.local_limit:
+            <span class="kw">return</span> <span class="kw">False</span>
+        <span class="cm"># 非同期でグローバルカウンターを更新（精度より速度優先）</span>
+        asyncio.create_task(self.<span class="fn">sync_global</span>(key))
+        <span class="kw">return</span> <span class="kw">True</span></pre></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ケーススタディ 7: 通知サービス
+     ============================================================ -->
+<div class="case-study" style="background:var(--surface);border:1px solid rgba(34,211,238,.3);border-radius:16px;padding:32px;margin-bottom:48px;">
+  <div class="cs-tag" style="color:var(--accent2);">ケーススタディ 7</div>
+  <div class="cs-title" style="font-size:clamp(20px,3vw,32px);font-weight:800;margin-bottom:8px;">通知サービスの設計（Notification System）</div>
+  <div class="cs-subtitle" style="color:var(--text2);">1億通/日、マルチチャネル（Push/Email/SMS）、優先度付き配信</div>
+
+  <div class="section" style="margin-top:28px;">
+    <div class="section-title">見積もり: チャネル別QPS計算</div>
+    <div class="card">
+      <table class="est-table">
+        <thead><tr><th>チャネル</th><th>1日の通数</th><th>平均QPS</th><th>ピークQPS（×3）</th><th>特性</th></tr></thead>
+        <tbody>
+          <tr><td>プッシュ通知（iOS/Android）</td><td>7,000万</td><td>810</td><td class="hl">2,430</td><td>低コスト, 最高頻度</td></tr>
+          <tr><td>メール（SES/SendGrid）</td><td>2,000万</td><td>231</td><td class="hl">693</td><td>大容量, 非同期OK</td></tr>
+          <tr><td>SMS（Twilio）</td><td>1,000万</td><td>116</td><td class="hl">348</td><td>高コスト, 緊急用</td></tr>
+          <tr><td><strong>合計</strong></td><td><strong>1億通</strong></td><td><strong>~1,157</strong></td><td class="hl"><strong>~3,471</strong></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">高レベルアーキテクチャ</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:360px;">
+        <defs>
+          <marker id="arr7" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6366f1"/></marker>
+        </defs>
+        <!-- Notification API -->
+        <rect x="10" y="130" width="140" height="60" rx="10" fill="rgba(99,102,241,.15)" stroke="rgba(99,102,241,.5)" stroke-width="1.5"/>
+        <text x="80" y="154" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Notification API</text>
+        <text x="80" y="172" text-anchor="middle" fill="#94a3b8" font-size="10">優先度付き受付</text>
+
+        <!-- Kafka -->
+        <rect x="195" y="80" width="130" height="160" rx="10" fill="rgba(34,211,238,.1)" stroke="rgba(34,211,238,.4)" stroke-width="1.5"/>
+        <text x="260" y="104" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">Kafka</text>
+        <text x="260" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">notification.critical</text>
+        <text x="260" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">notification.high</text>
+        <text x="260" y="160" text-anchor="middle" fill="#94a3b8" font-size="10">notification.normal</text>
+        <text x="260" y="180" text-anchor="middle" fill="#94a3b8" font-size="10">notification.low</text>
+        <text x="260" y="225" text-anchor="middle" fill="#94a3b8" font-size="9">3 Topicsで優先度分離</text>
+
+        <!-- Workers -->
+        <rect x="370" y="40" width="130" height="50" rx="8" fill="rgba(167,139,250,.15)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+        <text x="435" y="62" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">Push Worker</text>
+        <text x="435" y="78" text-anchor="middle" fill="#94a3b8" font-size="9">iOS/Android</text>
+
+        <rect x="370" y="110" width="130" height="50" rx="8" fill="rgba(245,158,11,.15)" stroke="rgba(245,158,11,.4)" stroke-width="1.5"/>
+        <text x="435" y="132" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Email Worker</text>
+        <text x="435" y="148" text-anchor="middle" fill="#94a3b8" font-size="9">Template 処理</text>
+
+        <rect x="370" y="180" width="130" height="50" rx="8" fill="rgba(16,185,129,.15)" stroke="rgba(16,185,129,.4)" stroke-width="1.5"/>
+        <text x="435" y="202" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">SMS Worker</text>
+        <text x="435" y="218" text-anchor="middle" fill="#94a3b8" font-size="9">コスト管理付き</text>
+
+        <!-- 3rd Party -->
+        <rect x="550" y="40" width="130" height="50" rx="8" fill="rgba(99,102,241,.1)" stroke="rgba(99,102,241,.3)" stroke-width="1"/>
+        <text x="615" y="62" text-anchor="middle" fill="#e2e8f0" font-size="10">APNS (Apple)</text>
+        <text x="615" y="76" text-anchor="middle" fill="#94a3b8" font-size="9">FCM (Google)</text>
+
+        <rect x="550" y="110" width="130" height="50" rx="8" fill="rgba(99,102,241,.1)" stroke="rgba(99,102,241,.3)" stroke-width="1"/>
+        <text x="615" y="130" text-anchor="middle" fill="#e2e8f0" font-size="10">AWS SES</text>
+        <text x="615" y="146" text-anchor="middle" fill="#94a3b8" font-size="9">SendGrid</text>
+
+        <rect x="550" y="180" width="130" height="50" rx="8" fill="rgba(99,102,241,.1)" stroke="rgba(99,102,241,.3)" stroke-width="1"/>
+        <text x="615" y="203" text-anchor="middle" fill="#e2e8f0" font-size="10">Twilio</text>
+        <text x="615" y="219" text-anchor="middle" fill="#94a3b8" font-size="9">AWS SNS</text>
+
+        <!-- DB -->
+        <rect x="550" y="260" width="130" height="50" rx="8" fill="rgba(239,68,68,.1)" stroke="rgba(239,68,68,.3)" stroke-width="1"/>
+        <text x="615" y="283" text-anchor="middle" fill="#ef4444" font-size="10">DeliveryLog DB</text>
+        <text x="615" y="299" text-anchor="middle" fill="#94a3b8" font-size="9">Cassandra</text>
+
+        <!-- Arrows -->
+        <line x1="150" y1="160" x2="193" y2="160" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="325" y1="100" x2="368" y2="70" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="325" y1="160" x2="368" y2="140" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="325" y1="220" x2="368" y2="200" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="500" y1="65" x2="548" y2="65" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="500" y1="135" x2="548" y2="135" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="500" y1="205" x2="548" y2="205" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr7)"/>
+        <line x1="500" y1="200" x2="540" y2="280" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr7)"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">データモデル</div>
+    <div class="code-block"><pre><span class="cm">-- 通知テンプレートテーブル</span>
+<span class="kw">CREATE TABLE</span> notification_templates (
+    template_id    UUID PRIMARY KEY,
+    name           VARCHAR(100) NOT NULL,
+    channel        ENUM(<span class="str">'push'</span>, <span class="str">'email'</span>, <span class="str">'sms'</span>),
+    subject        VARCHAR(200),
+    body_template  TEXT,           <span class="cm">-- {{user_name}} のような変数</span>
+    variables      JSONB,          <span class="cm">-- 必要な変数のスキーマ定義</span>
+    created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="cm">-- ユーザー通知設定</span>
+<span class="kw">CREATE TABLE</span> user_notification_preferences (
+    user_id        UUID NOT NULL,
+    channel        ENUM(<span class="str">'push'</span>, <span class="str">'email'</span>, <span class="str">'sms'</span>),
+    category       VARCHAR(50),    <span class="cm">-- 'marketing', 'security', 'transaction'</span>
+    enabled        BOOLEAN DEFAULT TRUE,
+    device_token   VARCHAR(500),   <span class="cm">-- push通知用デバイストークン</span>
+    PRIMARY KEY (user_id, channel, category)
+);
+
+<span class="cm">-- 配信ログ（Cassandraが適切: 大量書き込み、時系列クエリ）</span>
+<span class="kw">CREATE TABLE</span> delivery_logs (
+    notification_id  UUID,
+    user_id          UUID,
+    channel          TEXT,
+    status           TEXT,         <span class="cm">-- 'queued','sent','delivered','failed','opened'</span>
+    sent_at          TIMESTAMP,
+    delivered_at     TIMESTAMP,
+    opened_at        TIMESTAMP,    <span class="cm">-- 開封トラッキング</span>
+    error_message    TEXT,
+    attempt_count    INT DEFAULT 0,
+    PRIMARY KEY (user_id, sent_at, notification_id)
+) WITH CLUSTERING ORDER BY (sent_at DESC);</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">優先度付きキュー設計</div>
+    <div class="three-col">
+      <div class="callout red">
+        <div class="callout-body">
+          <div class="callout-title">Critical（即時）</div>
+          <div class="callout-text">決済失敗、パスワード変更、不正アクセス検知。SLA: 10秒以内配信。専用Kafkaトピック。</div>
+        </div>
+      </div>
+      <div class="callout amber">
+        <div class="callout-body">
+          <div class="callout-title">High（準即時）</div>
+          <div class="callout-text">注文確認、配達通知。SLA: 1分以内。通常トピックより優先ポーリング。</div>
+        </div>
+      </div>
+      <div class="callout blue">
+        <div class="callout-body">
+          <div class="callout-title">Normal（バッチ可）</div>
+          <div class="callout-text">マーケティングメール、おすすめ。ユーザーのタイムゾーンに合わせたバッチ送信。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">配信保証: At-least-once + 冪等性</div>
+    <div class="code-block"><pre><span class="cm"># 冪等性の実装: notification_idで重複排除</span>
+<span class="kw">class</span> <span class="tp">NotificationWorker</span>:
+    <span class="kw">def</span> <span class="fn">process</span>(self, message: dict):
+        notif_id = message[<span class="str">'notification_id'</span>]
+
+        <span class="cm"># 冪等性チェック（Redisにべき等キーを保存）</span>
+        if redis.set(f<span class="str">"sent:{notif_id}"</span>, <span class="num">1</span>, ex=<span class="num">86400</span>, nx=<span class="kw">True</span>) is <span class="kw">None</span>:
+            logger.info(f<span class="str">"Duplicate notification {notif_id}, skipping"</span>)
+            <span class="kw">return</span>
+
+        <span class="kw">try</span>:
+            self.<span class="fn">send</span>(message)
+            db.<span class="fn">update_status</span>(notif_id, <span class="str">'delivered'</span>)
+        <span class="kw">except</span> TransientError <span class="kw">as</span> e:
+            <span class="cm"># Kafkaにrequeue（最大3回リトライ）</span>
+            attempt = message.get(<span class="str">'attempt'</span>, <span class="num">0</span>) + <span class="num">1</span>
+            <span class="kw">if</span> attempt <= <span class="num">3</span>:
+                message[<span class="str">'attempt'</span>] = attempt
+                kafka.<span class="fn">send</span>(<span class="str">'notification.retry'</span>, message,
+                          delay=<span class="num">2</span>**attempt)  <span class="cm"># 指数バックオフ</span>
+            <span class="kw">else</span>:
+                db.<span class="fn">update_status</span>(notif_id, <span class="str">'failed'</span>)
+                redis.delete(f<span class="str">"sent:{notif_id}"</span>)  <span class="cm"># 再試行のためリセット</span></pre></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     システムデザイン必須パターン早見表（強化版）
+     ============================================================ -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:48px;">
+  <div style="font-size:24px;font-weight:800;margin-bottom:8px;color:var(--accent2);">システムデザイン必須パターン早見表（強化版）</div>
+  <p style="color:var(--text2);margin-bottom:24px;">判断基準と実際のシステム例を含む、主要50パターンの完全リファレンス</p>
+
+  <div class="section-title" style="margin-top:0;">データストレージパターン</div>
+  <div style="overflow-x:auto;">
+    <table class="cmp-table" style="margin-bottom:24px;">
+      <thead><tr><th>#</th><th>パターン</th><th>いつ使うか</th><th>実際の採用例</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Read Replica</td><td>読み取りが多い (80%以上読み取り)</td><td>Twitter timeline DB, Instagram</td><td>レプリケーション遅延に注意。重要な読み取りはプライマリから</td></tr>
+        <tr><td>2</td><td>シャーディング</td><td>単一DBの限界を超えるデータ量・書き込み</td><td>Facebook Messages, Discord</td><td>クロスシャードJOINが困難。シャードキーの選定が重要</td></tr>
+        <tr><td>3</td><td>Read-Through Cache</td><td>同じデータへの繰り返しアクセス</td><td>SNSのユーザープロフィール</td><td>キャッシュスタンプード対策が必要（Thundering Herd）</td></tr>
+        <tr><td>4</td><td>Write-Through Cache</td><td>書き込みと同時にキャッシュ更新が必要</td><td>リアルタイムランキング</td><td>書き込みレイテンシが増加</td></tr>
+        <tr><td>5</td><td>Write-Behind Cache</td><td>大量書き込み、DB直撃を避けたい</td><td>ゲームスコア保存</td><td>キャッシュ障害でデータロストのリスク</td></tr>
+        <tr><td>6</td><td>CQRS</td><td>読み取り/書き込みのスケール要件が異なる</td><td>Eコマース注文システム</td><td>結果整合性の遅延（数百ms〜秒）を許容できるか確認</td></tr>
+        <tr><td>7</td><td>Event Sourcing</td><td>変更履歴が重要（監査・ロールバック）</td><td>銀行口座, Kafka Streams</td><td>イベントストアのサイズ増大。スナップショット必要</td></tr>
+        <tr><td>8</td><td>時系列DB</td><td>メトリクス・ログ・センサーデータ</td><td>Prometheus TSDB, InfluxDB</td><td>一般的なSQL JOINには不向き</td></tr>
+        <tr><td>9</td><td>Cassandraワイドカラム</td><td>大量書き込み、高可用性、地理分散</td><td>Netflix, Discord メッセージ</td><td>一貫性 vs 可用性のトレードオフ</td></tr>
+        <tr><td>10</td><td>Geo-Distributed DB</td><td>グローバルユーザー、低レイテンシ必須</td><td>Google Spanner, CockroachDB</td><td>ネットワーク遅延によるコンセンサスコスト</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">スケーリングパターン</div>
+  <div style="overflow-x:auto;">
+    <table class="cmp-table" style="margin-bottom:24px;">
+      <thead><tr><th>#</th><th>パターン</th><th>いつ使うか</th><th>実際の採用例</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>11</td><td>水平スケーリング</td><td>ステートレスサービスの負荷増大</td><td>Web APIサーバー全般</td><td>セッション管理をRedisに外出しする必要あり</td></tr>
+        <tr><td>12</td><td>CDN</td><td>静的コンテンツ、グローバル配信、レイテンシ削減</td><td>Netflix, YouTube</td><td>キャッシュパージの遅延（数分〜数時間）</td></tr>
+        <tr><td>13</td><td>Auto Scaling</td><td>予測困難なトラフィック変動</td><td>AWS EC2 Auto Scaling</td><td>スケールアップに時間がかかる（コールドスタート）</td></tr>
+        <tr><td>14</td><td>ロードバランサー</td><td>複数インスタンスへのトラフィック分散</td><td>Nginx, AWS ALB</td><td>スティッキーセッションが必要な場合は注意</td></tr>
+        <tr><td>15</td><td>マイクロサービス</td><td>チームが独立してデプロイしたい</td><td>Netflix, Uber</td><td>分散トレーシング・サービスメッシュのオーバーヘッド</td></tr>
+        <tr><td>16</td><td>サーバーレス</td><td>イベント駆動、予測不能なスパイク</td><td>AWS Lambda + API Gateway</td><td>コールドスタート遅延。長時間処理には不向き</td></tr>
+        <tr><td>17</td><td>Bulkhead</td><td>1サービス障害が全体に波及しないよう隔離</td><td>Hystrix, Resilience4j</td><td>スレッドプール/セマフォのチューニングが必要</td></tr>
+        <tr><td>18</td><td>Circuit Breaker</td><td>外部依存サービスの連鎖障害防止</td><td>Netflix OSS, Spring Cloud</td><td>状態遷移（Closed→Open→Half-Open）の監視</td></tr>
+        <tr><td>19</td><td>Backpressure</td><td>上流が下流より速い場合の流量制御</td><td>Reactive Streams, gRPC</td><td>バッファサイズとフロー制御の設定</td></tr>
+        <tr><td>20</td><td>Rate Limiting</td><td>APIの乱用防止・コスト管理</td><td>Stripe, GitHub API</td><td>分散環境ではRedis+Luaで原子的に実装</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">メッセージング・非同期パターン</div>
+  <div style="overflow-x:auto;">
+    <table class="cmp-table" style="margin-bottom:24px;">
+      <thead><tr><th>#</th><th>パターン</th><th>いつ使うか</th><th>実際の採用例</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>21</td><td>メッセージキュー</td><td>非同期処理、ピーク平滑化</td><td>注文処理, 動画エンコード</td><td>メッセージの順序保証が必要な場合は別途対策</td></tr>
+        <tr><td>22</td><td>Pub/Sub</td><td>1:N通知、イベントブロードキャスト</td><td>通知システム, イベント集計</td><td>サブスクライバーが落ちている間のメッセージ保持</td></tr>
+        <tr><td>23</td><td>Kafka（ストリーム処理）</td><td>高スループット、イベントログ、レプレイ</td><td>Uber, LinkedIn, Discord</td><td>Zookeeper/KRaftの運用コスト</td></tr>
+        <tr><td>24</td><td>Saga パターン</td><td>分散トランザクション（マイクロサービス）</td><td>Eコマース注文フロー</td><td>補償トランザクションの設計が複雑</td></tr>
+        <tr><td>25</td><td>Outbox パターン</td><td>DBとメッセージキューの原子的更新</td><td>イベントドリブンマイクロサービス</td><td>Outboxポーリングの実装が必要</td></tr>
+        <tr><td>26</td><td>Dead Letter Queue</td><td>処理失敗メッセージの隔離・調査</td><td>AWS SQS DLQ</td><td>DLQのモニタリングと再処理フローが必要</td></tr>
+        <tr><td>27</td><td>Priority Queue</td><td>重要度によるメッセージ優先処理</td><td>通知システム, ジョブスケジューラ</td><td>低優先度メッセージのスタベーション対策</td></tr>
+        <tr><td>28</td><td>Exactly-once処理</td><td>重複処理が許されない（金融取引）</td><td>Kafka Transactions, Stripe</td><td>高コスト。実際はAt-least-once+冪等性が現実的</td></tr>
+        <tr><td>29</td><td>Request Coalescing</td><td>同一キーへの同時リクエストを1回にまとめる</td><td>CDNキャッシュ、GraphQL DataLoader</td><td>実装複雑度とキャッシュ効率のトレードオフ</td></tr>
+        <tr><td>30</td><td>Change Data Capture</td><td>DBの変更をイベントとして他システムへ伝播</td><td>Debezium + Kafka, Airbnb</td><td>スキーマ変更時の互換性管理</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">データモデリング・API設計パターン</div>
+  <div style="overflow-x:auto;">
+    <table class="cmp-table" style="margin-bottom:24px;">
+      <thead><tr><th>#</th><th>パターン</th><th>いつ使うか</th><th>実際の採用例</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>31</td><td>REST API</td><td>リソース指向、CRUD操作中心</td><td>GitHub API, Stripe</td><td>Over-fetching/Under-fetchingが起きやすい</td></tr>
+        <tr><td>32</td><td>GraphQL</td><td>フロントが必要なデータを自由に取得</td><td>Facebook, Shopify, GitHub v4</td><td>N+1問題とDataLoader、キャッシュ設計が複雑</td></tr>
+        <tr><td>33</td><td>gRPC</td><td>マイクロサービス間高速通信</td><td>Netflix, Square, Google</td><td>デバッグしにくい（バイナリプロトコル）</td></tr>
+        <tr><td>34</td><td>Pagination（カーソルベース）</td><td>大量データの段階的取得</td><td>Twitter Timeline, Instagram Feed</td><td>オフセットベースは大量ページスキップで遅い</td></tr>
+        <tr><td>35</td><td>Versioning</td><td>後方互換性を維持しながらAPI進化</td><td>Stripe API /v1, /v2</td><td>複数バージョンの維持コスト</td></tr>
+        <tr><td>36</td><td>Idempotency Key</td><td>ネットワーク再試行時の重複防止</td><td>Stripe, AWS S3 PUT</td><td>キーの保存期間と有効期限の設計</td></tr>
+        <tr><td>37</td><td>Hypermedia (HATEOAS)</td><td>クライアントがURLを発見できる自己記述型API</td><td>PayPal API</td><td>実装複雑度が高く実際の採用は少ない</td></tr>
+        <tr><td>38</td><td>API Gateway</td><td>認証・ルーティング・レートリミットの集約</td><td>Kong, AWS API Gateway</td><td>単一障害点になりやすい</td></tr>
+        <tr><td>39</td><td>BFF（Backend for Frontend）</td><td>クライアント別に最適化されたAPI</td><td>Netflix, SoundCloud</td><td>クライアントごとのBFFで重複ロジックが増える</td></tr>
+        <tr><td>40</td><td>Service Mesh</td><td>マイクロサービス間通信の一元管理</td><td>Istio, Linkerd, Consul Connect</td><td>Envoy sidecareのオーバーヘッド（CPU/メモリ）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">信頼性・セキュリティパターン</div>
+  <div style="overflow-x:auto;">
+    <table class="cmp-table">
+      <thead><tr><th>#</th><th>パターン</th><th>いつ使うか</th><th>実際の採用例</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>41</td><td>ブルー/グリーンデプロイ</td><td>ダウンタイムゼロのリリース</td><td>AWS CodeDeploy, Netflix</td><td>本番相当のグリーン環境の維持コスト</td></tr>
+        <tr><td>42</td><td>カナリアリリース</td><td>一部ユーザーへの段階的リリース</td><td>Google, Facebook</td><td>フィーチャーフラグとの組み合わせが効果的</td></tr>
+        <tr><td>43</td><td>Chaos Engineering</td><td>障害耐性を本番環境で定期検証</td><td>Netflix Chaos Monkey</td><td>本番への影響を最小化する安全弁の設計が必須</td></tr>
+        <tr><td>44</td><td>健全性チェック（Health Check）</td><td>ロードバランサーによる自動排除</td><td>Kubernetes Liveness/Readiness</td><td>依存サービスの状態も含めた深いヘルスチェック</td></tr>
+        <tr><td>45</td><td>Exponential Backoff</td><td>外部APIへのリトライ（429, 503対策）</td><td>AWS SDK, Stripe SDK</td><td>Jitterを加えてサンダリングハードを防止</td></tr>
+        <tr><td>46</td><td>Distributed Tracing</td><td>マイクロサービス間のリクエスト追跡</td><td>Jaeger, Zipkin, Datadog APM</td><td>サンプリング率（5〜10%）とストレージのバランス</td></tr>
+        <tr><td>47</td><td>Zero Trust</td><td>境界型セキュリティからの脱却</td><td>Google BeyondCorp</td><td>全通信のmTLS化による実装・運用コスト</td></tr>
+        <tr><td>48</td><td>Envelope Encryption</td><td>大量機密データの暗号化（AWS KMS）</td><td>AWS S3 SSE, Snowflake</td><td>DEKの管理と鍵ローテーションの設計</td></tr>
+        <tr><td>49</td><td>Geo-Replication</td><td>DR対策、グローバル低レイテンシ</td><td>PostgreSQL Streaming Replication</td><td>フェイルオーバー時のデータ整合性確認</td></tr>
+        <tr><td>50</td><td>Feature Flag</td><td>コードを変えずに機能を動的ON/OFF</td><td>LaunchDarkly, Unleash</td><td>古いフラグのクリーンアップを怠るとコードが汚れる</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /main (追記分) -->
+
+<!-- FOOTER NAV -->
+<div style="background:var(--surface);border-top:1px solid var(--border);margin-top:80px">
+  <div class="footer-nav">
+    <a href="00_index.html" class="fn-link">
+      <span class="arr">🏠</span> ホームへ戻る
+    </a>
+    <div style="text-align:center;color:var(--text3);font-size:13px">
+      <div style="color:var(--accent2);font-weight:700;margin-bottom:4px">Chapter 14 — 完全版</div>
+      <div><a href="15_interview_practice.html" style="color:var(--accent2);">→ Ch15 面接対策・模擬面接</a></div>
+    </div>
+    <a href="13_observability.html" class="fn-link">
+      <span class="arr">←</span> Ch13 可観測性
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

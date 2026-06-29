@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>システムデザイン 完全学習ガイド</title>
+<style>
+  :root {
+    --bg: #0b0d14;
+    --surface: #13151f;
+    --surface2: #1c1f2e;
+    --border: #2a2d3e;
+    --accent: #6366f1;
+    --accent2: #22d3ee;
+    --accent3: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height:1.6; }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #0f1020 0%, #1a1040 50%, #0f1020 100%);
+    padding: 60px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(34,211,238,0.1) 0%, transparent 60%);
+  }
+  header h1 {
+    font-size: 3rem; font-weight: 800;
+    background: linear-gradient(135deg, #a5b4fc, #22d3ee);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    position: relative; z-index:1;
+  }
+  header p { color: var(--text2); font-size: 1.15rem; margin-top: 12px; position:relative; z-index:1; }
+  .badge-row { display:flex; gap:10px; justify-content:center; margin-top:20px; position:relative; z-index:1; flex-wrap:wrap; }
+  .badge {
+    padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight:600;
+    border: 1px solid;
+  }
+  .badge-blue { background: rgba(99,102,241,0.15); color:#a5b4fc; border-color: rgba(99,102,241,0.3); }
+  .badge-cyan { background: rgba(34,211,238,0.1); color:#67e8f9; border-color: rgba(34,211,238,0.3); }
+  .badge-green { background: rgba(16,185,129,0.1); color:#6ee7b7; border-color: rgba(16,185,129,0.3); }
+
+  /* Layout */
+  main { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Section */
+  .section-title {
+    font-size: 1.4rem; font-weight: 700; color: var(--text);
+    margin: 40px 0 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Learning Path */
+  .path-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .path-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    display: flex; gap: 16px; align-items: flex-start;
+    text-decoration: none; color: inherit;
+    transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .path-card::before {
+    content: ''; position:absolute; left:0; top:0; bottom:0;
+    width: 3px; background: var(--card-color, var(--accent));
+    border-radius: 3px 0 0 3px;
+  }
+  .path-card:hover {
+    border-color: var(--card-color, var(--accent));
+    background: var(--surface2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .card-icon {
+    width: 44px; height: 44px; border-radius: 10px; flex-shrink:0;
+    display: flex; align-items:center; justify-content:center;
+    font-size: 1.4rem;
+    background: var(--icon-bg, rgba(99,102,241,0.15));
+  }
+  .card-body { flex:1; min-width:0; }
+  .card-num { font-size: 0.72rem; color: var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+  .card-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+  .card-desc { font-size: 0.84rem; color: var(--text2); margin-top:4px; line-height:1.5; }
+  .card-tags { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .tag {
+    font-size: 0.72rem; padding: 2px 8px; border-radius: 4px;
+    background: var(--surface2); color: var(--text3);
+    border: 1px solid var(--border);
+  }
+  .level-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 0.68rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .level-basic { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .level-inter { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .level-adv { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+  /* Roadmap SVG area */
+  .roadmap-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 30px; margin-bottom: 20px;
+    overflow-x: auto;
+  }
+  .roadmap-container h3 { color: var(--text2); font-size: 0.9rem; margin-bottom: 20px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; }
+
+  /* Stats */
+  .stats-row { display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-bottom:32px; }
+  @media(max-width:700px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px; text-align: center;
+  }
+  .stat-num { font-size: 2rem; font-weight:800; color: var(--accent); }
+  .stat-label { font-size: 0.8rem; color: var(--text2); margin-top:4px; }
+
+  /* How to use */
+  .howto {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(34,211,238,0.05));
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 12px; padding: 24px 28px;
+    margin-bottom: 32px;
+  }
+  .howto h3 { color: #a5b4fc; font-size: 1rem; font-weight:700; margin-bottom:14px; }
+  .howto-steps { display:flex; flex-direction:column; gap:10px; }
+  .howto-step { display:flex; gap:12px; align-items:flex-start; font-size:0.9rem; color: var(--text2); }
+  .step-num {
+    width:24px; height:24px; border-radius:50%; background: rgba(99,102,241,0.2); color:#a5b4fc;
+    font-weight:700; font-size:0.75rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+
+  /* Interview tips box */
+  .tip-box {
+    background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 10px; padding: 18px 22px; margin-top: 32px;
+  }
+  .tip-box h4 { color: #fcd34d; font-size:0.9rem; font-weight:700; margin-bottom:10px; }
+  .tip-box p { font-size:0.88rem; color: var(--text2); line-height:1.7; }
+
+  /* Footer */
+  footer {
+    text-align: center; padding: 32px; color: var(--text3);
+    font-size: 0.85rem; border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏗️ システムデザイン 完全学習ガイド</h1>
+  <p>Senior Engineer レベルのシステム設計力を、基礎から実践まで徹底的に身につける</p>
+  <div class="badge-row">
+    <span class="badge badge-blue">📚 15トピック</span>
+    <span class="badge badge-cyan">🎯 Senior Engineer向け</span>
+    <span class="badge badge-green">✅ 面接対策込み</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num">15</div><div class="stat-label">学習トピック</div></div>
+    <div class="stat-card"><div class="stat-num">7+</div><div class="stat-label">実践ケーススタディ</div></div>
+    <div class="stat-card"><div class="stat-num">50+</div><div class="stat-label">設計パターン</div></div>
+    <div class="stat-card"><div class="stat-num">∞</div><div class="stat-label">スケーラビリティ</div></div>
+  </div>
+
+  <div class="howto">
+    <h3>📖 このガイドの使い方</h3>
+    <div class="howto-steps">
+      <div class="howto-step"><div class="step-num">1</div><span><strong>基礎フェーズ（01〜04）</strong>：ネットワーク・データベース・API設計の原理原則をしっかり理解する</span></div>
+      <div class="howto-step"><div class="step-num">2</div><span><strong>コアパターン（05〜09）</strong>：キャッシュ・負荷分散・メッセージキュー・マイクロサービスなど実際の設計で使う要素を習得</span></div>
+      <div class="howto-step"><div class="step-num">3</div><span><strong>スケール・信頼性（10〜13）</strong>：大規模システムの課題と解決策を深堀りする</span></div>
+      <div class="howto-step"><div class="step-num">4</div><span><strong>ケーススタディ（14）</strong>：実際のシステムを設計し、今まで学んだ知識を統合する</span></div>
+    </div>
+  </div>
+
+  <!-- フェーズ1: 基礎 -->
+  <div class="section-title">🟢 フェーズ 1 ─ 基礎を固める</div>
+  <div class="path-grid">
+
+    <a href="01_fundamentals.html" class="path-card" style="--card-color:#6366f1; --icon-bg:rgba(99,102,241,0.15)">
+      <span class="level-badge level-basic">基礎</span>
+      <div class="card-icon">📐</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 01</div>
+        <div class="card-title">システムデザインの進め方</div>
+        <div class="card-desc">要件定義・キャパシティ見積もり・設計フレームワーク・トレードオフ分析の方法論</div>
+        <div class="card-tags">
+          <span class="tag">要件定義</span><span class="tag">見積もり</span><span class="tag">フレームワーク</span><span class="tag">面接</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="02_networking.html" class="path-card" style="--card-color:#22d3ee; --icon-bg:rgba(34,211,238,0.12)">
+      <span class="level-badge level-basic">基礎</span>
+      <div class="card-icon">🌐</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 02</div>
+        <div class="card-title">ネットワーク & プロトコル</div>
+        <div class="card-desc">HTTP/1.1〜3, TCP/UDP, DNS, CDN, WebSocket, SSE — 通信の仕組みを完全理解</div>
+        <div class="card-tags">
+          <span class="tag">HTTP</span><span class="tag">TCP/IP</span><span class="tag">DNS</span><span class="tag">CDN</span><span class="tag">WebSocket</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="03_databases.html" class="path-card" style="--card-color:#10b981; --icon-bg:rgba(16,185,129,0.12)">
+      <span class="level-badge level-basic">基礎</span>
+      <div class="card-icon">🗄️</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 03</div>
+        <div class="card-title">データベース設計 & スケーリング</div>
+        <div class="card-desc">SQL vs NoSQL, ACID, インデックス, シャーディング, レプリケーション, 接続プール</div>
+        <div class="card-tags">
+          <span class="tag">SQL</span><span class="tag">NoSQL</span><span class="tag">インデックス</span><span class="tag">シャーディング</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="04_api_design.html" class="path-card" style="--card-color:#f59e0b; --icon-bg:rgba(245,158,11,0.12)">
+      <span class="level-badge level-basic">基礎</span>
+      <div class="card-icon">🔌</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 04</div>
+        <div class="card-title">API 設計</div>
+        <div class="card-desc">REST設計原則, GraphQL, gRPC, バージョニング, ページネーション, 冪等性</div>
+        <div class="card-tags">
+          <span class="tag">REST</span><span class="tag">GraphQL</span><span class="tag">gRPC</span><span class="tag">冪等性</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- フェーズ2: コアパターン -->
+  <div class="section-title">🟡 フェーズ 2 ─ コア設計パターン</div>
+  <div class="path-grid">
+
+    <a href="05_caching.html" class="path-card" style="--card-color:#a78bfa; --icon-bg:rgba(167,139,250,0.12)">
+      <span class="level-badge level-inter">中級</span>
+      <div class="card-icon">⚡</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 05</div>
+        <div class="card-title">キャッシュ戦略</div>
+        <div class="card-desc">キャッシュ階層, Redis, 書き込み戦略(write-through/behind/around), 立ち退きポリシー, キャッシュスタンピード</div>
+        <div class="card-tags">
+          <span class="tag">Redis</span><span class="tag">CDN</span><span class="tag">書き込み戦略</span><span class="tag">TTL</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="06_load_balancing.html" class="path-card" style="--card-color:#ec4899; --icon-bg:rgba(236,72,153,0.12)">
+      <span class="level-badge level-inter">中級</span>
+      <div class="card-icon">⚖️</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 06</div>
+        <div class="card-title">負荷分散 & リバースプロキシ</div>
+        <div class="card-desc">L4/L7ロードバランサー, アルゴリズム(RR/最小接続/IPハッシュ), APIゲートウェイ, スティッキーセッション</div>
+        <div class="card-tags">
+          <span class="tag">Nginx</span><span class="tag">L7</span><span class="tag">APIゲートウェイ</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="07_message_queues.html" class="path-card" style="--card-color:#f97316; --icon-bg:rgba(249,115,22,0.12)">
+      <span class="level-badge level-inter">中級</span>
+      <div class="card-icon">📨</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 07</div>
+        <div class="card-title">メッセージキュー & イベント駆動</div>
+        <div class="card-desc">Kafka, RabbitMQ, pub/sub, イベントソーシング, 順序保証, バックプレッシャー</div>
+        <div class="card-tags">
+          <span class="tag">Kafka</span><span class="tag">pub/sub</span><span class="tag">イベントソーシング</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="08_microservices.html" class="path-card" style="--card-color:#14b8a6; --icon-bg:rgba(20,184,166,0.12)">
+      <span class="level-badge level-inter">中級</span>
+      <div class="card-icon">🧩</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 08</div>
+        <div class="card-title">マイクロサービスアーキテクチャ</div>
+        <div class="card-desc">モノリス vs マイクロサービス, ストラングラーパターン, DDD, サービスメッシュ, サービスディスカバリ</div>
+        <div class="card-tags">
+          <span class="tag">DDD</span><span class="tag">サービスメッシュ</span><span class="tag">Istio</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- フェーズ3: スケール・信頼性 -->
+  <div class="section-title">🔴 フェーズ 3 ─ スケールと信頼性</div>
+  <div class="path-grid">
+
+    <a href="09_distributed_systems.html" class="path-card" style="--card-color:#818cf8; --icon-bg:rgba(129,140,248,0.12)">
+      <span class="level-badge level-adv">上級</span>
+      <div class="card-icon">🌀</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 09</div>
+        <div class="card-title">分散システム理論</div>
+        <div class="card-desc">CAP定理, BASE, 一貫性モデル, コンセンサス(Raft/Paxos), ベクタークロック, 分散トランザクション</div>
+        <div class="card-tags">
+          <span class="tag">CAP定理</span><span class="tag">Raft</span><span class="tag">2PC</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="10_scalability.html" class="path-card" style="--card-color:#67e8f9; --icon-bg:rgba(103,232,249,0.1)">
+      <span class="level-badge level-adv">上級</span>
+      <div class="card-icon">📈</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 10</div>
+        <div class="card-title">スケーラビリティパターン</div>
+        <div class="card-desc">水平/垂直スケーリング, コンシステントハッシング, データパーティショニング, 読み書き分離</div>
+        <div class="card-tags">
+          <span class="tag">シャーディング</span><span class="tag">コンシステントハッシング</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="11_reliability.html" class="path-card" style="--card-color:#fb923c; --icon-bg:rgba(251,146,60,0.12)">
+      <span class="level-badge level-adv">上級</span>
+      <div class="card-icon">🛡️</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 11</div>
+        <div class="card-title">信頼性 & フォールトトレランス</div>
+        <div class="card-desc">サーキットブレーカー, バルクヘッド, リトライ/バックオフ, Sagaパターン, カオスエンジニアリング</div>
+        <div class="card-tags">
+          <span class="tag">サーキットブレーカー</span><span class="tag">Saga</span><span class="tag">冪等性</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="12_security.html" class="path-card" style="--card-color:#f43f5e; --icon-bg:rgba(244,63,94,0.12)">
+      <span class="level-badge level-adv">上級</span>
+      <div class="card-icon">🔐</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 12</div>
+        <div class="card-title">セキュリティ設計</div>
+        <div class="card-desc">OAuth2, JWT, セッション, TLS, 暗号化(at rest/in transit), レートリミット, DDoS対策, ゼロトラスト</div>
+        <div class="card-tags">
+          <span class="tag">OAuth2</span><span class="tag">JWT</span><span class="tag">TLS</span><span class="tag">ゼロトラスト</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="13_observability.html" class="path-card" style="--card-color:#a3e635; --icon-bg:rgba(163,230,53,0.1)">
+      <span class="level-badge level-adv">上級</span>
+      <div class="card-icon">📊</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 13</div>
+        <div class="card-title">オブザーバビリティ & 監視</div>
+        <div class="card-desc">メトリクス・ログ・トレース(3本柱), SLO/SLA/SLI, アラート設計, 分散トレーシング</div>
+        <div class="card-tags">
+          <span class="tag">Prometheus</span><span class="tag">Jaeger</span><span class="tag">SLO</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- フェーズ4: ケーススタディ -->
+  <div class="section-title">⭐ フェーズ 4 ─ 実践ケーススタディ</div>
+  <div class="path-grid">
+
+    <a href="14_case_studies.html" class="path-card" style="--card-color:#eab308; --icon-bg:rgba(234,179,8,0.12)">
+      <span class="level-badge level-adv">総合</span>
+      <div class="card-icon">🏢</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 14</div>
+        <div class="card-title">実世界ケーススタディ</div>
+        <div class="card-desc">URL短縮・Twitterフィード・YouTube・KVストア・レートリミット・通知サービス ─ 7本の本番レベル設計</div>
+        <div class="card-tags">
+          <span class="tag">URL短縮</span><span class="tag">SNSフィード</span><span class="tag">動画配信</span><span class="tag">KVストア</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="15_interview_practice.html" class="path-card" style="--card-color:#c084fc; --icon-bg:rgba(192,132,252,0.12)">
+      <span class="level-badge level-adv">総合</span>
+      <div class="card-icon">🎯</div>
+      <div class="card-body">
+        <div class="card-num">Chapter 15</div>
+        <div class="card-title">面接対策 & 総合演習</div>
+        <div class="card-desc">模擬面接10問（完全解答付き）・深掘り質問50問・Senior が差をつけるポイント・用語集150語</div>
+        <div class="card-tags">
+          <span class="tag">模擬面接</span><span class="tag">深掘りQ&A</span><span class="tag">用語集</span><span class="tag">Senior Tips</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="tip-box">
+    <h4>💼 面接で成功するための心構え</h4>
+    <p>
+      システムデザイン面接で最も重要なのは<strong>「答えを出すプロセス」</strong>です。完璧な答えより、
+      トレードオフを意識した議論・仮定を明示する姿勢・スケールを数値で考える習慣が評価されます。
+      各Chapterの末尾にある「面接Tips」セクションを特に意識して学習してください。
+      <br><br>
+      Senior Engineerに求められるのは、技術的知識だけでなく「なぜそれを選ぶのか」「他の選択肢は何か」
+      「どこが限界でどう進化させるか」を語れる<strong>設計思考</strong>です。
+    </p>
+  </div>
+
+</main>
+
+<footer>
+  システムデザイン 完全学習ガイド — Senior Engineer への道 🚀
+</footer>
+
+</body>
+</html>

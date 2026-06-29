@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch13 オブザーバビリティ & モニタリング | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0.6rem 1.5rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;font-size:0.85rem;}
+.nav-inner span{color:var(--text3);}
+.nav-badge{background:var(--accent);color:#fff;padding:0.2rem 0.7rem;border-radius:999px;font-size:0.8rem;font-weight:600;}
+
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#0d2a1a 50%,#1a2a0d 100%);padding:4rem 1.5rem 3rem;text-align:center;border-bottom:1px solid var(--border);}
+.hero-tag{display:inline-block;background:rgba(163,230,53,0.1);color:#a3e635;border:1px solid rgba(163,230,53,0.3);padding:0.3rem 1rem;border-radius:999px;font-size:0.8rem;letter-spacing:0.1em;margin-bottom:1rem;}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,#a3e635,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.8rem;}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:600px;margin:0 auto 1.5rem;}
+.hero-meta{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;}
+.hero-meta span{color:var(--text3);font-size:0.85rem;display:flex;align-items:center;gap:0.3rem;}
+.hero-meta span::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#a3e635;}
+
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:3rem;}
+.toc h2{font-size:1rem;color:var(--text2);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem;}
+.toc-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.85rem;color:var(--text2);transition:all 0.2s;}
+.toc-item:hover{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,0.1);}
+.toc-item a{color:inherit;text-decoration:none;}
+.toc-num{color:var(--accent);font-weight:700;margin-right:0.4rem;}
+
+section{margin-bottom:4rem;}
+.section-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.section-num{background:linear-gradient(135deg,#a3e635,#22d3ee);color:#000;width:2.2rem;height:2.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;}
+.section-header h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;}
+.card-title::before{content:'';width:3px;height:1em;background:var(--accent2);border-radius:2px;display:inline-block;}
+.card p{color:var(--text2);font-size:0.95rem;margin-bottom:0.6rem;}
+.card p:last-child{margin-bottom:0;}
+.card ul{color:var(--text2);font-size:0.95rem;padding-left:1.2rem;}
+.card ul li{margin-bottom:0.3rem;}
+
+.card-green{border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);}
+.card-green .card-title{color:var(--green);}
+.card-green .card-title::before{background:var(--green);}
+.card-blue{border-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.05);}
+.card-blue .card-title{color:var(--accent2);}
+.card-blue .card-title::before{background:var(--accent2);}
+.card-purple{border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);}
+.card-purple .card-title{color:var(--purple);}
+.card-purple .card-title::before{background:var(--purple);}
+.card-amber{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.05);}
+.card-amber .card-title{color:var(--accent3);}
+.card-amber .card-title::before{background:var(--accent3);}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem;}
+@media(max-width:700px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+@media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr;}}
+
+pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:'Fira Code','Cascadia Code',monospace;font-size:0.85rem;color:#93c5fd;margin:1rem 0;}
+code{background:var(--surface2);border-radius:4px;padding:0.1em 0.4em;font-size:0.88em;color:#93c5fd;}
+.code-label{font-size:0.75rem;color:var(--text3);margin-bottom:0.2rem;font-family:monospace;}
+
+.formula{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:8px;padding:1rem 1.5rem;margin:1rem 0;font-family:monospace;font-size:1rem;color:var(--accent3);}
+.formula-label{font-size:0.75rem;color:var(--text3);margin-bottom:0.3rem;font-family:sans-serif;}
+
+.tbl-wrap{overflow-x:auto;margin:1rem 0;}
+table{width:100%;border-collapse:collapse;font-size:0.9rem;}
+th{background:var(--surface2);color:var(--text2);font-weight:600;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:0.65rem 1rem;border-bottom:1px solid rgba(42,45,62,0.5);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(99,102,241,0.05);}
+.td-good{color:var(--green);}
+.td-warn{color:var(--accent3);}
+.td-bad{color:var(--red);}
+
+.badge{display:inline-block;padding:0.15rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600;}
+.badge-green{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);}
+.badge-blue{background:rgba(34,211,238,0.15);color:var(--accent2);border:1px solid rgba(34,211,238,0.3);}
+.badge-purple{background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid rgba(167,139,250,0.3);}
+.badge-amber{background:rgba(245,158,11,0.15);color:var(--accent3);border:1px solid rgba(245,158,11,0.3);}
+.badge-red{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+
+.tip{background:rgba(163,230,53,0.05);border:1px solid rgba(163,230,53,0.2);border-left:3px solid #a3e635;border-radius:8px;padding:1rem 1.2rem;margin:1rem 0;}
+.tip-label{font-size:0.75rem;color:#a3e635;font-weight:700;letter-spacing:0.05em;margin-bottom:0.3rem;}
+.tip p{color:var(--text2);font-size:0.9rem;margin:0;}
+
+.warn-box{background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-left:3px solid var(--accent3);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0;}
+.warn-box p{color:var(--text2);font-size:0.9rem;margin:0;}
+.warn-label{font-size:0.75rem;color:var(--accent3);font-weight:700;letter-spacing:0.05em;margin-bottom:0.3rem;}
+
+.svg-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.5rem 0;overflow-x:auto;}
+.svg-caption{text-align:center;color:var(--text3);font-size:0.85rem;margin-top:0.8rem;}
+
+.footer-nav{background:var(--surface);border-top:1px solid var(--border);padding:2rem 1.5rem;margin-top:4rem;}
+.footer-nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-nav a{color:var(--text2);display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:8px;transition:all 0.2s;}
+.footer-nav a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none;}
+
+.highlight-row{background:rgba(99,102,241,0.08);}
+
+.metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;}
+.metric-val{font-size:1.6rem;font-weight:800;color:var(--accent2);}
+.metric-label{font-size:0.8rem;color:var(--text3);margin-top:0.2rem;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="00_index.html">ホーム</a>
+    <span>/</span>
+    <a href="12_security.html">← Ch12 セキュリティ</a>
+    <span>/</span>
+    <span class="nav-badge">Ch13 オブザーバビリティ</span>
+    <span>/</span>
+    <a href="14_case_studies.html">Ch14 ケーススタディ →</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Chapter 13</div>
+  <h1>オブザーバビリティ & モニタリング</h1>
+  <p>システムの内部状態を可視化し、障害を迅速に検出・診断するための技術スタック</p>
+  <div class="hero-meta">
+    <span>3本柱: Metrics / Logs / Traces</span>
+    <span>SLI / SLO / エラーバジェット</span>
+    <span>OpenTelemetry / Prometheus / Grafana</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>目次</h2>
+    <div class="toc-grid">
+      <div class="toc-item"><a href="#s1"><span class="toc-num">1.</span>オブザーバビリティ vs モニタリング</a></div>
+      <div class="toc-item"><a href="#s2"><span class="toc-num">2.</span>メトリクス (Metrics)</a></div>
+      <div class="toc-item"><a href="#s3"><span class="toc-num">3.</span>ログ (Logs)</a></div>
+      <div class="toc-item"><a href="#s4"><span class="toc-num">4.</span>分散トレーシング</a></div>
+      <div class="toc-item"><a href="#s5"><span class="toc-num">5.</span>SLI / SLO / SLA / エラーバジェット</a></div>
+      <div class="toc-item"><a href="#s6"><span class="toc-num">6.</span>アラート設計</a></div>
+      <div class="toc-item"><a href="#s7"><span class="toc-num">7.</span>ヘルスチェック</a></div>
+      <div class="toc-item"><a href="#s8"><span class="toc-num">8.</span>ダッシュボード設計</a></div>
+      <div class="toc-item"><a href="#s9"><span class="toc-num">9.</span>コスト最適化</a></div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 1 ===== -->
+  <section id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>オブザーバビリティ vs モニタリング</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-blue">
+        <div class="card-title">モニタリング (Monitoring)</div>
+        <p>事前に定義した指標を収集し、<strong>既知の障害パターン</strong>を検出する。</p>
+        <ul>
+          <li>「CPUが80%を超えたらアラート」</li>
+          <li>「エラー率が1%を超えたら通知」</li>
+          <li>「何を監視するか」を事前に決める</li>
+          <li>既知の故障モードに強い</li>
+        </ul>
+        <p style="margin-top:0.8rem;"><span class="badge badge-blue">ツール例</span> Nagios / Zabbix / Datadog</p>
+      </div>
+      <div class="card card-green">
+        <div class="card-title">オブザーバビリティ (Observability)</div>
+        <p>システムの出力（メトリクス・ログ・トレース）から<strong>内部状態を推定</strong>できる性質。</p>
+        <ul>
+          <li>「なぜ遅いのか？」を後から追跡</li>
+          <li>未知の障害パターンを探索できる</li>
+          <li>ソフトウェアに計装 (Instrumentation) が必要</li>
+          <li>分散システムで特に重要</li>
+        </ul>
+        <p style="margin-top:0.8rem;"><span class="badge badge-green">ツール例</span> Honeycomb / Grafana / OpenTelemetry</p>
+      </div>
+    </div>
+
+    <div class="warn-box">
+      <div class="warn-label">重要な違い</div>
+      <p>モニタリングは「<strong>既知の問題</strong>が起きたことを知る」ための手段。オブザーバビリティは「<strong>未知の問題</strong>が起きたときに調査できる」システムの性質。高いオブザーバビリティを持つシステムはモニタリングも自然と充実する。</p>
+    </div>
+
+    <!-- SVG: 3本柱 -->
+    <div class="svg-wrap">
+      <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:800px;display:block;margin:0 auto;">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:#6366f1;stop-opacity:0.3"/>
+          </linearGradient>
+          <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:0.3"/>
+          </linearGradient>
+          <linearGradient id="g3" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:0.3"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Center circle: Observability -->
+        <circle cx="400" cy="200" r="80" fill="rgba(163,230,53,0.05)" stroke="#a3e635" stroke-width="2"/>
+        <text x="400" y="192" text-anchor="middle" font-size="14" font-weight="700" fill="#a3e635">オブザーバビリティ</text>
+        <text x="400" y="210" text-anchor="middle" font-size="11" fill="#94a3b8">システム内部状態の</text>
+        <text x="400" y="226" text-anchor="middle" font-size="11" fill="#94a3b8">外部からの推定</text>
+
+        <!-- Pillar 1: Metrics -->
+        <rect x="40" y="60" width="160" height="200" rx="12" fill="url(#g1)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="120" y="92" text-anchor="middle" font-size="15" font-weight="700" fill="#e2e8f0">Metrics</text>
+        <text x="120" y="110" text-anchor="middle" font-size="12" fill="#94a3b8">メトリクス</text>
+        <line x1="60" y1="125" x2="180" y2="125" stroke="#6366f1" stroke-width="0.5" stroke-dasharray="4,4"/>
+        <text x="120" y="148" text-anchor="middle" font-size="11" fill="#cbd5e1">数値時系列データ</text>
+        <text x="120" y="167" text-anchor="middle" font-size="11" fill="#cbd5e1">CPU / レイテンシ</text>
+        <text x="120" y="186" text-anchor="middle" font-size="11" fill="#cbd5e1">エラー率 / QPS</text>
+        <text x="120" y="215" text-anchor="middle" font-size="10" fill="#6366f1">Prometheus / Datadog</text>
+        <text x="120" y="232" text-anchor="middle" font-size="10" fill="#6366f1">InfluxDB / CloudWatch</text>
+
+        <!-- Pillar 2: Logs -->
+        <rect x="320" y="290" width="160" height="100" rx="12" fill="url(#g2)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="400" y="322" text-anchor="middle" font-size="15" font-weight="700" fill="#e2e8f0">Logs</text>
+        <text x="400" y="340" text-anchor="middle" font-size="12" fill="#94a3b8">ログ</text>
+        <text x="400" y="362" text-anchor="middle" font-size="11" fill="#cbd5e1">イベントの詳細記録</text>
+        <text x="400" y="378" text-anchor="middle" font-size="10" fill="#22d3ee">ELK Stack / Loki</text>
+
+        <!-- Pillar 3: Traces -->
+        <rect x="600" y="60" width="160" height="200" rx="12" fill="url(#g3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="680" y="92" text-anchor="middle" font-size="15" font-weight="700" fill="#e2e8f0">Traces</text>
+        <text x="680" y="110" text-anchor="middle" font-size="12" fill="#94a3b8">トレース</text>
+        <line x1="620" y1="125" x2="740" y2="125" stroke="#a78bfa" stroke-width="0.5" stroke-dasharray="4,4"/>
+        <text x="680" y="148" text-anchor="middle" font-size="11" fill="#cbd5e1">リクエスト経路の追跡</text>
+        <text x="680" y="167" text-anchor="middle" font-size="11" fill="#cbd5e1">サービス間の依存</text>
+        <text x="680" y="186" text-anchor="middle" font-size="11" fill="#cbd5e1">ボトルネック特定</text>
+        <text x="680" y="215" text-anchor="middle" font-size="10" fill="#a78bfa">Jaeger / Zipkin</text>
+        <text x="680" y="232" text-anchor="middle" font-size="10" fill="#a78bfa">Tempo / X-Ray</text>
+
+        <!-- Arrows -->
+        <path d="M 200 160 Q 280 160 320 180" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arr1)"/>
+        <path d="M 480 180 Q 520 170 600 160" stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+        <path d="M 400 280 L 400 290" stroke="#22d3ee" stroke-width="1.5" fill="none" marker-end="url(#arr3)"/>
+
+        <defs>
+          <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+          </marker>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
+            <path d="M8,0 L8,6 L0,3 z" fill="#a78bfa"/>
+          </marker>
+          <marker id="arr3" markerWidth="8" markerHeight="8" refX="4" refY="2" orient="auto">
+            <path d="M0,0 L8,0 L4,8 z" fill="#22d3ee"/>
+          </marker>
+        </defs>
+
+        <!-- Usage labels -->
+        <text x="230" y="152" font-size="10" fill="#64748b">「何が起きた？」</text>
+        <text x="490" y="155" font-size="10" fill="#64748b">「どこで？」</text>
+        <text x="360" y="275" font-size="10" fill="#64748b">「なぜ？」</text>
+      </svg>
+      <div class="svg-caption">オブザーバビリティの3本柱：Metrics / Logs / Traces の相互補完関係</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>観点</th><th>Metrics</th><th>Logs</th><th>Traces</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>データ形式</td><td>数値・時系列</td><td>テキスト・構造化</td><td>スパンのツリー構造</td></tr>
+          <tr><td>ストレージコスト</td><td class="td-good">低</td><td class="td-warn">中〜高</td><td class="td-warn">中（サンプリング必須）</td></tr>
+          <tr><td>アラート向き</td><td class="td-good">◎</td><td class="td-warn">△</td><td class="td-bad">×</td></tr>
+          <tr><td>根本原因分析</td><td class="td-warn">△</td><td class="td-good">○</td><td class="td-good">◎</td></tr>
+          <tr><td>主なユースケース</td><td>ダッシュボード・SLO</td><td>デバッグ・監査</td><td>パフォーマンス分析</td></tr>
+          <tr><td>代表ツール</td><td>Prometheus, Datadog</td><td>Elasticsearch, Loki</td><td>Jaeger, Zipkin, Tempo</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tip">
+      <div class="tip-label">面接ポイント</div>
+      <p>「モニタリングとオブザーバビリティの違いは？」は頻出。モニタリングは「既知の問題の検出」、オブザーバビリティは「未知の問題を調査できるシステムの性質」と答え、3本柱（Metrics/Logs/Traces）に繋げると高評価。</p>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 2 ===== -->
+  <section id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>メトリクス (Metrics)</h2>
+    </div>
+
+    <h3 style="color:var(--accent2);margin-bottom:1rem;font-size:1.1rem;">4つのゴールデンシグナル（Google SRE Book）</h3>
+    <div class="grid-4">
+      <div class="card" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">⏱️</div>
+        <div style="font-weight:700;color:var(--red);margin-bottom:0.5rem;">レイテンシ</div>
+        <div style="font-size:0.85rem;color:var(--text2);">リクエスト処理時間。成功・失敗を分けて計測。p50/p95/p99で見る</div>
+      </div>
+      <div class="card" style="border-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.05);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">📊</div>
+        <div style="font-weight:700;color:var(--accent2);margin-bottom:0.5rem;">トラフィック</div>
+        <div style="font-size:0.85rem;color:var(--text2);">システムへの需要量。QPS/RPS、帯域幅、同時接続数など</div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.05);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">🚨</div>
+        <div style="font-weight:700;color:var(--accent3);margin-bottom:0.5rem;">エラー率</div>
+        <div style="font-size:0.85rem;color:var(--text2);">失敗リクエストの割合。5xx/4xx、タイムアウト率を含む</div>
+      </div>
+      <div class="card" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">📈</div>
+        <div style="font-weight:700;color:var(--purple);margin-bottom:0.5rem;">飽和度</div>
+        <div style="font-size:0.85rem;color:var(--text2);">リソースの使用率。CPU/メモリ/ディスク/キューの充填率</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:1rem;">
+      <div class="card card-blue">
+        <div class="card-title">USE メソッド（インフラ向け）</div>
+        <ul>
+          <li><strong style="color:#a3e635;">U</strong>tilization（使用率）：リソースがどれだけ使われているか</li>
+          <li><strong style="color:#a3e635;">S</strong>aturation（飽和度）：キュー長や遅延を引き起こしているか</li>
+          <li><strong style="color:#a3e635;">E</strong>rrors（エラー）：エラーカウント、エラーイベント</li>
+        </ul>
+        <p style="margin-top:0.8rem;font-size:0.85rem;color:var(--text3);">CPU、メモリ、ディスク、ネットワークなどインフラリソースの分析に最適</p>
+      </div>
+      <div class="card card-purple">
+        <div class="card-title">RED メソッド（サービス向け）</div>
+        <ul>
+          <li><strong style="color:#a3e635;">R</strong>ate（レート）：1秒あたりのリクエスト数</li>
+          <li><strong style="color:#a3e635;">E</strong>rrors（エラー）：失敗したリクエスト数</li>
+          <li><strong style="color:#a3e635;">D</strong>uration（時間）：リクエストにかかった時間の分布</li>
+        </ul>
+        <p style="margin-top:0.8rem;font-size:0.85rem;color:var(--text3);">マイクロサービスの各エンドポイント・サービス境界で使う</p>
+      </div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">メトリクスの種類</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>種類</th><th>説明</th><th>例</th><th>Prometheusでの使用</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="badge badge-blue">Counter</span></td><td>単調増加する値（リセットされない）</td><td>総リクエスト数、エラー数</td><td><code>rate(requests_total[5m])</code></td></tr>
+          <tr><td><span class="badge badge-green">Gauge</span></td><td>上下する値</td><td>CPU使用率、メモリ使用量、接続数</td><td><code>node_memory_MemFree_bytes</code></td></tr>
+          <tr><td><span class="badge badge-purple">Histogram</span></td><td>値の分布をバケットで保持</td><td>リクエストレイテンシの分布</td><td><code>histogram_quantile(0.95, ...)</code></td></tr>
+          <tr><td><span class="badge badge-amber">Summary</span></td><td>クライアント側でパーセンタイル計算</td><td>p50/p95/p99レイテンシ</td><td>集計には不向き（Histogramを推奨）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">Prometheus 設定例</h3>
+    <div class="code-label">prometheus.yml — スクレイプ設定</div>
+    <pre>global:
+  scrape_interval: 15s       # デフォルトのスクレイプ間隔
+  evaluation_interval: 15s   # ルール評価間隔
+
+# アラートルールファイル
+rule_files:
+  - "alert_rules.yml"
+
+# アラートマネージャー設定
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# スクレイプ対象の設定
+scrape_configs:
+  - job_name: 'my-app'
+    static_configs:
+      - targets: ['app1:8080', 'app2:8080']
+    metrics_path: '/metrics'
+
+  # Kubernetes サービスディスカバリ
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true</pre>
+
+    <div class="code-label">PromQL クエリ例</div>
+    <pre># 5分間のリクエスト成功率（エラーバジェット計算に使用）
+(
+  sum(rate(http_requests_total{status!~"5.."}[5m]))
+  /
+  sum(rate(http_requests_total[5m]))
+) * 100
+
+# p99レイテンシ（Histogramメトリクスから）
+histogram_quantile(0.99,
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)
+)
+
+# マルチバーンレート（エラーバジェット消費速度）
+(
+  sum(rate(http_requests_total{status=~"5.."}[1h])) /
+  sum(rate(http_requests_total[1h]))
+) / (1 - 0.999)  # SLO 99.9% の場合</pre>
+
+    <div class="warn-box">
+      <div class="warn-label">カーディナリティ問題</div>
+      <p>メトリクスのラベル（タグ）の組み合わせ数が爆発するとPrometheusのメモリが急増する。<code>user_id</code> や <code>request_id</code> などユニーク値の高いラベルは絶対に避ける。カーディナリティが高いデータには Loki（ログ）または Jaeger（トレース）を使う。</p>
+    </div>
+
+    <div class="tip">
+      <div class="tip-label">面接ポイント</div>
+      <p>「レイテンシをどう計測するか？」→ p50だけでは不十分。p99/p999（99.9パーセンタイル）を計測しないと「まれに遅いが多くのユーザーに影響する」問題を見逃す。Histogramメトリクスを使ってサーバー側で集計すること。</p>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 3 ===== -->
+  <section id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>ログ (Logs)</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-amber">
+        <div class="card-title">非構造化ログ（非推奨）</div>
+        <pre style="margin:0;font-size:0.8rem;">2024-01-15 10:23:45 ERROR User login
+failed for user john@example.com
+from IP 192.168.1.100</pre>
+        <p style="margin-top:0.8rem;font-size:0.85rem;">grep で検索できるが、自動解析・フィルタリングが困難。スケールしない。</p>
+      </div>
+      <div class="card card-green">
+        <div class="card-title">構造化ログ JSON（推奨）</div>
+        <pre style="margin:0;font-size:0.8rem;">{
+  "timestamp": "2024-01-15T10:23:45Z",
+  "level": "ERROR",
+  "message": "User login failed",
+  "user_email": "john@example.com",
+  "ip": "192.168.1.100",
+  "trace_id": "abc123def456",
+  "span_id": "789xyz",
+  "service": "auth-service",
+  "version": "1.2.3"
+}</pre>
+      </div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">ログレベルの使い分け</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>レベル</th><th>用途</th><th>本番環境での出力</th><th>例</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="badge badge-blue">DEBUG</span></td><td>開発時の詳細情報</td><td class="td-bad">× 出力しない</td><td>変数の値、関数の入出力</td></tr>
+          <tr><td><span class="badge badge-green">INFO</span></td><td>正常な操作の記録</td><td class="td-good">○ 出力する</td><td>ユーザーログイン、注文処理完了</td></tr>
+          <tr><td><span class="badge badge-amber">WARN</span></td><td>問題になりうる状況</td><td class="td-good">○ 出力する</td><td>設定ファイルなし（デフォルト使用）、リトライ発生</td></tr>
+          <tr><td><span class="badge badge-red">ERROR</span></td><td>処理は続くが失敗した</td><td class="td-good">○ 必ず出力</td><td>DB接続失敗（リトライ可）、外部API呼び出し失敗</td></tr>
+          <tr><td><span class="badge" style="background:rgba(239,68,68,0.3);color:#fca5a5;border:1px solid rgba(239,68,68,0.5);">FATAL</span></td><td>回復不能なエラー</td><td class="td-good">○ 必ず出力</td><td>DB接続不能でサービス継続不可</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">相関ID（Correlation ID）による分散追跡</h3>
+    <div class="card">
+      <div class="card-title">Correlation ID の流れ</div>
+      <p>マイクロサービス間でリクエストを追跡するために、最初のサービスが生成した <code>trace_id</code> をHTTPヘッダ（<code>X-Trace-ID</code>）で伝播させ、全サービスのログに付与する。</p>
+    </div>
+    <div class="code-label">Python + structlog による構造化ログ実装例</div>
+    <pre>import structlog
+import uuid
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+# structlog の設定
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer(),
+    ]
+)
+
+logger = structlog.get_logger()
+
+@app.middleware("http")
+async def add_correlation_id(request: Request, call_next):
+    # 上流からのtrace_idを引き継ぐ or 新規生成
+    trace_id = request.headers.get("X-Trace-ID", str(uuid.uuid4()))
+
+    # コンテキスト変数にセット（全ログに自動付与）
+    structlog.contextvars.bind_contextvars(
+        trace_id=trace_id,
+        service="user-service",
+        method=request.method,
+        path=request.url.path,
+    )
+
+    response = await call_next(request)
+
+    # レスポンスヘッダにもtrace_idを付与
+    response.headers["X-Trace-ID"] = trace_id
+    return response
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int):
+    logger.info("Fetching user", user_id=user_id)
+
+    try:
+        user = await db.get_user(user_id)
+        logger.info("User fetched successfully", user_id=user_id)
+        return user
+    except UserNotFound:
+        logger.warning("User not found", user_id=user_id)
+        raise HTTPException(status_code=404)
+    except Exception as e:
+        logger.error("Unexpected error", user_id=user_id, error=str(e))
+        raise</pre>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">ログ集約スタック (EFK Stack)</h3>
+
+    <div class="svg-wrap">
+      <svg viewBox="0 0 760 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="arrw" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+          </marker>
+        </defs>
+        <!-- Apps -->
+        <rect x="20" y="40" width="110" height="80" rx="8" fill="#1c1f2e" stroke="#2a2d3e" stroke-width="1.5"/>
+        <text x="75" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#e2e8f0">App Pods</text>
+        <text x="75" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">stdout/stderr</text>
+        <text x="75" y="111" text-anchor="middle" font-size="10" fill="#64748b">ログファイル</text>
+
+        <!-- Fluentd/Filebeat -->
+        <rect x="175" y="40" width="130" height="80" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="240" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#22d3ee">Fluentd</text>
+        <text x="240" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">Filebeat</text>
+        <text x="240" y="111" text-anchor="middle" font-size="10" fill="#64748b">収集・フィルタリング</text>
+
+        <!-- Kafka (optional) -->
+        <rect x="355" y="40" width="120" height="80" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="415" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#f59e0b">Kafka</text>
+        <text x="415" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">(オプション)</text>
+        <text x="415" y="111" text-anchor="middle" font-size="10" fill="#64748b">バッファ・耐障害性</text>
+
+        <!-- Elasticsearch -->
+        <rect x="525" y="40" width="120" height="80" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+        <text x="585" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#10b981">OpenSearch</text>
+        <text x="585" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">Elasticsearch</text>
+        <text x="585" y="111" text-anchor="middle" font-size="10" fill="#64748b">インデックス・検索</text>
+
+        <!-- Kibana -->
+        <rect x="695" y="40" width="55" height="80" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="722" y="76" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Kibana</text>
+        <text x="722" y="95" text-anchor="middle" font-size="10" fill="#94a3b8">可視化</text>
+
+        <!-- Arrows -->
+        <line x1="130" y1="80" x2="173" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrw)"/>
+        <line x1="305" y1="80" x2="353" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrw)"/>
+        <line x1="475" y1="80" x2="523" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrw)"/>
+        <line x1="645" y1="80" x2="693" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrw)"/>
+      </svg>
+      <div class="svg-caption">EFK スタック: Fluentd → (Kafka) → Elasticsearch → Kibana</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">ログ保持ポリシーとコスト管理</div>
+      <div class="tbl-wrap" style="margin:0;">
+        <table>
+          <thead><tr><th>ティア</th><th>期間</th><th>ストレージ</th><th>アクセス速度</th><th>コスト</th></tr></thead>
+          <tbody>
+            <tr><td>Hot</td><td>直近7〜30日</td><td>SSD / Elasticsearch</td><td class="td-good">高速（秒以内）</td><td class="td-bad">高</td></tr>
+            <tr><td>Warm</td><td>30〜90日</td><td>HDD / S3 + Athena</td><td class="td-warn">中（分単位）</td><td class="td-warn">中</td></tr>
+            <tr><td>Cold</td><td>90日〜数年</td><td>S3 Glacier / GCS Archive</td><td class="td-bad">低速（時間単位）</td><td class="td-good">低</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 4 ===== -->
+  <section id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>分散トレーシング (Distributed Tracing)</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">なぜ必要か？</div>
+      <p>マイクロサービス環境では、1つのユーザーリクエストが10以上のサービスをまたぐことがある。「なぜこのリクエストは2秒かかったのか？」をログだけで調べるのは困難。トレーシングは<strong>リクエストの全経路を可視化</strong>し、ボトルネックを特定できる。</p>
+    </div>
+
+    <!-- Trace/Span SVG -->
+    <div class="svg-wrap">
+      <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+        <!-- Time axis -->
+        <text x="30" y="20" font-size="11" fill="#64748b">Trace ID: abc123def456</text>
+        <text x="650" y="20" font-size="11" fill="#64748b">合計: 450ms</text>
+        <line x1="30" y1="35" x2="740" y2="35" stroke="#2a2d3e" stroke-width="1"/>
+        <!-- Time markers -->
+        <text x="30" y="50" font-size="10" fill="#64748b">0ms</text>
+        <text x="195" y="50" font-size="10" fill="#64748b">100ms</text>
+        <text x="370" y="50" font-size="10" fill="#64748b">200ms</text>
+        <text x="545" y="50" font-size="10" fill="#64748b">300ms</text>
+        <text x="700" y="50" font-size="10" fill="#64748b">450ms</text>
+
+        <!-- Root span: API Gateway -->
+        <rect x="30" y="60" width="710" height="30" rx="4" fill="#6366f1" fill-opacity="0.7" stroke="#6366f1"/>
+        <text x="40" y="80" font-size="12" font-weight="600" fill="#fff">API Gateway (Root Span)</text>
+        <text x="680" y="80" font-size="11" fill="#c7d2fe">450ms</text>
+
+        <!-- Service A span -->
+        <rect x="30" y="105" width="360" height="26" rx="4" fill="#22d3ee" fill-opacity="0.6" stroke="#22d3ee"/>
+        <text x="40" y="123" font-size="11" font-weight="600" fill="#fff">user-service (Span)</text>
+        <text x="340" y="123" font-size="11" fill="#a5f3fc">200ms</text>
+
+        <!-- DB query under service A -->
+        <rect x="50" y="143" width="200" height="22" rx="4" fill="#10b981" fill-opacity="0.5" stroke="#10b981"/>
+        <text x="60" y="158" font-size="10" fill="#fff">DB Query: SELECT users (Child Span)</text>
+        <text x="210" y="158" font-size="10" fill="#a7f3d0">80ms</text>
+
+        <!-- Redis under service A -->
+        <rect x="260" y="143" width="130" height="22" rx="4" fill="#10b981" fill-opacity="0.5" stroke="#10b981"/>
+        <text x="270" y="158" font-size="10" fill="#fff">Redis Cache Hit</text>
+        <text x="350" y="158" font-size="10" fill="#a7f3d0">5ms</text>
+
+        <!-- Service B span -->
+        <rect x="400" y="105" width="230" height="26" rx="4" fill="#a78bfa" fill-opacity="0.6" stroke="#a78bfa"/>
+        <text x="410" y="123" font-size="11" font-weight="600" fill="#fff">order-service (Span)</text>
+        <text x="580" y="123" font-size="11" fill="#ddd6fe">150ms</text>
+
+        <!-- DB query under service B -->
+        <rect x="420" y="143" width="150" height="22" rx="4" fill="#f59e0b" fill-opacity="0.5" stroke="#f59e0b"/>
+        <text x="430" y="158" font-size="10" fill="#fff">DB Query: SELECT orders</text>
+        <text x="535" y="158" font-size="10" fill="#fde68a">120ms ⚠</text>
+
+        <!-- Service C span -->
+        <rect x="640" y="105" width="100" height="26" rx="4" fill="#ef4444" fill-opacity="0.5" stroke="#ef4444"/>
+        <text x="650" y="123" font-size="11" font-weight="600" fill="#fff">notify-svc</text>
+        <text x="697" y="123" font-size="11" fill="#fca5a5">50ms</text>
+
+        <!-- Legend -->
+        <rect x="30" y="200" width="14" height="14" rx="2" fill="#6366f1" fill-opacity="0.7"/>
+        <text x="50" y="212" font-size="11" fill="#94a3b8">Root Span</text>
+        <rect x="130" y="200" width="14" height="14" rx="2" fill="#22d3ee" fill-opacity="0.6"/>
+        <text x="150" y="212" font-size="11" fill="#94a3b8">Child Span</text>
+        <rect x="230" y="200" width="14" height="14" rx="2" fill="#10b981" fill-opacity="0.5"/>
+        <text x="250" y="212" font-size="11" fill="#94a3b8">DB/Cache</text>
+        <rect x="330" y="200" width="14" height="14" rx="2" fill="#f59e0b" fill-opacity="0.5"/>
+        <text x="350" y="212" font-size="11" fill="#94a3b8">遅い箇所 ⚠</text>
+
+        <!-- Annotation -->
+        <text x="30" y="250" font-size="11" fill="#64748b">* order-service の DB クエリ (120ms) がボトルネック。インデックス追加 or クエリ最適化が必要</text>
+        <text x="30" y="270" font-size="11" fill="#64748b">* W3C TraceContext ヘッダ (traceparent) でSpan情報をサービス間で伝播</text>
+      </svg>
+      <div class="svg-caption">分散トレース：Trace / Span / Parent-Child 関係とボトルネックの特定</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-blue">
+        <div class="card-title">OpenTelemetry (OTel)</div>
+        <p>CNCF の標準。ベンダーロックインなしで Traces / Metrics / Logs を計装できる統一 API/SDK。</p>
+        <ul>
+          <li>言語別 SDK（Python/Java/Go/Node.js...）</li>
+          <li>OTel Collector でデータをルーティング</li>
+          <li>Jaeger / Zipkin / Tempo / Datadog に送信可能</li>
+          <li>自動計装（フレームワーク対応）</li>
+        </ul>
+      </div>
+      <div class="card card-purple">
+        <div class="card-title">サンプリング戦略</div>
+        <ul>
+          <li><strong>ヘッドベース：</strong>リクエスト開始時に決定（固定率 1%）。シンプルだが重要なエラーを見逃す</li>
+          <li><strong>テールベース：</strong>完了後に判断（エラー・遅延リクエストを必ずサンプル）。Jaegerのテールサンプリングが対応</li>
+          <li><strong>適応型：</strong>負荷に応じてサンプリング率を動的調整</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-label">OpenTelemetry による Span 作成例（Python）</div>
+    <pre>from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+# Tracer Provider の設定
+provider = TracerProvider()
+processor = BatchSpanProcessor(
+    OTLPSpanExporter(endpoint="http://otel-collector:4317")
+)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+tracer = trace.get_tracer(__name__)
+
+async def get_user_orders(user_id: int):
+    # 親Spanの作成
+    with tracer.start_as_current_span("get_user_orders") as span:
+        span.set_attribute("user.id", user_id)
+        span.set_attribute("service.name", "order-service")
+
+        # 子Spanの作成（DB クエリ）
+        with tracer.start_as_current_span("db.query_orders") as db_span:
+            db_span.set_attribute("db.system", "postgresql")
+            db_span.set_attribute("db.statement", "SELECT * FROM orders WHERE user_id = ?")
+
+            try:
+                orders = await db.fetch_orders(user_id)
+                db_span.set_attribute("db.rows_returned", len(orders))
+                return orders
+            except Exception as e:
+                # エラー情報をSpanに記録
+                db_span.record_exception(e)
+                db_span.set_status(trace.StatusCode.ERROR, str(e))
+                raise</pre>
+
+    <div class="card">
+      <div class="card-title">W3C TraceContext ヘッダ（コンテキスト伝播）</div>
+      <pre style="margin:0;">traceparent: 00-{trace-id}-{parent-id}-{flags}
+# 例:
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+#              ^  ^----- 32文字 trace-id ------^  ^-- 16文字 --^  ^サンプリングフラグ</pre>
+    </div>
+
+    <div class="tip">
+      <div class="tip-label">面接ポイント</div>
+      <p>「マイクロサービスで特定のリクエストが遅い原因をどう調べるか？」→ 分散トレーシング（Jaeger/Zipkin）でtrace_idを使って全サービスのSpanを追跡し、どのSpanで遅延が発生したかをウォーターフォール図で確認すると答えよう。</p>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 5 ===== -->
+  <section id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>SLI / SLO / SLA / エラーバジェット</h2>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="card card-blue">
+          <div class="card-title">SLI (Service Level Indicator)</div>
+          <p><strong>実際に測定する指標</strong>。ユーザー体験を定量化した数値。</p>
+          <ul>
+            <li>成功リクエスト率（5xx以外 / 全体）</li>
+            <li>レイテンシ（p99 &lt; 200ms のリクエスト率）</li>
+            <li>可用性（稼働時間 / 合計時間）</li>
+          </ul>
+        </div>
+        <div class="card card-green">
+          <div class="card-title">SLO (Service Level Objective)</div>
+          <p><strong>SLIの目標値</strong>。チーム内の合意目標。</p>
+          <ul>
+            <li>「成功率 99.9% 以上」</li>
+            <li>「p99レイテンシ 200ms 未満（月間95%の時間）」</li>
+            <li>SLAより高い値を設定してバッファを持つ</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card card-amber">
+          <div class="card-title">SLA (Service Level Agreement)</div>
+          <p><strong>顧客・外部との契約</strong>。違反すると賠償が発生。</p>
+          <ul>
+            <li>SLOより低い値（例：SLO 99.9% → SLA 99.5%）</li>
+            <li>違反時のクレジット還元ポリシー</li>
+            <li>法的拘束力のある文書</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:rgba(163,230,53,0.3);background:rgba(163,230,53,0.05);">
+          <div class="card-title" style="color:#a3e635;">エラーバジェット (Error Budget)</div>
+          <p><strong>許容できる障害量の「予算」</strong>。</p>
+          <ul>
+            <li>SLO 99.9% = 0.1% のエラーが許容範囲</li>
+            <li>月間: 0.1% × 43,800分 = <strong>43.8分</strong></li>
+            <li>バジェット内なら新機能リリースを優先</li>
+            <li>消費超過→ 信頼性改善に注力</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Budget Burndown SVG -->
+    <div class="svg-wrap">
+      <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+        <text x="350" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="#e2e8f0">エラーバジェット消費グラフ（月間）</text>
+
+        <!-- Axes -->
+        <line x1="60" y1="200" x2="660" y2="200" stroke="#2a2d3e" stroke-width="1.5"/>
+        <line x1="60" y1="40" x2="60" y2="200" stroke="#2a2d3e" stroke-width="1.5"/>
+
+        <!-- Y axis labels -->
+        <text x="50" y="44" text-anchor="end" font-size="10" fill="#64748b">100%</text>
+        <text x="50" y="94" text-anchor="end" font-size="10" fill="#64748b">75%</text>
+        <text x="50" y="144" text-anchor="end" font-size="10" fill="#64748b">50%</text>
+        <text x="50" y="194" text-anchor="end" font-size="10" fill="#64748b">0%</text>
+
+        <!-- Grid lines -->
+        <line x1="60" y1="40" x2="660" y2="40" stroke="#1c1f2e" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="60" y1="90" x2="660" y2="90" stroke="#1c1f2e" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="60" y1="140" x2="660" y2="140" stroke="#1c1f2e" stroke-width="1" stroke-dasharray="4,4"/>
+
+        <!-- X axis labels -->
+        <text x="60" y="215" text-anchor="middle" font-size="10" fill="#64748b">1日</text>
+        <text x="210" y="215" text-anchor="middle" font-size="10" fill="#64748b">8日</text>
+        <text x="360" y="215" text-anchor="middle" font-size="10" fill="#64748b">15日</text>
+        <text x="510" y="215" text-anchor="middle" font-size="10" fill="#64748b">22日</text>
+        <text x="660" y="215" text-anchor="middle" font-size="10" fill="#64748b">月末</text>
+
+        <!-- Ideal burn line (grey dashed) -->
+        <line x1="60" y1="40" x2="660" y2="200" stroke="#475569" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="430" y="135" font-size="10" fill="#475569">理想消費ペース</text>
+
+        <!-- Actual burn - healthy period then incident -->
+        <polyline points="60,40 150,55 210,65 270,75 310,72 350,82 380,85 400,100 420,145 440,158 460,165 510,172 560,178 610,183 660,188"
+          stroke="#10b981" stroke-width="2.5" fill="none"/>
+
+        <!-- Incident zone (red area) -->
+        <rect x="400" y="40" width="60" height="160" fill="rgba(239,68,68,0.08)" stroke="none"/>
+        <line x1="400" y1="40" x2="400" y2="200" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="460" y1="40" x2="460" y2="200" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="430" y="58" text-anchor="middle" font-size="10" fill="#ef4444">障害発生</text>
+
+        <!-- Budget exhausted line -->
+        <line x1="60" y1="200" x2="660" y2="200" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+
+        <!-- Alert threshold (50% budget) -->
+        <line x1="60" y1="140" x2="660" y2="140" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="8,4"/>
+        <text x="665" y="144" font-size="10" fill="#f59e0b">50%残</text>
+        <text x="665" y="157" font-size="10" fill="#f59e0b">アラート</text>
+
+        <!-- Current status badge -->
+        <rect x="510" y="155" width="140" height="30" rx="6" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="1"/>
+        <text x="580" y="174" text-anchor="middle" font-size="11" fill="#10b981">残バジェット: 6.2分</text>
+      </svg>
+      <div class="svg-caption">エラーバジェット消費グラフ：障害発生時に急激に消費される様子</div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">SLO設計：計算例</h3>
+    <div class="formula">
+      <div class="formula-label">月間ダウンタイム許容量 = (1 - SLO) × 月間分数</div>
+      SLO 99.9%  → 0.1%  × 43,800分 = 43.8分/月（約44分）
+      SLO 99.95% → 0.05% × 43,800分 = 21.9分/月（約22分）
+      SLO 99.99% → 0.01% × 43,800分 =  4.4分/月（約4分）
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>SLO</th><th>月間ダウンタイム</th><th>年間ダウンタイム</th><th>適用例</th></tr></thead>
+        <tbody>
+          <tr><td>99%</td><td class="td-bad">7.3時間</td><td class="td-bad">3.7日</td><td>社内ツール</td></tr>
+          <tr><td>99.9%</td><td class="td-warn">43.8分</td><td class="td-warn">8.8時間</td><td>一般的なWebサービス</td></tr>
+          <tr><td>99.95%</td><td class="td-warn">21.9分</td><td class="td-warn">4.4時間</td><td>B2B SaaS</td></tr>
+          <tr><td>99.99%</td><td class="td-good">4.4分</td><td class="td-good">52.6分</td><td>決済・金融系</td></tr>
+          <tr><td>99.999%</td><td class="td-good">26秒</td><td class="td-good">5.3分</td><td>航空管制・医療機器</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card card-green">
+      <div class="card-title">良いSLOの設計原則</div>
+      <ul>
+        <li><strong>ユーザー体験に直結するものを選ぶ：</strong>「サーバーのCPU使用率」より「リクエスト成功率」</li>
+        <li><strong>少数に絞る：</strong>サービスごとに3〜5個（多すぎると管理不能）</li>
+        <li><strong>計測可能にする：</strong>既存のメトリクスから算出できること</li>
+        <li><strong>SLOからのバッファ：</strong>SLA = SLO - 0.1〜0.5% のバッファを持たせる</li>
+        <li><strong>定期的に見直す：</strong>四半期ごとに実績値を振り返り調整する</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 6 ===== -->
+  <section id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2>アラート設計</h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="card" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);">
+        <div class="card-title" style="color:var(--red);">Page（即時対応）</div>
+        <p>深夜でも起こしてよいアラート。SLOに直接影響する重大な問題のみ。</p>
+        <ul style="font-size:0.9rem;">
+          <li>エラーバジェットが急速消費</li>
+          <li>サービス完全停止</li>
+          <li>p99レイテンシが数倍に悪化</li>
+        </ul>
+      </div>
+      <div class="card card-amber">
+        <div class="card-title">Ticket（翌営業日）</div>
+        <p>重要だが緊急ではない問題。次のスプリントで対応。</p>
+        <ul style="font-size:0.9rem;">
+          <li>エラーバジェット消費が加速</li>
+          <li>ディスク使用率が80%超え</li>
+          <li>証明書の有効期限が30日以内</li>
+        </ul>
+      </div>
+      <div class="card card-blue">
+        <div class="card-title">Log（記録のみ）</div>
+        <p>人間への通知不要。自動修復か定期確認で十分。</p>
+        <ul style="font-size:0.9rem;">
+          <li>個別リトライの成功</li>
+          <li>キャッシュヒット率の軽微な低下</li>
+          <li>非クリティカルなバックグラウンドジョブ遅延</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">マルチウィンドウ・マルチバーンレート（推奨）</h3>
+    <div class="card">
+      <div class="card-title">バーンレートアラートの仕組み</div>
+      <p>「今このペースでエラーが発生し続けると、いつエラーバジェットが枯渇するか？」で優先度を決める。</p>
+      <pre>SLO: 99.9%（月間バジェット = 43.8分）
+
+# 急速消費（1時間ウィンドウ）: バーンレート > 14.4
+# → 5分でページング（1時間以内にバジェットの2%消費）
+rate(errors[1h]) / rate(requests[1h]) > 14.4 * (1 - 0.999)
+
+# 緩やかな消費（6時間ウィンドウ）: バーンレート > 6
+# → 15分でページング（6時間でバジェットの5%消費）
+rate(errors[6h]) / rate(requests[6h]) > 6 * (1 - 0.999)
+
+# 長期トレンド（3日ウィンドウ）: バーンレート > 1
+# → チケット作成（このペースだと月末にバジェット超過）
+rate(errors[3d]) / rate(requests[3d]) > 1 * (1 - 0.999)</pre>
+    </div>
+
+    <div class="warn-box">
+      <div class="warn-label">Alert Fatigue（アラート疲弊）の防止</div>
+      <p>アラートが多すぎると担当者が慣れてしまい、重要なアラートを見落とす。対策：<br>
+      1) Pageアラートは必ずアクション可能なものだけ　2) 月に1回アラートを棚卸し　3) 偽陽性が多いアラートはすぐに修正か廃止　4) アラートに明確なRunbookリンクを付ける</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-purple">
+        <div class="card-title">On-call ローテーション設計</div>
+        <ul>
+          <li>プライマリ + バックアップの2段構成</li>
+          <li>1人のOn-call期間は最大1週間</li>
+          <li>深夜対応後は翌日の休暇を保証</li>
+          <li>インシデントレビューを必ず実施</li>
+          <li>PagerDuty / OpsGenie でエスカレーション設定</li>
+        </ul>
+      </div>
+      <div class="card card-blue">
+        <div class="card-title">PagerDuty エスカレーションポリシー</div>
+        <pre style="margin:0;font-size:0.8rem;">1. アラート発火 → プライマリ通知
+   ↓（5分応答なし）
+2. バックアップ通知
+   ↓（10分応答なし）
+3. チームマネージャー通知
+   ↓（15分応答なし）
+4. インシデントコマンダー起動</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 7 ===== -->
+  <section id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <h2>ヘルスチェックと Readiness/Liveness Probe</h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="card card-green">
+        <div class="card-title">/health（基本死活）</div>
+        <p>サービスのプロセスが起動しているか確認。外部依存を含まない最軽量チェック。</p>
+        <pre style="margin:0;font-size:0.8rem;">GET /health
+→ 200 {"status": "ok"}</pre>
+      </div>
+      <div class="card card-blue">
+        <div class="card-title">/ready（Ready状態）</div>
+        <p>トラフィックを受け入れられるか確認。DB接続・キャッシュ温め完了を確認。</p>
+        <pre style="margin:0;font-size:0.8rem;">GET /ready
+→ 200 {"status": "ready",
+       "db": "connected",
+       "cache": "warmed"}</pre>
+      </div>
+      <div class="card card-purple">
+        <div class="card-title">/live（Alive状態）</div>
+        <p>プロセスがデッドロックしていないか確認。失敗時はKubernetesがPodを再起動。</p>
+        <pre style="margin:0;font-size:0.8rem;">GET /live
+→ 200 {"status": "alive"}
+→ 500 → K8sがPodを再起動</pre>
+      </div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">Kubernetes Probe 設定</h3>
+    <div class="code-label">kubernetes deployment.yaml</div>
+    <pre>containers:
+  - name: my-app
+    image: my-app:1.0.0
+    ports:
+      - containerPort: 8080
+
+    # Liveness Probe: デッドロック検出 → 失敗時にPod再起動
+    livenessProbe:
+      httpGet:
+        path: /live
+        port: 8080
+      initialDelaySeconds: 30  # 起動待機時間
+      periodSeconds: 10         # チェック間隔
+      failureThreshold: 3       # 3回連続失敗でPod再起動
+
+    # Readiness Probe: トラフィック受け入れ準備 → 失敗時はLBから除外
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      failureThreshold: 2       # 2回連続失敗でServiceから除外
+
+    # Startup Probe: 起動時間が長いアプリ用 (完了後にliveness開始)
+    startupProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      failureThreshold: 30      # 30 × 10s = 最大300秒待機
+      periodSeconds: 10</pre>
+
+    <div class="card card-green">
+      <div class="card-title">Deep Health Check の設計</div>
+      <p>依存サービスのヘルスも確認する詳細版ヘルスチェック。タイムアウトを設けてデッドロックを防ぐ。</p>
+      <pre style="margin:0;">GET /health/deep
+→ 200 {
+  "status": "healthy",
+  "checks": {
+    "database": {"status": "ok", "latency_ms": 3},
+    "redis":    {"status": "ok", "latency_ms": 1},
+    "kafka":    {"status": "degraded", "latency_ms": 120},
+    "external_api": {"status": "ok", "latency_ms": 45}
+  },
+  "timestamp": "2024-01-15T10:23:45Z"
+}</pre>
+    </div>
+
+    <div class="tip">
+      <div class="tip-label">面接ポイント</div>
+      <p>ReadinessとLivenessの違いは頻出。Readiness失敗 → LBからの除外（Podは生き続ける）。Liveness失敗 → Podの再起動。Deep Health Checkは外部依存チェックを含むが、Liveness Probeには使わない（外部サービス障害でPodが無限再起動するのを防ぐ）。</p>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 8 ===== -->
+  <section id="s8">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <h2>ダッシュボード設計の原則</h2>
+    </div>
+
+    <div class="card card-blue">
+      <div class="card-title">情報の階層化（3層構造）</div>
+      <div class="grid-3" style="margin-top:1rem;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:800;color:#a3e635;margin-bottom:0.3rem;">L1</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:0.5rem;">Overview</div>
+          <div style="font-size:0.85rem;color:var(--text2);">全サービスの健全性、SLOの達成状況、アクティブインシデント一覧</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:800;color:#22d3ee;margin-bottom:0.3rem;">L2</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:0.5rem;">Service</div>
+          <div style="font-size:0.85rem;color:var(--text2);">サービスごとのRED指標、デプロイ履歴、依存サービスの状態</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:800;color:#a78bfa;margin-bottom:0.3rem;">L3</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:0.5rem;">Component</div>
+          <div style="font-size:0.85rem;color:var(--text2);">DB クエリ詳細、キャッシュヒット率、インフラリソース、トレース詳細</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">Grafana ダッシュボードのベストプラクティス</h3>
+    <div class="grid-2">
+      <div>
+        <div class="card card-green">
+          <div class="card-title">推奨プラクティス</div>
+          <ul>
+            <li>ゴールデンシグナルを1画面に集約する</li>
+            <li>時間範囲を統一（全グラフ同じ範囲）</li>
+            <li>変化を強調：デプロイイベントをアノテーションで表示</li>
+            <li>アラートラインをグラフ上に重ねて表示</li>
+            <li>色の意味を統一（赤=悪化、緑=正常）</li>
+            <li>パネルに説明文・Runbookリンクを追加</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color:rgba(239,68,68,0.3);">
+          <div class="card-title" style="color:var(--red);">アンチパターン</div>
+          <ul>
+            <li>グラフが多すぎて何を見るか不明</li>
+            <li>単位なしの数値（msなのか秒なのか不明）</li>
+            <li>Y軸が0からではなく任意の値スタート（変化が誇張される）</li>
+            <li>インシデント中に「ダッシュボードを探す」設計</li>
+            <li>アラートとダッシュボードが紐付いていない</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-label">Grafana ダッシュボード JSON例（パネル定義）</div>
+    <pre>{
+  "panels": [
+    {
+      "title": "リクエスト成功率 (SLI)",
+      "type": "gauge",
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{status!~'5..'}[5m])) / sum(rate(http_requests_total[5m])) * 100"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              {"value": 0,    "color": "red"},
+              {"value": 99.0, "color": "yellow"},
+              {"value": 99.9, "color": "green"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "p99 レイテンシ",
+      "type": "graph",
+      "targets": [{
+        "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+        "legendFormat": "p99"
+      }]
+    }
+  ]
+}</pre>
+  </section>
+
+  <!-- ===== SECTION 9 ===== -->
+  <section id="s9">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <h2>コスト最適化とオブザーバビリティ</h2>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>観点</th><th>問題</th><th>対策</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>ログコスト</strong></td>
+            <td>DEBUG ログを本番で全出力するとストレージ・転送コストが爆発</td>
+            <td>本番は INFO 以上のみ出力。動的ログレベル変更機能を実装</td>
+          </tr>
+          <tr>
+            <td><strong>トレースコスト</strong></td>
+            <td>全リクエストをトレースすると転送・ストレージコストが莫大</td>
+            <td>1〜5% のランダムサンプリング + エラー・高レイテンシは100%サンプル</td>
+          </tr>
+          <tr>
+            <td><strong>メトリクスカーディナリティ</strong></td>
+            <td>高カーディナリティラベルでPrometheusのメモリが急増</td>
+            <td>ラベルの値を事前に制限。ユニーク値の高いデータはログで対応</td>
+          </tr>
+          <tr>
+            <td><strong>データ保持コスト</strong></td>
+            <td>全データを長期高速ストレージに置くと高コスト</td>
+            <td>Hot/Warm/Cold ティアリング。Prometheusはルールでダウンサンプリング</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="color:var(--accent2);margin:1.5rem 0 1rem;font-size:1.1rem;">OpenTelemetry Collector によるデータルーティング</h3>
+    <div class="card">
+      <div class="card-title">OTel Collectorのパイプライン</div>
+      <p>アプリ → OTel Collector → 複数のバックエンドに柔軟にルーティング。バックエンドを変えてもアプリ側のコードを変更不要。</p>
+      <pre style="margin:0.8rem 0 0;">receivers:
+  otlp:
+    protocols:
+      grpc: {endpoint: "0.0.0.0:4317"}
+      http: {endpoint: "0.0.0.0:4318"}
+
+processors:
+  # サンプリング：エラーは100%, それ以外は1%
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+      - name: errors-policy
+        type: status_code
+        status_code: {status_codes: [ERROR]}
+      - name: slow-traces
+        type: latency
+        latency: {threshold_ms: 1000}
+      - name: random-sample
+        type: probabilistic
+        probabilistic: {sampling_percentage: 1}
+
+  # バッチ処理でネットワーク負荷を削減
+  batch:
+    timeout: 10s
+    send_batch_size: 1000
+
+  # メモリ制限（OOM対策）
+  memory_limiter:
+    limit_mib: 512
+
+exporters:
+  # トレース → Jaeger
+  jaeger:
+    endpoint: "jaeger:14250"
+  # メトリクス → Prometheus
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+  # ログ → Loki
+  loki:
+    endpoint: "http://loki:3100/loki/api/v1/push"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [loki]</pre>
+    </div>
+
+    <div class="grid-3" style="margin-top:1rem;">
+      <div class="metric-card">
+        <div class="metric-val" style="color:#a3e635;">1-5%</div>
+        <div class="metric-label">トレースの推奨サンプリング率（エラー除く）</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:#22d3ee;">INFO+</div>
+        <div class="metric-label">本番環境の推奨ログレベル</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:#a78bfa;">&lt;1000</div>
+        <div class="metric-label">メトリクス1つあたりの推奨カーディナリティ上限</div>
+      </div>
+    </div>
+
+    <!-- Summary comparison table -->
+    <h3 style="color:var(--accent2);margin:2rem 0 1rem;font-size:1.1rem;">OSS ツールスタック全体像</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>目的</th><th>収集/エージェント</th><th>ストレージ</th><th>可視化/クエリ</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td><strong>メトリクス</strong></td><td>Prometheus / Node Exporter / StatsD</td><td>Prometheus TSDB / Thanos / Cortex</td><td>Grafana</td></tr>
+          <tr><td><strong>ログ</strong></td><td>Fluentd / Filebeat / Promtail</td><td>Elasticsearch / Loki / OpenSearch</td><td>Kibana / Grafana</td></tr>
+          <tr class="highlight-row"><td><strong>トレース</strong></td><td>OpenTelemetry SDK / Jaeger Agent</td><td>Jaeger / Zipkin / Tempo</td><td>Jaeger UI / Grafana</td></tr>
+          <tr><td><strong>統合プラットフォーム</strong></td><td colspan="3">Datadog / New Relic / Dynatrace / Honeycomb（商用SaaS）</td></tr>
+          <tr><td><strong>アラート</strong></td><td colspan="3">Alertmanager / PagerDuty / OpsGenie</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tip">
+      <div class="tip-label">面接まとめ：システムデザインでオブザーバビリティを語るポイント</div>
+      <p>1) <strong>3本柱</strong>（Metrics/Logs/Traces）の役割分担を説明する。<br>
+      2) <strong>SLI/SLO/エラーバジェット</strong>でアラートの優先度を定量化する。<br>
+      3) <strong>OpenTelemetry</strong>を計装の標準として採用し、ベンダーロックインを避ける。<br>
+      4) <strong>コスト</strong>：トレースはサンプリング、ログは構造化+適切なレベル設定、メトリクスはカーディナリティ管理。<br>
+      5) <strong>アクション可能なアラート</strong>のみPageに設定し、Alert Fatigueを防ぐ。</p>
+    </div>
+  </section>
+
+</div><!-- /container -->
+
+<!-- ============================================================
+     深掘り & 実践演習セクション
+     ============================================================ -->
+
+  <!-- ===== 深掘り: Prometheusの内部設計 ===== -->
+  <section id="prometheus-internals">
+    <div class="section-header">
+      <div class="section-num">A</div>
+      <h2>深掘り: Prometheusの内部設計</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-blue">
+        <div class="card-title">Pull vs Push Model: なぜPrometheusはPullか</div>
+        <p>PrometheusはターゲットのHTTPエンドポイント（<code>/metrics</code>）をスクレイプするPullモデルを採用する。</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>観点</th><th>Pull (Prometheus)</th><th>Push (StatsD/InfluxDB)</th></tr></thead>
+            <tbody>
+              <tr><td>設定の中央集権化</td><td class="td-good">○ Prometheusが管理</td><td class="td-bad">× 各クライアントが設定</td></tr>
+              <tr><td>ヘルスチェック</td><td class="td-good">○ スクレイプ失敗=障害検知</td><td class="td-bad">× 送信が止まっても気付けない</td></tr>
+              <tr><td>短命ジョブ</td><td class="td-bad">× Pushgateway必要</td><td class="td-good">○ 直接送信できる</td></tr>
+              <tr><td>スケール</td><td class="td-warn">△ ターゲット数に比例</td><td class="td-good">○ エージェントが集約</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card card-purple">
+        <div class="card-title">TSDB の内部構造</div>
+        <p><strong>WAL（Write-Ahead Log）</strong>: 書き込みはまずWALに記録。クラッシュリカバリに使用。</p>
+        <p><strong>Chunk</strong>: 2時間分の圧縮データブロック。XOR delta エンコーディングで高圧縮。</p>
+        <p><strong>Block</strong>: 複数ChunkのまとまりとIndex。デフォルト2時間ごとに新Block生成。</p>
+        <p><strong>Compaction</strong>: バックグラウンドで古いBlockを統合。指数的なBlock期間（2h→6h→24h→...）で書き込み増幅を削減。</p>
+        <pre><code>data/
+├── 01BKGV7JHBCY3W45QQQA2KQMH/  # Block（2時間分）
+│   ├── chunks/
+│   │   └── 000001               # 圧縮チャンク
+│   ├── index                    # ラベル→チャンクのインデックス
+│   └── meta.json
+├── wal/                         # Write-Ahead Log
+│   ├── 00000001
+│   └── 00000002
+└── chunks_head/                 # メモリ内最新データ</code></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recording Rules: 事前集計でPromQLを高速化</div>
+      <p>頻繁に使う重い集計クエリをRecording Ruleで事前計算し、高速にGrafanaで参照できる。</p>
+      <pre><code># prometheus/recording_rules.yml
+groups:
+  - name: api_aggregations
+    interval: 1m  # 1分ごとに計算
+    rules:
+      # 元のクエリ（重い: 全時系列を集計）
+      # rate(http_requests_total[5m]) → Recording Ruleで事前計算
+      - record: job:http_requests:rate5m
+        expr: sum by (job) (rate(http_requests_total[5m]))
+
+      # P99レイテンシの事前計算
+      - record: job:http_request_duration_seconds:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (job, le) (
+              rate(http_request_duration_seconds_bucket[5m])
+            )
+          )
+
+# Grafanaからはこの軽量メトリクスを参照
+# job:http_requests:rate5m{job="payment-service"}</code></pre>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-amber">
+        <div class="card-title">Remote Write: 長期保存（Thanos/Mimir）</div>
+        <pre><code># prometheus.yml
+remote_write:
+  - url: "http://thanos-receiver:19291/api/v1/receive"
+    queue_config:
+      max_samples_per_send: 10000
+      max_shards: 30         # 並列送信数
+      capacity: 100000
+    metadata_config:
+      send: true
+    write_relabel_configs:
+      # 不要メトリクスを送らない（コスト削減）
+      - source_labels: [__name__]
+        regex: "go_gc_.*"
+        action: drop</code></pre>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);">
+        <div class="card-title" style="color:var(--red);">Cardinality Explosion の実例と対策</div>
+        <p>高カーディナリティラベルはTSDBのメモリとインデックスを急増させる。</p>
+        <pre><code># 危険なラベル設計
+http_requests_total{
+  user_id="123456",   # ユーザー数×エンドポイント数の組み合わせ爆発
+  request_id="uuid",  # 毎回ユニーク = 無限増大
+  ip="203.0.113.1"    # IPアドレスも高カーディナリティ
+}
+
+# 安全なラベル設計
+http_requests_total{
+  service="api",
+  endpoint="/orders",
+  method="POST",
+  status="200"
+  # user_idはラベルに入れない
+}</code></pre>
+        <p style="color:var(--text2);font-size:0.85rem;">目安: ラベルの組み合わせ（カーディナリティ）が100万を超えるとPrometheusのメモリが危険域に入る。<code>prometheus_tsdb_head_series</code>メトリクスで監視する。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 深掘り: 分散トレーシングの実践 ===== -->
+  <section id="tracing-practice">
+    <div class="section-header">
+      <div class="section-num">B</div>
+      <h2>深掘り: 分散トレーシングの実践</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-blue">
+        <div class="card-title">Head-based vs Tail-based Sampling</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>項目</th><th>Head-based</th><th>Tail-based</th></tr></thead>
+            <tbody>
+              <tr><td>判断タイミング</td><td>リクエスト開始時</td><td>リクエスト完了後</td></tr>
+              <tr><td>エラーの捕捉</td><td class="td-bad">確率的（見逃す可能性）</td><td class="td-good">確実（エラーは100%保持）</td></tr>
+              <tr><td>実装複雑度</td><td class="td-good">低</td><td class="td-bad">高（全スパンをバッファ）</td></tr>
+              <tr><td>サンプリング率</td><td>固定率 or 確率的</td><td>動的・条件付き</td></tr>
+              <tr><td>代表例</td><td>Jaeger Agent</td><td>OpenTelemetry Collector</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card card-green">
+        <div class="card-title">Trace Context Propagation フォーマット比較</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>フォーマット</th><th>ヘッダ名</th><th>使用場面</th></tr></thead>
+            <tbody>
+              <tr><td>W3C TraceContext</td><td><code>traceparent</code></td><td>現在の標準。推奨</td></tr>
+              <tr><td>B3 Single</td><td><code>b3</code></td><td>Zipkin, 古いシステム</td></tr>
+              <tr><td>B3 Multi</td><td><code>X-B3-TraceId</code>等</td><td>Spring Cloud Sleuth</td></tr>
+              <tr><td>Jaeger</td><td><code>uber-trace-id</code></td><td>Jaeger固有</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre><code># W3C TraceContext形式
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+              ^  ^----- trace-id (128bit) ----^  ^-span-id(64bit)^ ^sampled</code></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">OpenTelemetry Collector Pipeline 設定例</div>
+      <p>OTel CollectorはReceivers→Processors→Exportersのパイプラインで複数バックエンドへの統合送信を実現する。</p>
+      <pre><code># otel-collector-config.yaml
+receivers:
+  otlp:
+    protocols:
+      grpc: {endpoint: "0.0.0.0:4317"}
+      http: {endpoint: "0.0.0.0:4318"}
+  jaeger:
+    protocols:
+      thrift_compact: {endpoint: "0.0.0.0:6831"}
+  zipkin: {endpoint: "0.0.0.0:9411"}
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+  memory_limiter:
+    limit_mib: 512
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+      - name: errors-policy
+        type: status_code
+        status_code: {status_codes: [ERROR]}
+      - name: slow-traces
+        type: latency
+        latency: {threshold_ms: 500}
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic: {sampling_percentage: 10}  # それ以外は10%
+
+exporters:
+  jaeger:
+    endpoint: "jaeger-collector:14250"
+  prometheus:
+    endpoint: "0.0.0.0:8889"  # メトリクスも出力（Exemplars付き）
+  otlp:
+    endpoint: "https://api.honeycomb.io"
+    headers: {"x-honeycomb-team": "${HONEYCOMB_API_KEY}"}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors: [memory_limiter, batch, tail_sampling]
+      exporters: [jaeger, otlp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]</code></pre>
+    </div>
+
+    <div class="card card-amber">
+      <div class="card-title">Exemplars: メトリクスのスパイクからトレースへジャンプ</div>
+      <p>PrometheusのExemplars機能により、Grafanaのメトリクスグラフで異常値をクリックすると、そのリクエストのJaegerトレースに直接ジャンプできる。</p>
+      <pre><code># Python (OpenTelemetry + Prometheus)
+from prometheus_client import Histogram
+from opentelemetry import trace
+
+REQUEST_DURATION = Histogram(
+    'http_request_duration_seconds',
+    'Request duration',
+    buckets=[.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5]
+)
+
+def handle_request():
+    span = trace.get_current_span()
+    trace_id = format(span.get_span_context().trace_id, '032x')
+
+    with REQUEST_DURATION.labels().time() as timer:
+        # ... リクエスト処理 ...
+        pass
+
+    # Exemplarにtrace_idを添付
+    REQUEST_DURATION.observe(
+        timer.elapsed,
+        exemplar={"traceID": trace_id}  # Grafana→Jaegerリンク
+    )</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== 深掘り: SLOエンジニアリングの実践 ===== -->
+  <section id="slo-engineering">
+    <div class="section-header">
+      <div class="section-num">C</div>
+      <h2>深掘り: SLOエンジニアリングの実践</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Multi-Window, Multi-Burn-Rate Alerting（Google SRE手法）</div>
+      <p>エラーバジェットの消費速度（Burn Rate）を複数の時間窓で監視することで、緊急度に応じたアラートを実現する。</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>アラート種別</th><th>Burn Rate</th><th>時間窓（Short）</th><th>時間窓（Long）</th><th>意味</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-red">P1 緊急</span></td><td>14x</td><td>1時間</td><td>5分</td><td>1時間でエラーバジェットの5%以上消費</td></tr>
+            <tr><td><span class="badge badge-amber">P2 警告</span></td><td>6x</td><td>6時間</td><td>30分</td><td>6時間でエラーバジェットの5%以上消費</td></tr>
+            <tr><td><span class="badge badge-blue">P3 注意</span></td><td>3x</td><td>24時間</td><td>2時間</td><td>24時間でエラーバジェットの10%以上消費</td></tr>
+            <tr><td><span class="badge badge-green">P4 情報</span></td><td>1x</td><td>72時間</td><td>6時間</td><td>バジェット100%消費ペース（通常は静観）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code># SLO: 99.9% availability → エラー予算: 0.1% = 月43.2分
+# 1時間で5%消費 = 14.4x burn rate
+
+# PromQL: 緊急アラートのルール
+- alert: SLOBurnRateHigh
+  expr: |
+    (
+      job:slo_errors:rate1h{job="payment-api"} / job:slo_requests:rate1h{job="payment-api"}
+      > 14 * 0.001  # 14 * (1-SLO) = 14 * 0.1% = 1.4%
+    )
+    and
+    (
+      job:slo_errors:rate5m{job="payment-api"} / job:slo_requests:rate5m{job="payment-api"}
+      > 14 * 0.001
+    )
+  for: 2m
+  labels:
+    severity: page
+  annotations:
+    summary: "High SLO burn rate: {{ $value | humanizePercentage }}/h"
+
+# Recording Rules (事前計算)
+- record: job:slo_errors:rate1h
+  expr: sum by (job) (rate(http_requests_total{status=~"5.."}[1h]))
+- record: job:slo_requests:rate1h
+  expr: sum by (job) (rate(http_requests_total[1h]))</code></pre>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-green">
+        <div class="card-title">Good Events vs Bad Events: SLIの正しい定義</div>
+        <p>SLIは「何が成功か」を明確に定義することが重要。あいまいな定義はSLOの意味を失わせる。</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>SLI種別</th><th>Good Event</th><th>Bad Event</th></tr></thead>
+            <tbody>
+              <tr><td>可用性</td><td>HTTP 2xx/3xx</td><td>HTTP 5xx（4xxは除外）</td></tr>
+              <tr><td>レイテンシ</td><td>レスポンス ≤ 200ms</td><td>レスポンス &gt; 200ms</td></tr>
+              <tr><td>正確性</td><td>DBと一致する応答</td><td>古すぎる/不正なデータ</td></tr>
+              <tr><td>飽和度</td><td>キューが80%以下</td><td>キューが80%超</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="warn-box">
+          <div class="warn-label">注意</div>
+          <p>4xxエラーはクライアント側の問題であることが多いため、通常SLI計算から除外する。ただし、過剰な4xxはシステム設計の問題を示すこともある。</p>
+        </div>
+      </div>
+      <div class="card card-purple">
+        <div class="card-title">Error Budget Policy: バジェット枯渇時のアクション</div>
+        <ul style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;">
+          <li style="margin-bottom:8px;"><strong style="color:var(--purple);">バジェット残量 &gt; 50%:</strong> 通常の開発・デプロイを継続</li>
+          <li style="margin-bottom:8px;"><strong style="color:var(--accent3);">バジェット残量 25〜50%:</strong> リリースに追加レビューが必要</li>
+          <li style="margin-bottom:8px;"><strong style="color:var(--red);">バジェット残量 &lt; 25%:</strong> 新機能リリースを一時停止。信頼性改善のみ</li>
+          <li style="margin-bottom:8px;"><strong style="color:var(--red);">バジェット枯渇（0%）:</strong> 全デプロイ凍結。Postmortem必須</li>
+        </ul>
+        <div class="tip">
+          <div class="tip-label">Error Budget Policy</div>
+          <p>開発チームとSREチームが合意した「バジェット消費に応じた行動規範」。SLOと並んでドキュメント化し、全員が共有すること。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 実践演習 ===== -->
+  <section id="practice">
+    <div class="section-header">
+      <div class="section-num">D</div>
+      <h2>実践演習</h2>
+    </div>
+
+    <!-- 演習1 -->
+    <div class="card">
+      <div class="card-title">演習1: ECサイト決済サービスのSLO/SLI/エラーバジェット設計</div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">前提: SLA = 99.95%（顧客との契約）。内部SLO = 99.97%（SLAに余裕を持たせる）</p>
+
+      <h4 style="color:var(--accent2);margin-bottom:12px;">SLI の定義</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>SLI</th><th>測定方法</th><th>Good Event の定義</th><th>SLO目標</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>可用性</td>
+              <td>HTTP成功率</td>
+              <td>決済リクエストが HTTP 200 または 201 を返す</td>
+              <td>99.97%</td>
+            </tr>
+            <tr>
+              <td>レイテンシ (P99)</td>
+              <td>histogram_quantile</td>
+              <td>決済APIがリクエスト受信から3秒以内に応答</td>
+              <td>95%のリクエストが3秒以内</td>
+            </tr>
+            <tr>
+              <td>正確性</td>
+              <td>決済整合性チェック</td>
+              <td>決済金額がDBとStripe両方で一致する</td>
+              <td>99.999%（5ナイン）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4 style="color:var(--accent2);margin-top:16px;margin-bottom:12px;">エラーバジェット計算</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>期間</th><th>99.97% SLOでの許容ダウンタイム</th><th>許容エラーリクエスト数（100QPS想定）</th></tr></thead>
+          <tbody>
+            <tr><td>1日</td><td>約26秒</td><td>2,592リクエスト</td></tr>
+            <tr><td>1週間</td><td>約3分2秒</td><td>18,144リクエスト</td></tr>
+            <tr><td>1ヶ月（30日）</td><td>約13分</td><td>77,760リクエスト</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tip">
+        <div class="tip-label">計算式</div>
+        <p>月間ダウンタイム = 30日 × 24時間 × 60分 × (1 - SLO) = 43,200 × 0.0003 ≈ 12.96分</p>
+      </div>
+    </div>
+
+    <!-- 演習2 -->
+    <div class="card">
+      <div class="card-title">演習2: アラートの何が問題か診断する（5問）</div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">以下のアラートルールにはそれぞれ問題がある。問題を特定し、改善案を述べよ。</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>アラート設定</th><th>問題</th><th>改善案</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>CPU使用率 &gt; 70% で即時Page</td>
+              <td><strong>Alert Fatigue</strong>: CPUが70%を超えても多くのシステムは正常動作する。夜間も頻発してオンコール担当が疲弊</td>
+              <td>SLOに連動させる。または「CPU &gt; 95% かつ 5分継続」など閾値と持続時間を組み合わせる</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>エラーレート &gt; 0% で警告</td>
+              <td><strong>Noise アラート</strong>: どんなシステムも若干のエラーはある。毎秒アラートが飛ぶ</td>
+              <td>エラーバジェットベースのアラートに変更。「エラーレートがSLOバジェットを時間 X で消費するペース」で判断</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>「ディスク使用率80%超過」のみで通知</td>
+              <td><strong>アクション不可能</strong>: 何をすべきかRunbookへのリンクがない</td>
+              <td>annotations に <code>runbook_url</code> を追加。担当チームの情報も含める</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>全サービスに同じ閾値（レイテンシP99 &gt; 500ms）</td>
+              <td><strong>文脈無視</strong>: バッチAPIと決済APIでは要件が異なる。バッチは500msでも正常かもしれない</td>
+              <td>サービスごとにSLOを定義し、アラートもSLOから導出する</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>外形監視なし（内部メトリクスのみ）</td>
+              <td><strong>Blind Spot</strong>: CDN障害、DNS障害、外部依存の障害はPrometheusスクレイプでは検知できない</td>
+              <td>Blackbox Exporter + 外部監視サービス（Pingdom/Datadog Synthetics）で外側から監視</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 演習3 -->
+    <div class="card">
+      <div class="card-title">演習3: Metrics → Logs → Traces の体系的障害調査手順書（15ステップ）</div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">アラートが発火してから根本原因を特定するまでの標準的なワークフロー。</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>フェーズ</th><th>アクション</th><th>ツール</th><th>確認内容</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td rowspan="4"><strong>初動（0〜5分）</strong></td><td>アラートの確認</td><td>PagerDuty/OpsGenie</td><td>どのSLIが違反しているか、影響範囲</td></tr>
+            <tr><td>2</td><td>ステークホルダーへの通報</td><td>Slack/インシデント管理</td><td>影響サービス・顧客への影響を初期報告</td></tr>
+            <tr><td>3</td><td>直近のデプロイ確認</td><td>GitLab/ArgoCD</td><td>過去1時間以内のデプロイ。問題なら即ロールバック検討</td></tr>
+            <tr><td>4</td><td>外形監視の確認</td><td>Pingdom/Blackbox</td><td>外部から見てダウンしているか、それとも内部問題か</td></tr>
+            <tr><td>5</td><td rowspan="5"><strong>Metrics分析（5〜15分）</strong></td><td>SLIダッシュボード確認</td><td>Grafana</td><td>エラーレート、レイテンシの急変ポイントの特定</td></tr>
+            <tr><td>6</td><td>インフラメトリクス確認</td><td>Grafana/Node Exporter</td><td>CPU/メモリ/ディスクI/O/ネットワークのボトルネック</td></tr>
+            <tr><td>7</td><td>依存サービスの確認</td><td>Grafana（依存サービスダッシュボード）</td><td>DBレイテンシ急増、外部API失敗率の上昇</td></tr>
+            <tr><td>8</td><td>エラー率の変化タイミング特定</td><td>Prometheus/Grafana</td><td>変化点の時刻をメモ（ログ・トレースの絞り込みに使用）</td></tr>
+            <tr><td>9</td><td>自動スケールイベント確認</td><td>Kubernetes/CloudWatch</td><td>スケールアップ/ダウンが問題を引き起こしていないか</td></tr>
+            <tr><td>10</td><td rowspan="3"><strong>Logs分析（15〜30分）</strong></td><td>エラーログの検索</td><td>Kibana/Grafana Loki</td><td>変化点±5分の ERROR/FATAL ログを検索</td></tr>
+            <tr><td>11</td><td>スタックトレースの確認</td><td>Kibana</td><td>例外メッセージ・発生頻度でパターンを探す</td></tr>
+            <tr><td>12</td><td>特定ユーザー/リクエストの追跡</td><td>Kibana（user_id/request_idで絞り込み）</td><td>問題が特定条件下で発生しているか確認</td></tr>
+            <tr><td>13</td><td rowspan="3"><strong>Traces分析（30〜60分）</strong></td><td>遅いリクエストのトレース確認</td><td>Jaeger/Tempo</td><td>ウォーターフォール図でどのスパンがボトルネックか特定</td></tr>
+            <tr><td>14</td><td>エラーとなったトレースの確認</td><td>Jaeger（error=true でフィルタ）</td><td>エラーが発生したサービスと原因メッセージを特定</td></tr>
+            <tr><td>15</td><td>根本原因の特定と対策</td><td>チーム会議</td><td>5 Whys分析。暫定対処→恒久対策→Postmortem作成</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /container -->
+
+<footer class="footer-nav">
+  <div class="footer-nav-inner">
+    <a href="12_security.html">← Ch12 セキュリティ</a>
+    <a href="00_index.html">ホーム</a>
+    <a href="14_case_studies.html">Ch14 ケーススタディ →</a>
+  </div>
+</footer>
+
+</body>
+</html>

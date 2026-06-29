@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メッセージキュー & イベント駆動アーキテクチャ | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* NAV */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100;}
+nav .logo{font-weight:700;color:var(--accent);font-size:.95rem;margin-right:auto;}
+nav a{color:var(--text2);font-size:.85rem;padding:4px 12px;border-radius:6px;border:1px solid transparent;}
+nav a:hover{border-color:var(--border);color:var(--text);text-decoration:none;}
+nav a.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,var(--surface) 0%,#161927 100%);border-bottom:1px solid var(--border);padding:60px 24px 48px;text-align:center;}
+.hero .badge{display:inline-block;background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.3);padding:4px 14px;border-radius:20px;font-size:.8rem;font-weight:600;letter-spacing:.05em;margin-bottom:16px;}
+.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--text) 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{color:var(--text2);max-width:640px;margin:0 auto;font-size:1.05rem;}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:0 24px;}
+main{padding:48px 0;}
+
+/* SECTIONS */
+section{margin-bottom:64px;}
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.section-num{background:var(--accent);color:#fff;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;}
+h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+h3{font-size:1.15rem;font-weight:600;color:var(--text);margin:24px 0 12px;}
+p{color:var(--text2);margin-bottom:12px;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
+.card h4{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:8px;}
+.card p{font-size:.9rem;color:var(--text2);margin-bottom:0;}
+
+/* PROS/CONS */
+.pro-con{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.pros{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:16px;}
+.cons{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:16px;}
+.pros h4{color:var(--green);}
+.cons h4{color:var(--red);}
+ul.check-list{list-style:none;padding-left:0;}
+ul.check-list li{padding:4px 0;font-size:.9rem;color:var(--text2);}
+ul.check-list.good li::before{content:"✓ ";color:var(--green);}
+ul.check-list.bad li::before{content:"✗ ";color:var(--red);}
+
+/* CODE */
+pre{background:#090b12;border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto;font-size:.82rem;line-height:1.6;margin:16px 0;}
+code{font-family:'JetBrains Mono','Fira Code',monospace;}
+.kw{color:#c084fc;}
+.fn{color:#60a5fa;}
+.st{color:#86efac;}
+.cm{color:#4b5563;font-style:italic;}
+.nm{color:#fbbf24;}
+.op{color:#94a3b8;}
+
+/* CALLOUT */
+.callout{border-radius:10px;padding:16px 20px;margin:16px 0;border-left:4px solid;}
+.callout.info{background:rgba(99,102,241,.08);border-color:var(--accent);}
+.callout.warn{background:rgba(245,158,11,.08);border-color:var(--accent3);}
+.callout.danger{background:rgba(239,68,68,.08);border-color:var(--red);}
+.callout.success{background:rgba(16,185,129,.08);border-color:var(--green);}
+.callout p{margin:0;font-size:.9rem;}
+.callout strong{color:var(--text);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:16px 0;}
+table{width:100%;border-collapse:collapse;font-size:.88rem;}
+th{background:var(--surface2);color:var(--text);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;}
+.tag.green{background:rgba(16,185,129,.15);color:var(--green);}
+.tag.red{background:rgba(239,68,68,.15);color:var(--red);}
+.tag.blue{background:rgba(99,102,241,.15);color:var(--accent);}
+.tag.amber{background:rgba(245,158,11,.15);color:var(--accent3);}
+
+/* SVG diagrams */
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;overflow-x:auto;}
+.diagram svg{display:block;margin:0 auto;}
+
+/* FOOTER */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:32px 24px;text-align:center;color:var(--text3);font-size:.85rem;}
+footer .nav-links{display:flex;justify-content:center;gap:24px;margin-bottom:16px;flex-wrap:wrap;}
+footer .nav-links a{color:var(--text2);}
+
+/* Timeline */
+.timeline{border-left:2px solid var(--border);padding-left:24px;margin:16px 0;}
+.timeline-item{position:relative;margin-bottom:20px;}
+.timeline-item::before{content:'';position:absolute;left:-31px;top:4px;width:12px;height:12px;background:var(--accent);border-radius:50%;}
+.timeline-item h4{font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:4px;}
+.timeline-item p{font-size:.87rem;color:var(--text2);margin:0;}
+
+@media(max-width:640px){
+  .pro-con{grid-template-columns:1fr;}
+  .card-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">システムデザイン</span>
+  <a href="00_index.html">🏠 ホーム</a>
+  <a href="06_load_balancing.html">← ロードバランシング</a>
+  <a href="07_message_queues.html" class="active">メッセージキュー</a>
+  <a href="08_microservices.html">マイクロサービス →</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Chapter 07</div>
+  <h1>メッセージキュー &amp;<br>イベント駆動アーキテクチャ</h1>
+  <p>疎結合・高スケーラビリティを実現する非同期通信の核心。Kafka・RabbitMQ・イベントソーシング・CQRSまで徹底解説</p>
+</div>
+
+<main>
+<div class="container">
+
+<!-- ===================== SECTION 1 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2>なぜメッセージキューが必要か</h2>
+  </div>
+
+  <p>モダンなシステムでは、複数のサービスが連携して動作する。同期呼び出し（HTTP REST等）だけに頼ると深刻な問題が生じる。</p>
+
+  <h3>同期呼び出しの問題点</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>🔗 カスケード障害</h4>
+      <p>サービスAがBを呼び、BがCを呼ぶ連鎖構造では、Cが落ちるとB→Aと障害が伝播する。一部の障害が全体を巻き込む。</p>
+    </div>
+    <div class="card">
+      <h4>⚡ スパイク対応不可</h4>
+      <p>注文が急増しても下流サービスの処理能力を超えてリクエストが殺到し、タイムアウトや502エラーが多発する。</p>
+    </div>
+    <div class="card">
+      <h4>🐢 レイテンシの蓄積</h4>
+      <p>A→B→C→Dと4サービスを経由すると、各サービスのレイテンシが加算される。合計レイテンシ = Σ(各サービスのレイテンシ)。</p>
+    </div>
+    <div class="card">
+      <h4>🔒 密結合</h4>
+      <p>呼び出し元が呼び先のAPIを直接知っている。呼び先のインターフェース変更が即座に呼び出し元に影響する。</p>
+    </div>
+  </div>
+
+  <!-- SVG: 同期 vs 非同期 比較図 -->
+  <div class="diagram">
+    <svg viewBox="0 0 860 340" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:860px;">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrred" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+      <!-- LEFT: 同期 -->
+      <text x="190" y="24" text-anchor="middle" fill="#ef4444" font-size="13" font-weight="700">同期呼び出し（問題あり）</text>
+      <!-- Client -->
+      <rect x="20" y="45" width="80" height="36" rx="6" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="60" y="68" text-anchor="middle" fill="#e2e8f0" font-size="11">Client</text>
+      <!-- Service A -->
+      <rect x="130" y="45" width="80" height="36" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="170" y="68" text-anchor="middle" fill="#e2e8f0" font-size="11">Service A</text>
+      <!-- Service B -->
+      <rect x="240" y="45" width="80" height="36" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="280" y="68" text-anchor="middle" fill="#e2e8f0" font-size="11">Service B</text>
+      <!-- Service C (down) -->
+      <rect x="350" y="45" width="80" height="36" rx="6" fill="#2d1515" stroke="#ef4444"/>
+      <text x="390" y="63" text-anchor="middle" fill="#ef4444" font-size="11">Service C</text>
+      <text x="390" y="76" text-anchor="middle" fill="#ef4444" font-size="10">🔴 DEAD</text>
+      <!-- Arrows sync -->
+      <line x1="100" y1="63" x2="126" y2="63" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="210" y1="63" x2="236" y2="63" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="320" y1="63" x2="346" y2="63" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrred)"/>
+      <!-- Error propagation -->
+      <text x="355" y="108" text-anchor="middle" fill="#ef4444" font-size="10">タイムアウト伝播</text>
+      <line x1="390" y1="81" x2="390" y2="100" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="280" y1="81" x2="280" y2="100" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="170" y1="81" x2="170" y2="100" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="60" y1="81" x2="60" y2="100" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="60" y="115" text-anchor="middle" fill="#ef4444" font-size="10">503!</text>
+      <text x="170" y="115" text-anchor="middle" fill="#ef4444" font-size="10">503!</text>
+      <text x="280" y="115" text-anchor="middle" fill="#ef4444" font-size="10">503!</text>
+      <text x="390" y="115" fill="#ef4444" font-size="10" x="355">↑障害</text>
+      <!-- Spike label -->
+      <text x="215" y="148" text-anchor="middle" fill="#f59e0b" font-size="10">スパイク時: キューなし → 全サービス過負荷</text>
+      <rect x="80" y="155" width="270" height="16" rx="3" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="0.5"/>
+      <rect x="80" y="155" width="270" height="16" rx="3" fill="rgba(239,68,68,0.3)"/>
+      <text x="215" y="167" text-anchor="middle" fill="#ef4444" font-size="10">Req Req Req Req Req Req Req Req (殺到)</text>
+
+      <!-- DIVIDER -->
+      <line x1="450" y1="20" x2="450" y2="320" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="6,4"/>
+
+      <!-- RIGHT: 非同期 -->
+      <text x="660" y="24" text-anchor="middle" fill="#10b981" font-size="13" font-weight="700">メッセージキュー（解決）</text>
+      <!-- Producer -->
+      <rect x="470" y="45" width="80" height="36" rx="6" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="510" y="63" text-anchor="middle" fill="#e2e8f0" font-size="11">Producer</text>
+      <text x="510" y="75" text-anchor="middle" fill="#22d3ee" font-size="9">即時応答</text>
+      <!-- Queue -->
+      <rect x="590" y="40" width="100" height="46" rx="6" fill="#161a28" stroke="#f59e0b"/>
+      <text x="640" y="58" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Message Queue</text>
+      <text x="600" y="76" fill="#f59e0b" font-size="10">▣▣▣▣▣</text>
+      <text x="658" y="76" fill="#f59e0b" font-size="10">←</text>
+      <!-- Consumer -->
+      <rect x="730" y="34" width="76" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="768" y="54" text-anchor="middle" fill="#10b981" font-size="10">Consumer 1</text>
+      <rect x="730" y="72" width="76" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="768" y="92" text-anchor="middle" fill="#10b981" font-size="10">Consumer 2</text>
+      <!-- Arrows async -->
+      <line x1="550" y1="63" x2="586" y2="63" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <line x1="690" y1="52" x2="726" y2="49" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <line x1="690" y1="70" x2="726" y2="78" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Benefits boxes -->
+      <rect x="470" y="115" width="110" height="38" rx="6" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)"/>
+      <text x="525" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">疎結合</text>
+      <text x="525" y="145" text-anchor="middle" fill="#94a3b8" font-size="9">互いを知らない</text>
+
+      <rect x="595" y="115" width="110" height="38" rx="6" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)"/>
+      <text x="650" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">スパイク吸収</text>
+      <text x="650" y="145" text-anchor="middle" fill="#94a3b8" font-size="9">キューがバッファ</text>
+
+      <rect x="720" y="115" width="110" height="38" rx="6" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)"/>
+      <text x="775" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">自動再試行</text>
+      <text x="775" y="145" text-anchor="middle" fill="#94a3b8" font-size=9">失敗しても安全</text>
+
+      <!-- Spike buffer diagram -->
+      <text x="640" y="178" text-anchor="middle" fill="#94a3b8" font-size="10">スパイク時でもキューが吸収→消費者は安定処理</text>
+      <rect x="480" y="188" width="320" height="18" rx="3" fill="rgba(245,158,11,0.08)" stroke="rgba(245,158,11,0.2)"/>
+      <rect x="480" y="188" width="200" height="18" rx="3" fill="rgba(245,158,11,0.25)"/>
+      <text x="640" y="202" text-anchor="middle" fill="#f59e0b" font-size="10">キュー蓄積 ████████████ 消費者が一定ペースで消化</text>
+    </svg>
+  </div>
+
+  <h3>非同期化のメリット</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--green)">疎結合 (Decoupling)</h4>
+      <p>プロデューサーはコンシューマーの存在を知らなくてよい。システムの変更・デプロイを独立して行える。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--green)">スパイク吸収 (Load Leveling)</h4>
+      <p>リクエスト急増時もキューがバッファとして機能。コンシューマーは処理可能なペースで安定して消化できる。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--green)">再試行と信頼性</h4>
+      <p>処理失敗したメッセージはキューに残る（またはDLQへ）。消費者が復旧後に再処理できる。データロストを防ぐ。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--green)">スケーラビリティ</h4>
+      <p>コンシューマーを増やすだけで処理能力を線形にスケールアウト。プロデューサーに変更不要。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 2 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2>メッセージキューの基本概念</h2>
+  </div>
+
+  <h3>主要コンポーネント</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>Producer（プロデューサー）</h4>
+      <p>メッセージを生成してキューまたはブローカーに送信するサービス。送信後の処理は関知しない。</p>
+    </div>
+    <div class="card">
+      <h4>Consumer（コンシューマー）</h4>
+      <p>キューからメッセージを取り出して処理するサービス。複数のコンシューマーが並列処理可能。</p>
+    </div>
+    <div class="card">
+      <h4>Queue / Topic</h4>
+      <p>メッセージを保持する中間ストレージ。キュー（FIFO）またはトピック（Pub/Sub）の形態がある。</p>
+    </div>
+    <div class="card">
+      <h4>Broker（ブローカー）</h4>
+      <p>メッセージの受信・ルーティング・配信を仲介するミドルウェア。Kafka・RabbitMQ等が該当。</p>
+    </div>
+  </div>
+
+  <!-- SVG: Point-to-Point vs Pub/Sub -->
+  <div class="diagram">
+    <svg viewBox="0 0 860 260" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:860px;">
+      <defs>
+        <marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>
+        <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/></marker>
+      </defs>
+      <!-- LEFT: P2P -->
+      <text x="175" y="22" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">Point-to-Point</text>
+      <text x="175" y="38" text-anchor="middle" fill="#64748b" font-size="10">1つのメッセージを1つのコンシューマーが受信</text>
+      <rect x="20" y="55" width="70" height="30" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="55" y="75" text-anchor="middle" fill="#e2e8f0" font-size="11">Producer</text>
+      <rect x="130" y="48" width="80" height="44" rx="6" fill="#161a28" stroke="#f59e0b"/>
+      <text x="170" y="67" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Queue</text>
+      <text x="144" y="82" fill="#f59e0b" font-size="12">▣▣▣</text>
+      <rect x="250" y="48" width="70" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="285" y="68" text-anchor="middle" fill="#10b981" font-size="10">Consumer A</text>
+      <rect x="250" y="86" width="70" height="30" rx="6" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="285" y="106" text-anchor="middle" fill="#64748b" font-size="10">Consumer B</text>
+      <text x="285" y="120" text-anchor="middle" fill="#64748b" font-size="9">(待機中)</text>
+      <line x1="90" y1="70" x2="126" y2="70" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a1)"/>
+      <line x1="210" y1="62" x2="246" y2="62" stroke="#10b981" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="170" y="140" text-anchor="middle" fill="#94a3b8" font-size="9">メッセージはどちらか一方のみ受信</text>
+      <text x="170" y="153" text-anchor="middle" fill="#94a3b8" font-size="9">→ 競合コンシューマーパターン（水平スケール）</text>
+
+      <!-- DIVIDER -->
+      <line x1="380" y1="20" x2="380" y2="240" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="6,4"/>
+
+      <!-- RIGHT: Pub/Sub -->
+      <text x="625" y="22" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700">Pub/Sub（Publish-Subscribe）</text>
+      <text x="625" y="38" text-anchor="middle" fill="#64748b" font-size="10">1つのメッセージを複数のサブスクライバーが受信</text>
+      <rect x="400" y="90" width="80" height="30" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="440" y="110" text-anchor="middle" fill="#e2e8f0" font-size="11">Publisher</text>
+      <!-- Topic -->
+      <rect x="515" y="82" width="80" height="46" rx="6" fill="#161a28" stroke="#22d3ee"/>
+      <text x="555" y="100" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="600">Topic</text>
+      <text x="555" y="118" text-anchor="middle" fill="#22d3ee" font-size="10">orders.*</text>
+      <!-- Subscribers -->
+      <rect x="635" y="50" width="80" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="675" y="70" text-anchor="middle" fill="#10b981" font-size="10">在庫サービス</text>
+      <rect x="635" y="90" width="80" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="675" y="110" text-anchor="middle" fill="#10b981" font-size="10">通知サービス</text>
+      <rect x="635" y="130" width="80" height="30" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="675" y="150" text-anchor="middle" fill="#10b981" font-size="10">分析サービス</text>
+      <!-- Arrows pub/sub -->
+      <line x1="480" y1="105" x2="511" y2="105" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a1)"/>
+      <line x1="595" y1="96" x2="631" y2="72" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="595" y1="105" x2="631" y2="105" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="595" y1="114" x2="631" y2="138" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="625" y="192" text-anchor="middle" fill="#94a3b8" font-size="9">全サブスクライバーが同じメッセージのコピーを受信</text>
+      <text x="625" y="205" text-anchor="middle" fill="#94a3b8" font-size="9">→ ファンアウト、イベント通知に最適</text>
+    </svg>
+  </div>
+
+  <h3>メッセージ配信保証（Delivery Guarantees）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>保証レベル</th><th>説明</th><th>リスク</th><th>ユースケース</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag amber">At-most-once</span></td>
+          <td>最大1回配信。受信確認なしで即削除</td>
+          <td>メッセージ損失あり</td>
+          <td>ログ収集、メトリクス（損失許容）</td>
+        </tr>
+        <tr>
+          <td><span class="tag blue">At-least-once</span></td>
+          <td>最低1回配信。ACK受信まで再送</td>
+          <td>重複処理あり（冪等性が必要）</td>
+          <td>多くのメッセージングシステムのデフォルト</td>
+        </tr>
+        <tr>
+          <td><span class="tag green">Exactly-once</span></td>
+          <td>厳密に1回のみ配信・処理</td>
+          <td>実装コスト大、パフォーマンス低下</td>
+          <td>金融取引、在庫更新（重複不可）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>Exactly-onceの現実：</strong> 分散システムで真のExactly-onceを保証するには、トランザクション的な仕組みが必要。Kafkaはプロデューサー+コンシューマー間でExactly-once Semantics (EOS)をサポートするが、外部システムとの統合には冪等性設計が不可欠。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 3 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2>Apache Kafka 詳解</h2>
+  </div>
+
+  <p>Kafkaは分散型ログストリーミングプラットフォーム。LinkedIn社が開発し、2011年にOSSとして公開。毎秒数百万メッセージを処理できる高スループットが特徴。</p>
+
+  <h3>Kafkaの本質：分散コミットログ</h3>
+  <p>Kafkaはメッセージを「キュー（取り出したら消える）」ではなく<strong>追記専用の不変ログ</strong>として保存する。これがKafkaの高性能と再処理能力の根源。</p>
+
+  <!-- SVG: Kafka Architecture -->
+  <div class="diagram">
+    <svg viewBox="0 0 860 400" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:860px;">
+      <defs>
+        <marker id="ka" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>
+        <marker id="ka2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/></marker>
+        <marker id="ka3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker>
+      </defs>
+
+      <text x="430" y="20" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="700">Kafka クラスター アーキテクチャ</text>
+
+      <!-- Producers -->
+      <text x="60" y="50" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="600">Producers</text>
+      <rect x="10" y="60" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="60" y="79" text-anchor="middle" fill="#e2e8f0" font-size="10">Webアプリ</text>
+      <rect x="10" y="96" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="60" y="115" text-anchor="middle" fill="#e2e8f0" font-size="10">モバイルApp</text>
+      <rect x="10" y="132" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="60" y="151" text-anchor="middle" fill="#e2e8f0" font-size="10">IoTデバイス</text>
+
+      <!-- Arrows to broker -->
+      <line x1="110" y1="75" x2="186" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ka)"/>
+      <line x1="110" y1="110" x2="186" y2="130" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ka)"/>
+      <line x1="110" y1="146" x2="186" y2="152" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ka)"/>
+
+      <!-- Kafka Broker / Topic -->
+      <rect x="188" y="40" width="440" height="280" rx="10" fill="#0f111a" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="408" y="62" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700">Kafka Cluster</text>
+
+      <!-- Topic "orders" -->
+      <text x="298" y="85" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="600">Topic: orders</text>
+      <!-- Partition 0 -->
+      <rect x="210" y="95" width="176" height="32" rx="4" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="218" y="108" fill="#22d3ee" font-size="9" font-weight="600">Partition 0</text>
+      <rect x="260" y="99" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="273" y="114" text-anchor="middle" fill="#22d3ee" font-size="9">0</text>
+      <rect x="288" y="99" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="301" y="114" text-anchor="middle" fill="#22d3ee" font-size="9">1</text>
+      <rect x="316" y="99" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="329" y="114" text-anchor="middle" fill="#22d3ee" font-size="9">2</text>
+      <rect x="344" y="99" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".35" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="357" y="114" text-anchor="middle" fill="#22d3ee" font-size="9">3</text>
+      <text x="375" y="114" fill="#f59e0b" font-size="9">← 最新</text>
+      <!-- Partition 1 -->
+      <rect x="210" y="133" width="176" height="32" rx="4" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="218" y="146" fill="#22d3ee" font-size="9" font-weight="600">Partition 1</text>
+      <rect x="260" y="137" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="273" y="152" text-anchor="middle" fill="#22d3ee" font-size="9">0</text>
+      <rect x="288" y="137" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".35" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="301" y="152" text-anchor="middle" fill="#22d3ee" font-size="9">1</text>
+      <!-- Partition 2 -->
+      <rect x="210" y="171" width="176" height="32" rx="4" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="218" y="184" fill="#22d3ee" font-size="9" font-weight="600">Partition 2</text>
+      <rect x="260" y="175" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="273" y="190" text-anchor="middle" fill="#22d3ee" font-size="9">0</text>
+      <rect x="288" y="175" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".2" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="301" y="190" text-anchor="middle" fill="#22d3ee" font-size="9">1</text>
+      <rect x="316" y="175" width="26" height="22" rx="2" fill="#22d3ee" fill-opacity=".35" stroke="#22d3ee" stroke-width=".5"/>
+      <text x="329" y="190" text-anchor="middle" fill="#22d3ee" font-size="9">2</text>
+
+      <!-- Replication legend -->
+      <text x="298" y="220" text-anchor="middle" fill="#64748b" font-size="9">各パーティションは複数Brokerにレプリケーション</text>
+      <text x="298" y="232" text-anchor="middle" fill="#64748b" font-size="9">Leader + N個のFollower (Replication Factor)</text>
+
+      <!-- Topic "payments" -->
+      <text x="518" y="85" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">Topic: payments</text>
+      <rect x="424" y="95" width="190" height="32" rx="4" fill="#1c1f2e" stroke="#a78bfa"/>
+      <text x="432" y="108" fill="#a78bfa" font-size="9" font-weight="600">Partition 0</text>
+      <rect x="476" y="99" width="26" height="22" rx="2" fill="#a78bfa" fill-opacity=".2" stroke="#a78bfa" stroke-width=".5"/>
+      <text x="489" y="114" text-anchor="middle" fill="#a78bfa" font-size="9">0</text>
+      <rect x="504" y="99" width="26" height="22" rx="2" fill="#a78bfa" fill-opacity=".35" stroke="#a78bfa" stroke-width=".5"/>
+      <text x="517" y="114" text-anchor="middle" fill="#a78bfa" font-size="9">1</text>
+      <rect x="424" y="133" width="190" height="32" rx="4" fill="#1c1f2e" stroke="#a78bfa"/>
+      <text x="432" y="148" fill="#a78bfa" font-size="9" font-weight="600">Partition 1</text>
+      <rect x="476" y="137" width="26" height="22" rx="2" fill="#a78bfa" fill-opacity=".35" stroke="#a78bfa" stroke-width=".5"/>
+      <text x="489" y="152" text-anchor="middle" fill="#a78bfa" font-size="9">0</text>
+
+      <!-- Consumer Groups -->
+      <text x="298" y="258" text-anchor="middle" fill="#94a3b8" font-size="9">Consumer Group: order-service</text>
+      <rect x="210" y="264" width="80" height="24" rx="4" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="250" y="280" text-anchor="middle" fill="#10b981" font-size="9">Consumer 1</text>
+      <text x="254" y="294" text-anchor="middle" fill="#64748b" font-size="8">P0担当</text>
+      <rect x="300" y="264" width="80" height="24" rx="4" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="340" y="280" text-anchor="middle" fill="#10b981" font-size="9">Consumer 2</text>
+      <text x="344" y="294" text-anchor="middle" fill="#64748b" font-size="8">P1,P2担当</text>
+
+      <!-- ZooKeeper / Controller -->
+      <rect x="210" y="300" width="176" height="14" rx="3" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.3)"/>
+      <text x="298" y="311" text-anchor="middle" fill="#f59e0b" font-size="8">ZooKeeper / KRaft (クラスター管理)</text>
+
+      <!-- Consumers external -->
+      <text x="790" y="50" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">Consumers</text>
+      <rect x="740" y="60" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="790" y="79" text-anchor="middle" fill="#e2e8f0" font-size="10">在庫サービス</text>
+      <rect x="740" y="96" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="790" y="115" text-anchor="middle" fill="#e2e8f0" font-size="10">通知サービス</text>
+      <rect x="740" y="132" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="790" y="151" text-anchor="middle" fill="#e2e8f0" font-size="10">分析 (Analytics)</text>
+      <rect x="740" y="168" width="100" height="28" rx="5" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="790" y="187" text-anchor="middle" fill="#e2e8f0" font-size="10">データウェアハウス</text>
+
+      <!-- Arrows from broker to consumers -->
+      <line x1="628" y1="115" x2="736" y2="80" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ka2)"/>
+      <line x1="628" y1="125" x2="736" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ka2)"/>
+      <line x1="628" y1="140" x2="736" y2="146" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ka2)"/>
+      <line x1="628" y1="150" x2="736" y2="182" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ka2)"/>
+
+      <!-- Offset pointer -->
+      <text x="430" y="250" text-anchor="middle" fill="#64748b" font-size="9">各ConsumerGroupは独自のOffsetを持つ</text>
+      <text x="430" y="262" text-anchor="middle" fill="#64748b" font-size="9">→ 独立して読み取り位置を管理</text>
+    </svg>
+  </div>
+
+  <h3>なぜKafkaのディスクI/Oは速いか</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>順次書き込み (Sequential Write)</h4>
+      <p>Kafkaはログを追記（Append-only）するだけ。ランダムI/Oではなく順次I/Oのため、HDDでも500MB/s以上のスループットが出る。</p>
+    </div>
+    <div class="card">
+      <h4>ゼロコピー (Zero-Copy)</h4>
+      <p>OSのsendfile()システムコールを使い、カーネル空間からネットワークへ直接転送。ユーザー空間へのコピーを省いてCPU使用を削減。</p>
+    </div>
+    <div class="card">
+      <h4>バッチ処理 (Batching)</h4>
+      <p>プロデューサーはメッセージをバッチにまとめて送信。ネットワークラウンドトリップとI/O回数を大幅削減。</p>
+    </div>
+    <div class="card">
+      <h4>ページキャッシュ活用</h4>
+      <p>OS管理のページキャッシュを最大限活用。最近のデータはほぼメモリから読める。JVMのGCを回避できる利点もある。</p>
+    </div>
+  </div>
+
+  <h3>Consumer GroupとPartitionの関係</h3>
+  <div class="callout info">
+    <p><strong>重要ルール：</strong> 1つのパーティションは、同一Consumer Group内の<strong>1つのコンシューマーにしか割り当てられない</strong>。これにより順序保証と並列処理を両立。Consumer数がPartition数を超えると、超過分のConsumerはアイドル状態になる。</p>
+  </div>
+
+  <pre><code><span class="cm">// Consumer Group設定の例 (Java)</span>
+Properties props = <span class="kw">new</span> Properties();
+props.put(<span class="st">"bootstrap.servers"</span>, <span class="st">"kafka1:9092,kafka2:9092"</span>);
+props.put(<span class="st">"group.id"</span>, <span class="st">"order-processing-group"</span>); <span class="cm">// Consumer Group ID</span>
+props.put(<span class="st">"enable.auto.commit"</span>, <span class="st">"false"</span>); <span class="cm">// 手動コミット推奨</span>
+props.put(<span class="st">"max.poll.records"</span>, <span class="st">"500"</span>);
+props.put(<span class="st">"key.deserializer"</span>, <span class="st">"org.apache.kafka.common.serialization.StringDeserializer"</span>);
+props.put(<span class="st">"value.deserializer"</span>, <span class="st">"org.apache.kafka.common.serialization.StringDeserializer"</span>);
+
+KafkaConsumer&lt;String, String&gt; consumer = <span class="kw">new</span> KafkaConsumer&lt;&gt;(props);
+consumer.subscribe(Arrays.asList(<span class="st">"orders"</span>));
+
+<span class="kw">try</span> {
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        ConsumerRecords&lt;String, String&gt; records = consumer.poll(Duration.ofMillis(<span class="nm">100</span>));
+        <span class="kw">for</span> (ConsumerRecord&lt;String, String&gt; record : records) {
+            <span class="cm">// Partition, Offset, Key, Value にアクセス可能</span>
+            System.out.printf(<span class="st">"partition=%d offset=%d key=%s value=%s%n"</span>,
+                record.partition(), record.offset(), record.key(), record.value());
+            processOrder(record.value());
+        }
+        consumer.commitSync(); <span class="cm">// 処理完了後にオフセットをコミット</span>
+    }
+} <span class="kw">finally</span> {
+    consumer.close();
+}</code></pre>
+</section>
+
+<!-- ===================== SECTION 4 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2>RabbitMQ vs Kafka</h2>
+  </div>
+
+  <h3>RabbitMQのExchange Types</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>Direct Exchange</h4>
+      <p>Routing Keyと完全一致するキューにルーティング。1対1の明確な宛先指定に使用。</p>
+    </div>
+    <div class="card">
+      <h4>Topic Exchange</h4>
+      <p><code>orders.*</code>や<code>#.error</code>のようなワイルドカードパターンでルーティング。柔軟なフィルタリングに最適。</p>
+    </div>
+    <div class="card">
+      <h4>Fanout Exchange</h4>
+      <p>バインドされた全キューにブロードキャスト。Routing Keyを無視。ログやキャッシュ無効化に使用。</p>
+    </div>
+    <div class="card">
+      <h4>Headers Exchange</h4>
+      <p>メッセージのヘッダー属性でルーティング。Routing Keyより柔軟だが複雑。x-matchで AND/OR 条件指定。</p>
+    </div>
+  </div>
+
+  <h3>総合比較表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>特徴</th><th>RabbitMQ</th><th>Apache Kafka</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>モデル</strong></td>
+          <td>スマートブローカー、シンプルコンシューマー</td>
+          <td>シンプルブローカー、スマートコンシューマー</td>
+        </tr>
+        <tr>
+          <td><strong>メッセージ保持</strong></td>
+          <td>ACK後は削除（デフォルト）</td>
+          <td>設定期間保持（デフォルト7日）。再読取り可能</td>
+        </tr>
+        <tr>
+          <td><strong>スループット</strong></td>
+          <td>〜数万msg/sec</td>
+          <td>〜数百万msg/sec（順次I/O）</td>
+        </tr>
+        <tr>
+          <td><strong>ルーティング</strong></td>
+          <td>Exchange/Binding/RoutingKeyで柔軟</td>
+          <td>Topic/Partitionのみ（シンプル）</td>
+        </tr>
+        <tr>
+          <td><strong>順序保証</strong></td>
+          <td>キュー内FIFO（競合コンシューマーで崩れる）</td>
+          <td>パーティション内で厳密に順序保証</td>
+        </tr>
+        <tr>
+          <td><strong>スケーラビリティ</strong></td>
+          <td>水平スケールは複雑</td>
+          <td>Partitionを増やすだけで線形スケール</td>
+        </tr>
+        <tr>
+          <td><strong>ストリーム処理</strong></td>
+          <td>不向き</td>
+          <td>Kafka Streams / KSQL で強力にサポート</td>
+        </tr>
+        <tr>
+          <td><strong>向いているケース</strong></td>
+          <td>タスクキュー、RPC、複雑ルーティング</td>
+          <td>ログ収集、イベントソーシング、ストリーム分析</td>
+        </tr>
+        <tr>
+          <td><strong>学習コスト</strong></td>
+          <td>低〜中</td>
+          <td>中〜高</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout info">
+    <p><strong>選択の指針：</strong> タスクを「処理して消す」ならRabbitMQ。「イベントログを永続化して複数サービスが独立して読む」ならKafka。大量のストリームデータやイベントソーシングにはKafkaが圧倒的に向いている。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 5 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2>メッセージングパターン</h2>
+  </div>
+
+  <h3>Command vs Event の違い</h3>
+  <div class="pro-con">
+    <div class="pros">
+      <h4>Command（命令）</h4>
+      <ul class="check-list good">
+        <li>特定のサービスへの指示（「注文を処理せよ」）</li>
+        <li>宛先が明確（1対1）</li>
+        <li>処理されることを期待する</li>
+        <li>例：<code>ProcessOrder</code>, <code>SendEmail</code></li>
+      </ul>
+    </div>
+    <div class="cons" style="background:rgba(34,211,238,.07);border-color:rgba(34,211,238,.3);">
+      <h4 style="color:var(--accent2)">Event（イベント）</h4>
+      <ul class="check-list" style="list-style:none;">
+        <li style="color:var(--text2);">→ 起きた事実の宣言（「注文が完了した」）</li>
+        <li style="color:var(--text2);">→ 誰が聞くかを意識しない（1対多）</li>
+        <li style="color:var(--text2);">→ 過去形で命名される</li>
+        <li style="color:var(--text2);">→ 例：<code>OrderPlaced</code>, <code>PaymentProcessed</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Dead Letter Queue (DLQ)</h3>
+  <p>処理に繰り返し失敗したメッセージを隔離するための特別なキュー。本番システムで必須のパターン。</p>
+  <pre><code><span class="cm">// RabbitMQでのDLQ設定 (Python pika)</span>
+<span class="kw">import</span> pika
+
+channel.queue_declare(
+    queue=<span class="st">'orders'</span>,
+    arguments={
+        <span class="st">'x-dead-letter-exchange'</span>: <span class="st">'dlx'</span>,       <span class="cm"># DLQ用Exchange</span>
+        <span class="st">'x-dead-letter-routing-key'</span>: <span class="st">'orders.dead'</span>,
+        <span class="st">'x-message-ttl'</span>: <span class="nm">30000</span>,                 <span class="cm"># 30秒でDLQへ</span>
+        <span class="st">'x-max-retries'</span>: <span class="nm">3</span>                      <span class="cm"># 3回失敗でDLQへ</span>
+    }
+)
+<span class="cm"># DLQキューを宣言</span>
+channel.queue_declare(queue=<span class="st">'orders.dead'</span>, durable=<span class="kw">True</span>)
+channel.queue_bind(
+    exchange=<span class="st">'dlx'</span>,
+    queue=<span class="st">'orders.dead'</span>,
+    routing_key=<span class="st">'orders.dead'</span>
+)</code></pre>
+
+  <h3>Retry with Exponential Backoff</h3>
+  <p>失敗時に即座に再試行するのではなく、待機時間を指数的に増やすことで、障害中のシステムへの負荷を軽減する。</p>
+  <pre><code><span class="kw">import</span> asyncio, random
+
+<span class="kw">async def</span> <span class="fn">process_with_retry</span>(message, max_retries=<span class="nm">5</span>):
+    <span class="kw">for</span> attempt <span class="kw">in</span> range(max_retries):
+        <span class="kw">try</span>:
+            <span class="kw">await</span> process_message(message)
+            <span class="kw">return</span> <span class="cm"># 成功</span>
+        <span class="kw">except</span> RetryableError <span class="kw">as</span> e:
+            <span class="kw">if</span> attempt == max_retries - <span class="nm">1</span>:
+                <span class="kw">await</span> send_to_dlq(message, str(e))
+                <span class="kw">return</span>
+            <span class="cm"># 指数バックオフ + ジッター: 2^attempt + random(0,1)</span>
+            wait = (<span class="nm">2</span> ** attempt) + random.random()
+            <span class="cm"># attempt: 0→1s, 1→2s, 2→4s, 3→8s, 4→16s (最大)</span>
+            <span class="fn">print</span>(f<span class="st">"Attempt {attempt+1} failed. Retry in {wait:.1f}s"</span>)
+            <span class="kw">await</span> asyncio.sleep(wait)
+        <span class="kw">except</span> NonRetryableError <span class="kw">as</span> e:
+            <span class="kw">await</span> send_to_dlq(message, str(e)) <span class="cm"># 即DLQ</span>
+            <span class="kw">return</span></code></pre>
+
+  <h3>Poison Pill Problem（毒メッセージ問題）</h3>
+  <div class="callout danger">
+    <p><strong>問題：</strong> 永遠に処理に失敗するメッセージ（バグのあるデータ等）がキューに残り続け、コンシューマーがクラッシュし続ける現象。</p>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <h4>対処法1: 最大再試行数 + DLQ</h4>
+      <p>N回失敗したらDLQへ移動。人間が後でDLQを確認・修正して再処理できる。</p>
+    </div>
+    <div class="card">
+      <h4>対処法2: メッセージバリデーション</h4>
+      <p>処理前にスキーマ検証。不正フォーマットのメッセージを即座にDLQへ。処理ループに入らない。</p>
+    </div>
+    <div class="card">
+      <h4>対処法3: 試行回数をメッセージに付与</h4>
+      <p>メッセージヘッダーに<code>x-retry-count</code>を持たせ、閾値超えで自動的にDLQへルーティング。</p>
+    </div>
+  </div>
+
+  <h3>Competing Consumers パターン</h3>
+  <p>同一キューに複数のコンシューマーを接続し、メッセージを並列処理することでスループットをスケールする。</p>
+  <div class="callout success">
+    <p><strong>スケール計算：</strong> コンシューマー1台が100msg/secの場合、10台並列で1000msg/sec。キューが受信スパイクを吸収するため、一時的な急増も問題なく処理できる。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 6 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2>イベントソーシング (Event Sourcing)</h2>
+  </div>
+
+  <p>従来のCRUDは「現在の状態」を保存するが、イベントソーシングは「状態を変えた出来事（イベント）の履歴」を保存する。現在の状態はイベントを最初から順番に適用して再現する。</p>
+
+  <h3>従来のCRUD vs イベントソーシング</h3>
+  <div class="pro-con">
+    <div class="pros" style="background:rgba(99,102,241,.07);border-color:rgba(99,102,241,.3);">
+      <h4 style="color:var(--accent)">従来のCRUD</h4>
+      <ul class="check-list" style="list-style:none;">
+        <li style="color:var(--text2);">→ 現在の状態をDB行として保存</li>
+        <li style="color:var(--text2);">→ UPDATEで上書き。過去は消える</li>
+        <li style="color:var(--text2);">→ 「今どうなっているか」は分かる</li>
+        <li style="color:var(--text2);">→ 「なぜそうなったか」は分からない</li>
+      </ul>
+    </div>
+    <div class="pros">
+      <h4>イベントソーシング</h4>
+      <ul class="check-list good">
+        <li>すべての変更をイベントとして追記</li>
+        <li>過去の状態を任意の時点で再現可能</li>
+        <li>完全な監査ログが自動で得られる</li>
+        <li>イベントを再生して別の射影を作れる</li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code><span class="cm"># イベントストアのイメージ（口座残高の例）</span>
+events = [
+    { <span class="st">"type"</span>: <span class="st">"AccountOpened"</span>,   <span class="st">"amount"</span>: <span class="nm">0</span>,    <span class="st">"ts"</span>: <span class="st">"2024-01-01"</span> },
+    { <span class="st">"type"</span>: <span class="st">"MoneyDeposited"</span>,  <span class="st">"amount"</span>: <span class="nm">10000</span>, <span class="st">"ts"</span>: <span class="st">"2024-01-02"</span> },
+    { <span class="st">"type"</span>: <span class="st">"MoneyWithdrawn"</span>,  <span class="st">"amount"</span>: <span class="nm">3000</span>,  <span class="st">"ts"</span>: <span class="st">"2024-01-05"</span> },
+    { <span class="st">"type"</span>: <span class="st">"MoneyDeposited"</span>,  <span class="st">"amount"</span>: <span class="nm">5000</span>,  <span class="st">"ts"</span>: <span class="st">"2024-01-10"</span> },
+]
+
+<span class="kw">def</span> <span class="fn">rebuild_state</span>(events):
+    balance = <span class="nm">0</span>
+    <span class="kw">for</span> event <span class="kw">in</span> events:
+        <span class="kw">if</span> event[<span class="st">"type"</span>] == <span class="st">"MoneyDeposited"</span>:
+            balance += event[<span class="st">"amount"</span>]
+        <span class="kw">elif</span> event[<span class="st">"type"</span>] == <span class="st">"MoneyWithdrawn"</span>:
+            balance -= event[<span class="st">"amount"</span>]
+    <span class="kw">return</span> balance  <span class="cm"># → 12000円</span>
+
+<span class="cm"># 任意の日時の残高を再現できる！</span>
+state_on_jan5 = rebuild_state([e <span class="kw">for</span> e <span class="kw">in</span> events <span class="kw">if</span> e[<span class="st">"ts"</span>] &lt;= <span class="st">"2024-01-05"</span>])
+<span class="cm"># → 7000円（2024/01/05時点の残高）</span></code></pre>
+
+  <h3>スナップショット戦略</h3>
+  <p>イベントが大量に蓄積すると再生に時間がかかる。定期的にその時点の状態を<strong>スナップショット</strong>として保存し、最後のスナップショット以降のイベントのみを再生することで高速化する。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>メリット</h4>
+      <ul class="check-list good">
+        <li>完全な監査ログ・変更履歴</li>
+        <li>任意時点へのタイムトラベル</li>
+        <li>バグ修正後に全データを再計算可能</li>
+        <li>新機能のためのプロジェクションを後から追加</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>デメリット</h4>
+      <ul class="check-list bad">
+        <li>実装の複雑さが増す</li>
+        <li>クエリが直感的でない（都度再生が必要）</li>
+        <li>イベントスキーマの変更が困難</li>
+        <li>大量イベントの再生コスト（スナップショットで対処）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 7 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2>CQRS（コマンドクエリ責任分離）</h2>
+  </div>
+
+  <p>CQRSは読み取り（Query）と書き込み（Command）を<strong>別々のモデル・データストア</strong>で扱うアーキテクチャパターン。イベントソーシングと組み合わせることが多い。</p>
+
+  <!-- SVG: CQRS Architecture -->
+  <div class="diagram">
+    <svg viewBox="0 0 860 320" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:860px;">
+      <defs>
+        <marker id="cq1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>
+        <marker id="cq2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/></marker>
+        <marker id="cq3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker>
+      </defs>
+      <text x="430" y="20" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="700">CQRS + Event Sourcing アーキテクチャ</text>
+
+      <!-- Client -->
+      <rect x="20" y="120" width="80" height="60" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="60" y="147" text-anchor="middle" fill="#e2e8f0" font-size="11">Client</text>
+      <text x="60" y="162" text-anchor="middle" fill="#64748b" font-size="9">UI/API</text>
+      <text x="60" y="174" text-anchor="middle" fill="#64748b" font-size="9">Gateway</text>
+
+      <!-- Command side -->
+      <rect x="140" y="55" width="120" height="40" rx="6" fill="#1c1f2e" stroke="#6366f1"/>
+      <text x="200" y="72" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="600">Command Handler</text>
+      <text x="200" y="85" text-anchor="middle" fill="#94a3b8" font-size="9">バリデーション + ビジネスロジック</text>
+
+      <!-- Event Store -->
+      <rect x="310" y="48" width="130" height="54" rx="8" fill="#161a28" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="375" y="69" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">Event Store</text>
+      <text x="375" y="83" text-anchor="middle" fill="#94a3b8" font-size="9">イベント永続化</text>
+      <text x="375" y="95" text-anchor="middle" fill="#64748b" font-size="9">(Kafka / EventStoreDB)</text>
+
+      <!-- Event Bus -->
+      <rect x="490" y="55" width="120" height="40" rx="6" fill="#1c1f2e" stroke="#f59e0b"/>
+      <text x="550" y="72" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Event Bus</text>
+      <text x="550" y="85" text-anchor="middle" fill="#94a3b8" font-size="9">イベントの発行・配信</text>
+
+      <!-- Projectors -->
+      <rect x="660" y="36" width="130" height="32" rx="6" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="725" y="57" text-anchor="middle" fill="#22d3ee" font-size="10">Projector: 商品在庫View</text>
+      <rect x="660" y="76" width="130" height="32" rx="6" fill="#1c1f2e" stroke="#22d3ee"/>
+      <text x="725" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">Projector: ユーザー注文View</text>
+
+      <!-- Read DBs -->
+      <rect x="660" y="124" width="130" height="36" rx="6" fill="#161a28" stroke="#10b981" stroke-width="1.5"/>
+      <text x="725" y="140" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">Read DB</text>
+      <text x="725" y="153" text-anchor="middle" fill="#94a3b8" font-size="9">Redis / Elasticsearch</text>
+
+      <!-- Query Handler -->
+      <rect x="490" y="155" width="120" height="40" rx="6" fill="#1c1f2e" stroke="#10b981"/>
+      <text x="550" y="172" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">Query Handler</text>
+      <text x="550" y="185" text-anchor="middle" fill="#94a3b8" font-size="9">Read DBから高速読取</text>
+
+      <!-- Arrows -->
+      <!-- Client → Command -->
+      <line x1="100" y1="137" x2="136" y2="85" stroke="#6366f1" stroke-width="1.5" marker-end="url(#cq1)"/>
+      <text x="110" y="108" fill="#6366f1" font-size="9">Command</text>
+      <!-- Client ← Query -->
+      <line x1="136" y1="162" x2="100" y2="162" stroke="#10b981" stroke-width="1.5" marker-end="url(#cq2)" transform="rotate(180,118,162)"/>
+      <line x1="140" y1="175" x2="100" y2="170" stroke="#10b981" stroke-width="1.5" marker-end="url(#cq2)"/>
+      <text x="104" y="186" fill="#10b981" font-size="9">Query</text>
+      <!-- Command → Event Store -->
+      <line x1="260" y1="76" x2="307" y2="76" stroke="#6366f1" stroke-width="1.5" marker-end="url(#cq1)"/>
+      <!-- Event Store → Event Bus -->
+      <line x1="440" y1="76" x2="487" y2="76" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#cq3)"/>
+      <text x="460" y="70" text-anchor="middle" fill="#f59e0b" font-size="8">イベント発行</text>
+      <!-- Event Bus → Projectors -->
+      <line x1="610" y1="66" x2="657" y2="54" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#cq2)"/>
+      <line x1="610" y1="80" x2="657" y2="88" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#cq2)"/>
+      <!-- Projectors → Read DB -->
+      <line x1="725" y1="108" x2="725" y2="121" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#cq2)"/>
+      <!-- Read DB → Query Handler -->
+      <line x1="700" y1="145" x2="613" y2="170" stroke="#10b981" stroke-width="1.5" marker-end="url(#cq2)"/>
+      <!-- Query Handler → Client -->
+      <line x1="490" y1="175" x2="140" y2="175" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#cq2)"/>
+
+      <!-- Labels -->
+      <text x="200" y="35" text-anchor="middle" fill="#6366f1" font-size="10" font-weight="600">Write Side（書き込み）</text>
+      <text x="725" y="26" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">Read Side（読み取り）</text>
+
+      <!-- Bottom annotations -->
+      <text x="200" y="250" text-anchor="middle" fill="#94a3b8" font-size="9">強整合性が必要</text>
+      <text x="200" y="263" text-anchor="middle" fill="#94a3b8" font-size="9">トランザクション処理</text>
+      <text x="430" y="250" text-anchor="middle" fill="#f59e0b" font-size="9">最終整合性</text>
+      <text x="430" y="263" text-anchor="middle" fill="#f59e0b" font-size="9">非同期でRead DBに反映</text>
+      <text x="700" y="250" text-anchor="middle" fill="#94a3b8" font-size="9">読み取り最適化済み</text>
+      <text x="700" y="263" text-anchor="middle" fill="#94a3b8" font-size="9">高速クエリ特化</text>
+    </svg>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>トレードオフ：最終整合性 (Eventual Consistency)</strong><br>
+    CQRSでは書き込み後、Read DBへの反映に遅延が生じる（通常ミリ秒〜秒単位）。書いた直後に読んでも古いデータが返る可能性がある。UIでの「楽観的更新」や「書き込み直後は書き込みDBから読む」戦略で対処。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 8 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <h2>バックプレッシャー (Backpressure)</h2>
+  </div>
+
+  <p>プロデューサーがコンシューマーより速くメッセージを生成し続けると、キューが無限に膨張してメモリを枯渇させる。これを<strong>バックプレッシャー問題</strong>という。</p>
+
+  <h3>バックプレッシャー戦略</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>1. バッファリング</h4>
+      <p>一定量までバッファに蓄積。キュー上限（max-length）を設定し、溢れたらDLQへ、または最古を削除（drop-head）。RabbitMQの<code>x-max-length</code>設定。</p>
+    </div>
+    <div class="card">
+      <h4>2. ドロップ (Shedding)</h4>
+      <p>閾値超えたリクエストを意図的に破棄。ログ収集などロスが許容できるケースで使用。シンプルだが情報ロストのリスクあり。</p>
+    </div>
+    <div class="card">
+      <h4>3. プロデューサー速度制御</h4>
+      <p>コンシューマーが処理可能な速度をフィードバックし、プロデューサーの送信速度を下げる。Reactive Streamsの<code>request(n)</code>がこのモデル。</p>
+    </div>
+    <div class="card">
+      <h4>4. コンシューマースケールアウト</h4>
+      <p>オートスケーリングでコンシューマー数を増やす。KubernetesのHPA（Horizontal Pod Autoscaler）＋KEDAでKafkaラグに応じて自動スケール。</p>
+    </div>
+  </div>
+
+  <h3>Circuit Breaker との組み合わせ</h3>
+  <pre><code><span class="kw">class</span> <span class="fn">CircuitBreakerConsumer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.failure_count = <span class="nm">0</span>
+        self.state = <span class="st">"CLOSED"</span>  <span class="cm"># CLOSED/OPEN/HALF_OPEN</span>
+        self.threshold = <span class="nm">5</span>
+        self.reset_timeout = <span class="nm">60</span>  <span class="cm"># 秒</span>
+
+    <span class="kw">async def</span> <span class="fn">process</span>(self, message):
+        <span class="kw">if</span> self.state == <span class="st">"OPEN"</span>:
+            <span class="cm"># サーキット開放中 → 処理をスキップ、キューに蓄積させる</span>
+            <span class="kw">await</span> asyncio.sleep(<span class="nm">0.1</span>)  <span class="cm"># 少し待って再確認</span>
+            <span class="kw">return</span>
+
+        <span class="kw">try</span>:
+            <span class="kw">await</span> call_downstream_service(message)
+            self.failure_count = <span class="nm">0</span>
+            self.state = <span class="st">"CLOSED"</span>
+        <span class="kw">except</span> Exception:
+            self.failure_count += <span class="nm">1</span>
+            <span class="kw">if</span> self.failure_count >= self.threshold:
+                self.state = <span class="st">"OPEN"</span>
+                <span class="cm"># 60秒後に HALF_OPEN へ移行</span>
+                asyncio.create_task(self.<span class="fn">reset_after</span>(self.reset_timeout))
+                <span class="cm"># バックプレッシャー: キューにメッセージが溜まる</span>
+                <span class="cm"># コンシューマーが処理を止めることで自然に圧力をかける</span></code></pre>
+
+  <div class="callout info">
+    <p><strong>Reactive Streams の考え方：</strong> コンシューマーが「今N件処理できる」とプロデューサーに通知することで、プッシュ型ではなくプル型の流量制御を実現する。RxJava・Project Reactor・Akka Streamsがこの仕様に準拠。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 9 ===================== -->
+<section>
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2>Kafkaの実践設定</h2>
+  </div>
+
+  <h3>Partition数の決め方</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>目安：目標スループット ÷ 1Partition速度</h4>
+      <p>例：目標1GB/s、1パーティションが100MB/sなら<strong>10パーティション</strong>必要。Consumer数を見越して多めに設定（後から増やすと順序が崩れる）。</p>
+    </div>
+    <div class="card">
+      <h4>注意：多すぎも問題</h4>
+      <p>パーティション数はZooKeeperのメタデータ負荷、Broker間のレプリケーション接続数に直結。1Broker当たり数千パーティションが目安の上限。</p>
+    </div>
+  </div>
+
+  <h3>Producer acks 設定（信頼性 vs スループット）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>acks設定</th><th>動作</th><th>信頼性</th><th>スループット</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>acks=0</code></td>
+          <td>Brokerからの確認なし。送りっぱなし</td>
+          <td><span class="tag red">最低</span></td>
+          <td><span class="tag green">最高</span></td>
+        </tr>
+        <tr>
+          <td><code>acks=1</code></td>
+          <td>Leaderが書き込んだら確認（デフォルト）</td>
+          <td><span class="tag amber">中</span></td>
+          <td><span class="tag amber">中</span></td>
+        </tr>
+        <tr>
+          <td><code>acks=all</code> (or -1)</td>
+          <td>全In-Sync Replica(ISR)が書き込んだら確認</td>
+          <td><span class="tag green">最高</span></td>
+          <td><span class="tag red">低い</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>重要な設定パラメータ</h3>
+  <pre><code><span class="cm"># ==========================================</span>
+<span class="cm"># Producer 設定（Python kafka-python）</span>
+<span class="cm"># ==========================================</span>
+<span class="kw">from</span> kafka <span class="kw">import</span> KafkaProducer
+<span class="kw">import</span> json
+
+producer = KafkaProducer(
+    bootstrap_servers=[<span class="st">'kafka1:9092'</span>, <span class="st">'kafka2:9092'</span>],
+    acks=<span class="st">'all'</span>,            <span class="cm"># 全ISRからのACKを待つ（高信頼性）</span>
+    retries=<span class="nm">5</span>,             <span class="cm"># 失敗時の再試行回数</span>
+    retry_backoff_ms=<span class="nm">300</span>,  <span class="cm"># 再試行間隔（ms）</span>
+    linger_ms=<span class="nm">10</span>,          <span class="cm"># バッチ待機時間（スループット向上）</span>
+    batch_size=<span class="nm">16384</span>,      <span class="cm"># バッチサイズ（bytes）</span>
+    compression_type=<span class="st">'gzip'</span>, <span class="cm"># 圧縮（ネットワーク帯域削減）</span>
+    value_serializer=<span class="kw">lambda</span> v: json.dumps(v).encode(<span class="st">'utf-8'</span>),
+    key_serializer=<span class="kw">lambda</span> k: k.encode(<span class="st">'utf-8'</span>) <span class="kw">if</span> k <span class="kw">else</span> <span class="kw">None</span>
+)
+
+<span class="cm"># キーを指定することで同じキーのメッセージが同じPartitionへ</span>
+<span class="cm"># → 同一ユーザーの注文を順番通りに処理できる！</span>
+future = producer.send(
+    <span class="st">'orders'</span>,
+    key=<span class="st">'user-12345'</span>,       <span class="cm"># 同じユーザーは常に同じPartition</span>
+    value={<span class="st">'order_id'</span>: <span class="nm">789</span>, <span class="st">'item'</span>: <span class="st">'laptop'</span>, <span class="st">'price'</span>: <span class="nm">120000</span>}
+)
+result = future.get(timeout=<span class="nm">10</span>)  <span class="cm"># ブロッキングで確認</span>
+<span class="fn">print</span>(f<span class="st">"Sent to partition {result.partition} offset {result.offset}"</span>)
+
+<span class="cm"># ==========================================</span>
+<span class="cm"># Consumer 設定</span>
+<span class="cm"># ==========================================</span>
+<span class="kw">from</span> kafka <span class="kw">import</span> KafkaConsumer
+
+consumer = KafkaConsumer(
+    <span class="st">'orders'</span>,
+    bootstrap_servers=[<span class="st">'kafka1:9092'</span>],
+    group_id=<span class="st">'inventory-service-group'</span>,
+    auto_offset_reset=<span class="st">'earliest'</span>,   <span class="cm"># 初回: 最初から読む</span>
+    enable_auto_commit=<span class="kw">False</span>,        <span class="cm"># 手動コミット（重要！）</span>
+    max_poll_records=<span class="nm">100</span>,             <span class="cm"># 1回のpollで取得する最大数</span>
+    fetch_min_bytes=<span class="nm">1024</span>,             <span class="cm"># 最低1KB集まってから取得</span>
+    fetch_max_wait_ms=<span class="nm">500</span>,            <span class="cm"># 最大500ms待つ</span>
+    session_timeout_ms=<span class="nm">30000</span>,         <span class="cm"># Rebalanceのタイムアウト</span>
+)
+
+<span class="kw">for</span> message <span class="kw">in</span> consumer:
+    <span class="kw">try</span>:
+        order = json.loads(message.value)
+        update_inventory(order)
+        consumer.commit()  <span class="cm"># 処理成功後にのみコミット</span>
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        <span class="cm"># エラー時はコミットしない → 再起動後に再処理される</span>
+        log_error(e, message)</code></pre>
+
+  <h3>Replication Factor の指針</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>環境</th><th>推奨Replication Factor</th><th>理由</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>開発・検証</td><td>1</td><td>シンプル、リソース節約</td></tr>
+        <tr><td>本番 (3 Broker)</td><td>3</td><td>1台障害時も稼働継続</td></tr>
+        <tr><td>重要データ (5+ Broker)</td><td>3〜5</td><td>より高い耐障害性</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout success">
+    <p><strong>min.insync.replicas との組み合わせ：</strong><br>
+    <code>acks=all</code> と <code>min.insync.replicas=2</code> を組み合わせることで、「最低2台のレプリカに書き込まれるまで成功とみなさない」を強制できる。Replication Factor 3 の場合、1台故障しても書き込み継続可能。</p>
+  </div>
+
+  <h3>Kafkaトピックの設計チェックリスト</h3>
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4>1. トピック命名規則を統一する</h4>
+      <p><code>&lt;domain&gt;.&lt;entity&gt;.&lt;event&gt;</code> 形式を推奨。例：<code>commerce.order.placed</code>, <code>payment.invoice.created</code></p>
+    </div>
+    <div class="timeline-item">
+      <h4>2. Partition数は多めに設定（後から増やしにくい）</h4>
+      <p>少なすぎると後でスケールアウトが困難。最初から想定最大Consumer数 × 2〜3倍を目安に。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>3. 保持期間（retention）をユースケースに合わせる</h4>
+      <p>デフォルト7日。イベントソーシング用途は無制限も検討（ストレージコストとのトレードオフ）。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>4. キー選択でローカル順序を保証する</h4>
+      <p>同一エンティティ（ユーザーID、注文ID等）をキーにすることで、そのエンティティのイベントが必ず同じPartitionへ → 順序保証。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>5. Consumer GroupのLag監視を設定する</h4>
+      <p>Kafka Consumer Lag（処理遅延）をDatadog/Prometheusで監視。Lag増加はスケールアウトのシグナル。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Summary / Key Takeaways -->
+<section>
+  <div class="section-header">
+    <div class="section-num" style="background:var(--accent3);">★</div>
+    <h2>まとめ：重要ポイント</h2>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--accent2)">メッセージキューの本質</h4>
+      <p>非同期化により<strong>疎結合・スパイク吸収・再試行</strong>を実現。同期HTTP連鎖でのカスケード障害を防ぐ最も重要な設計判断の一つ。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent2)">KafkaはログDB</h4>
+      <p>Kafkaはキューではなく<strong>分散コミットログ</strong>。メッセージを削除せず保持し、Consumer Groupが独立してOffsetを管理。ストリーム処理の基盤。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent2)">ツール選択基準</h4>
+      <p>タスクキュー・複雑ルーティングは<strong>RabbitMQ</strong>。大量イベント・ストリーム・複数Consumer・イベントソーシングは<strong>Kafka</strong>。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent2)">イベントソーシング + CQRS</h4>
+      <p>書き込みを<strong>不変イベントの追記</strong>に変え、読み取り用に最適化されたビューを非同期で構築。完全な監査ログと再処理能力を得る。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent2)">信頼性パターン</h4>
+      <p><strong>DLQ + Exponential Backoff</strong> は本番必須。Poison Pillには最大再試行数を設定。Exactly-onceには冪等性設計が必要。</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent2)">バックプレッシャー</h4>
+      <p>コンシューマーが追いつかないときは<strong>スケールアウト or Circuit Breaker</strong>。キュー長とConsumer Lagを監視して早期検出。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="nav-links">
+      <a href="00_index.html">🏠 ホーム</a>
+      <a href="06_load_balancing.html">← 06. ロードバランシング</a>
+      <a href="08_microservices.html">08. マイクロサービス →</a>
+    </div>
+    <p>システムデザイン学習ノート — Chapter 07: メッセージキュー &amp; イベント駆動アーキテクチャ</p>
+  </div>
+</footer>
+
+
+<!-- ============================================================ -->
+<!-- 深掘り & 実践演習セクション -->
+<!-- ============================================================ -->
+
+<section>
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2>深掘り: Kafkaの内部実装詳細</h2>
+  </div>
+  <p>Kafkaが毎秒数百万メッセージを処理できる理由は、OS・ハードウェア・アルゴリズムへの深い理解に基づく設計にある。</p>
+
+  <h3>Log Segment ファイル構造</h3>
+  <div class="card">
+    <p>Kafkaの各パーティションは、ディスク上で複数の<strong>セグメントファイル</strong>として管理される。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>ファイル</th><th>役割</th><th>内容</th></tr>
+        <tr><td><code>00000000000000000000.log</code></td><td>実データ</td><td>メッセージバイト列（バッチ圧縮済み）</td></tr>
+        <tr><td><code>00000000000000000000.index</code></td><td>オフセットインデックス</td><td>offset → .logファイル内バイト位置のマッピング</td></tr>
+        <tr><td><code>00000000000000000000.timeindex</code></td><td>タイムスタンプインデックス</td><td>timestamp → offset のマッピング</td></tr>
+      </table>
+    </div>
+    <pre><code><span class="cm"># Kafkaのデータディレクトリ確認</span>
+ls -la /tmp/kafka-logs/orders-0/
+<span class="cm"># 00000000000000000000.index    # オフセットインデックス</span>
+<span class="cm"># 00000000000000000000.log      # 実データ</span>
+<span class="cm"># 00000000000000000000.timeindex</span>
+<span class="cm"># 00000000000001048576.log      # 新セグメント（閾値でロールオーバー）</span>
+
+<span class="cm"># セグメントサイズの設定</span>
+<span class="cm"># log.segment.bytes=1073741824  # 1GB (デフォルト)</span>
+<span class="cm"># log.roll.ms=604800000         # 7日</span>
+<span class="cm"># どちらかに達したら新セグメントを作成</span>
+
+<span class="cm"># dumptoolでログを確認</span>
+kafka-dump-log.sh --files /tmp/kafka-logs/orders-0/00000000000000000000.log \
+  --print-data-log | head -20</code></pre>
+  </div>
+
+  <h3>Zero-Copy — sendfile()によるカーネルコピーの省略</h3>
+  <div class="card">
+    <p>通常のread()→write()では<strong>4回のコピー</strong>が発生する。Kafkaはsendfile()syscallを使い<strong>2回に削減</strong>する。</p>
+    <div class="card-grid">
+      <div class="card" style="border-color:rgba(239,68,68,0.4);">
+        <h4 style="color:var(--red)">通常のコピー（4回）</h4>
+        <ol style="color:var(--text2);padding-left:20px;">
+          <li>ディスク → カーネルバッファ（DMA）</li>
+          <li>カーネルバッファ → ユーザー空間</li>
+          <li>ユーザー空間 → ソケットバッファ</li>
+          <li>ソケットバッファ → NIC（DMA）</li>
+        </ol>
+        <p>コンテキストスイッチ: 4回（user ↔ kernel）</p>
+      </div>
+      <div class="card" style="border-color:rgba(16,185,129,0.4);">
+        <h4 style="color:var(--green)">sendfile()（2回）</h4>
+        <ol style="color:var(--text2);padding-left:20px;">
+          <li>ディスク → カーネルバッファ（DMA）</li>
+          <li>カーネルバッファ → NIC（DMA）</li>
+        </ol>
+        <p>ユーザー空間コピーなし。コンテキストスイッチ: 2回のみ。<strong>CPU使用率を大幅削減</strong>。</p>
+      </div>
+    </div>
+    <pre><code><span class="cm">// Javaでのsendfile()（Kafkaの内部実装）</span>
+<span class="cm">// FileChannel.transferTo() がsendfile()syscallにマップされる</span>
+<span class="kw">long</span> transferred = fileChannel.transferTo(
+    position, count, socketChannel);
+<span class="cm">// これだけでカーネルが最適なzero-copyを実行</span></code></pre>
+  </div>
+
+  <h3>Producer バッチング最適化</h3>
+  <div class="card">
+    <pre><code><span class="cm"># Kafka Producer の重要設定パラメータ</span>
+props.put("linger.ms", "5");        <span class="cm"># 最大5ms待ってバッチに追加</span>
+props.put("batch.size", "65536");   <span class="cm"># バッチサイズ上限: 64KB</span>
+props.put("compression.type", "lz4");  <span class="cm"># 圧縮（lz4が速さと圧縮率のバランス良）</span>
+props.put("acks", "1");            <span class="cm"># Leader ACK のみ（throughput優先）</span>
+<span class="cm"># acks=all だと全ISRからACKを待つ（耐久性優先）</span>
+
+<span class="cm">-- トレードオフ --</span>
+<span class="cm"># linger.ms=0: 低レイテンシ・低スループット（バッチ効果なし）</span>
+<span class="cm"># linger.ms=5: 中レイテンシ・高スループット（推奨）</span>
+<span class="cm"># linger.ms=100: 高レイテンシ・最高スループット（バッチ処理向け）</span>
+
+<span class="cm"># スループット計算例</span>
+<span class="cm"># バッチなし: 1msg/リクエスト × 1KBmsg = 1KB/req</span>
+<span class="cm"># バッチあり(linger=5ms,batch=64KB): ~64msg/リクエスト</span>
+<span class="cm"># スループット: 64倍向上（ネットワークRTTの削減効果）</span></code></pre>
+  </div>
+
+  <h3>Consumer Lag 監視</h3>
+  <div class="card">
+    <p>Consumer Lag（コンシューマーラグ）= 最新オフセット - コンシューマーの現在オフセット。これが増加し続けると処理が追いついていないサイン。</p>
+    <pre><code><span class="cm"># コマンドラインでLagを確認</span>
+kafka-consumer-groups.sh \
+  --bootstrap-server kafka:9092 \
+  --describe \
+  --group order-processing-group
+
+<span class="cm"># 出力例:</span>
+<span class="cm"># GROUP              TOPIC  PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG</span>
+<span class="cm"># order-processing   orders 0          5000            5050            50</span>
+<span class="cm"># order-processing   orders 1          4800            5200            400  ← 大きい!</span>
+
+<span class="cm">---</span>
+<span class="cm"># Prometheus + kafka-lagexporter 設定例</span>
+<span class="cm"># docker-compose.yml</span>
+kafka-lagexporter:
+  image: lightbend/kafka-lag-exporter:0.7.1
+  environment:
+    - "KAFKA_BOOTSTRAP_SERVERS=kafka:9092"
+  ports:
+    - "8000:8000"
+<span class="cm"># メトリクス例: kafka_consumer_group_lag{group="order-processing",topic="orders",partition="0"}</span>
+
+<span class="cm"># Grafanaアラートルール: Lagが10000を超えたら警告</span>
+alert: HighConsumerLag
+expr: kafka_consumer_group_lag > 10000
+for: 5m
+annotations:
+  summary: "Consumer lag is too high: {{ $value }}"</code></pre>
+  </div>
+
+  <h3>Log Compaction — tombstoneと最新値保持</h3>
+  <div class="card">
+    <p>Log Compactionは、各キーの<strong>最新値のみを保持</strong>し古いバージョンを削除する機能。イベントソーシングのスナップショット代替として使われる。</p>
+    <pre><code><span class="cm"># Log Compaction 設定</span>
+<span class="cm"># Topic作成時に設定</span>
+kafka-topics.sh --create \
+  --topic user-profiles \
+  --config cleanup.policy=compact \
+  --config min.cleanable.dirty.ratio=0.5 \
+  --config segment.ms=86400000  <span class="cm"># 1日</span>
+
+<span class="cm"># Tombstone（削除マーカー）</span>
+<span class="cm"># キーを削除するには value=null のメッセージを送信</span>
+ProducerRecord record = new ProducerRecord<>(
+    "user-profiles",
+    "user:123",
+    null   <span class="cm">// null value = tombstone</span>
+);
+producer.send(record);
+<span class="cm"># Compaction後にこのキーのエントリが完全に削除される</span>
+
+<span class="cm"># cleanup.policy=compact の動作</span>
+<span class="cm"># Before: user:1=v1, user:2=v1, user:1=v2, user:3=v1, user:2=v2</span>
+<span class="cm"># After:  user:1=v2 (最新), user:2=v2 (最新), user:3=v1 (最新)</span></code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>深掘り: メッセージングパターン詳解</h2>
+  </div>
+
+  <h3>Outbox Pattern — アトミックなDB書き込みとメッセージ送信</h3>
+  <div class="card">
+    <p>DBへの書き込みとKafkaへのメッセージ送信を<strong>同一トランザクション</strong>で実行する。2フェーズコミットなしに分散トランザクションを実現する重要なパターン。</p>
+    <pre><code><span class="cm">-- アウトボックステーブルの定義（PostgreSQL）</span>
+CREATE TABLE outbox (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type VARCHAR(50) NOT NULL,  <span class="cm">-- 'order', 'payment'等</span>
+    aggregate_id   VARCHAR(50) NOT NULL,
+    event_type     VARCHAR(100) NOT NULL, <span class="cm">-- 'OrderPlaced'等</span>
+    payload        JSONB NOT NULL,
+    created_at     TIMESTAMP DEFAULT NOW(),
+    published_at   TIMESTAMP             <span class="cm">-- NULL = 未送信</span>
+);
+
+<span class="cm">-- 注文処理: DBとOutboxを同一トランザクションで</span>
+BEGIN;
+  INSERT INTO orders (id, customer_id, total) VALUES (1, 101, 5000);
+  INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload)
+    VALUES ('order', '1', 'OrderPlaced',
+            '{"orderId":1,"customerId":101,"total":5000}');
+COMMIT;
+<span class="cm">-- 片方が失敗したら両方ロールバック（アトミック）</span></code></pre>
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card" style="border-color:rgba(99,102,241,0.4);">
+        <h4>Polling Publisher</h4>
+        <pre><code><span class="cm">// アウトボックスをポーリングして送信</span>
+<span class="kw">async function</span> <span class="fn">publishOutboxEvents</span>() {
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> events = <span class="kw">await</span> db.query(<span class="str">`
+      SELECT * FROM outbox
+      WHERE published_at IS NULL
+      ORDER BY created_at
+      LIMIT 100
+      FOR UPDATE SKIP LOCKED
+    `</span>);
+    <span class="kw">for</span> (<span class="kw">const</span> event <span class="kw">of</span> events) {
+      <span class="kw">await</span> kafka.produce(event.event_type, event.payload);
+      <span class="kw">await</span> db.query(<span class="str">`
+        UPDATE outbox SET published_at=NOW()
+        WHERE id=$1`</span>, [event.id]);
+    }
+    <span class="kw">await</span> sleep(1000); <span class="cm">// 1秒毎にポーリング</span>
+  }
+}</code></pre>
+      </div>
+      <div class="card" style="border-color:rgba(34,211,238,0.4);">
+        <h4>Debezium CDC（推奨）</h4>
+        <pre><code><span class="cm"># Debezium: PostgreSQLのWALをKafkaに送信</span>
+<span class="cm"># connector-config.json</span>
+{
+  "name": "outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "debezium",
+    "database.dbname": "app",
+    "table.include.list": "public.outbox",
+    "transforms": "outbox",
+    "transforms.outbox.type":
+      "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.route.topic.replacement":
+      "${routedByValue}"
+  }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Request-Reply Pattern — キューで同期的なリクエスト応答</h3>
+  <div class="card">
+    <pre><code><span class="cm"># リクエスト側（非同期で送り、応答を待つ）</span>
+<span class="kw">async def</span> <span class="fn">call_async_service</span>(request_data: dict) -> dict:
+    correlation_id = str(uuid.uuid4())
+    reply_queue = f<span class="st">"reply:{correlation_id}"</span>
+
+    <span class="cm"># 返信先キューを作成（30秒TTL）</span>
+    r.expire(reply_queue, 30)
+
+    <span class="cm"># リクエスト送信</span>
+    channel.basic_publish(
+        exchange=<span class="st">''</span>,
+        routing_key=<span class="st">'requests'</span>,
+        body=json.dumps(request_data),
+        properties=pika.BasicProperties(
+            reply_to=reply_queue,
+            correlation_id=correlation_id
+        )
+    )
+
+    <span class="cm"># 応答を待つ（Redisでブロッキング待機）</span>
+    _, response = r.blpop(reply_queue, timeout=25)
+    <span class="kw">return</span> json.loads(response)
+
+<span class="cm"># サービス側（リクエストを受け取って処理し返信）</span>
+<span class="kw">def</span> <span class="fn">handle_request</span>(ch, method, props, body):
+    request = json.loads(body)
+    result = process(request)
+
+    <span class="cm"># 返信先キューに結果を送信</span>
+    r.rpush(props.reply_to, json.dumps(result))</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <h2>実践演習</h2>
+  </div>
+
+  <h3>演習1: 注文システムのSagaをKafkaで実装する</h3>
+  <div class="card">
+    <p>注文処理の完全なSaga実装。OrderService→InventoryService→PaymentService→ShippingServiceの流れと補償トランザクションを実装する。</p>
+    <pre><code><span class="cm"># kafka-python を使ったSaga実装</span>
+<span class="kw">from</span> kafka <span class="kw">import</span> KafkaProducer, KafkaConsumer
+<span class="kw">import</span> json, uuid
+
+<span class="cm"># === Topic設計 ===</span>
+<span class="cm"># orders          → OrderPlaced イベント</span>
+<span class="cm"># inventory-cmd   → ReserveInventory コマンド</span>
+<span class="cm"># inventory-events → InventoryReserved | InventoryReserveFailed</span>
+<span class="cm"># payment-cmd     → ProcessPayment コマンド</span>
+<span class="cm"># payment-events  → PaymentProcessed | PaymentFailed</span>
+<span class="cm"># shipping-cmd    → CreateShipment コマンド</span>
+<span class="cm"># compensation    → 補償イベント（ロールバック用）</span>
+
+producer = KafkaProducer(
+    bootstrap_servers=[<span class="st">'kafka:9092'</span>],
+    value_serializer=<span class="kw">lambda</span> v: json.dumps(v).encode()
+)
+
+<span class="cm"># --- OrderService ---</span>
+<span class="kw">def</span> <span class="fn">place_order</span>(customer_id: str, items: list) -> str:
+    order_id = str(uuid.uuid4())
+    <span class="cm"># 1. DBにPENDING状態で保存</span>
+    db.save_order(order_id, customer_id, items, status=<span class="st">'PENDING'</span>)
+    <span class="cm"># 2. OrderPlacedイベントを送信</span>
+    producer.send(<span class="st">'orders'</span>, {
+        <span class="st">'type'</span>: <span class="st">'OrderPlaced'</span>,
+        <span class="st">'orderId'</span>: order_id,
+        <span class="st">'customerId'</span>: customer_id,
+        <span class="st">'items'</span>: items
+    })
+    <span class="kw">return</span> order_id
+
+<span class="cm"># --- InventoryService ---</span>
+<span class="kw">def</span> <span class="fn">handle_order_placed</span>(event: dict):
+    <span class="kw">try</span>:
+        <span class="cm"># 在庫確保を試みる</span>
+        <span class="kw">for</span> item <span class="kw">in</span> event[<span class="st">'items'</span>]:
+            db.reserve_stock(item[<span class="st">'productId'</span>], item[<span class="st">'quantity'</span>])
+
+        producer.send(<span class="st">'inventory-events'</span>, {
+            <span class="st">'type'</span>: <span class="st">'InventoryReserved'</span>,
+            <span class="st">'orderId'</span>: event[<span class="st">'orderId'</span>]
+        })
+    <span class="kw">except</span> InsufficientStockError:
+        <span class="cm"># 在庫不足 → 補償イベントを送信</span>
+        producer.send(<span class="st">'inventory-events'</span>, {
+            <span class="st">'type'</span>: <span class="st">'InventoryReserveFailed'</span>,
+            <span class="st">'orderId'</span>: event[<span class="st">'orderId'</span>],
+            <span class="st">'reason'</span>: <span class="st">'INSUFFICIENT_STOCK'</span>
+        })
+
+<span class="cm"># --- PaymentService ---</span>
+<span class="kw">def</span> <span class="fn">handle_inventory_reserved</span>(event: dict):
+    <span class="kw">try</span>:
+        order = db.get_order(event[<span class="st">'orderId'</span>])
+        charge_result = payment_gateway.charge(order.total, order.customer_id)
+        producer.send(<span class="st">'payment-events'</span>, {
+            <span class="st">'type'</span>: <span class="st">'PaymentProcessed'</span>,
+            <span class="st">'orderId'</span>: event[<span class="st">'orderId'</span>],
+            <span class="st">'transactionId'</span>: charge_result.transaction_id
+        })
+    <span class="kw">except</span> PaymentFailedError:
+        <span class="cm"># 決済失敗 → 在庫を解放する補償トランザクション</span>
+        producer.send(<span class="st">'compensation'</span>, {
+            <span class="st">'type'</span>: <span class="st">'ReleaseInventory'</span>,
+            <span class="st">'orderId'</span>: event[<span class="st">'orderId'</span>]
+        })
+        producer.send(<span class="st">'payment-events'</span>, {
+            <span class="st">'type'</span>: <span class="st">'PaymentFailed'</span>,
+            <span class="st">'orderId'</span>: event[<span class="st">'orderId'</span>]
+        })
+
+<span class="cm"># --- Consumer Group設計 ---</span>
+<span class="cm"># 各サービスは独自のConsumer Groupを持つ</span>
+inventory_consumer = KafkaConsumer(
+    <span class="st">'orders'</span>,               <span class="cm"># OrderPlacedを購読</span>
+    group_id=<span class="st">'inventory-service'</span>,
+    bootstrap_servers=[<span class="st">'kafka:9092'</span>],
+    value_deserializer=<span class="kw">lambda</span> m: json.loads(m.decode()),
+    enable_auto_commit=<span class="kw">False</span>  <span class="cm"># 手動コミット</span>
+)</code></pre>
+  </div>
+
+  <h3>演習2: Kafkaのパーティション数とスループットを計算する</h3>
+  <div class="card">
+    <h4>目標: 毎秒10万メッセージ（平均1KB）</h4>
+    <pre><code><span class="cm">"""
+スループット計算:
+  目標: 100,000 msg/sec × 1 KB = 100 MB/sec
+
+Consumerスループットから逆算:
+  1 Consumer の処理能力:
+    - ネットワーク: 1Gbps NIC → 125 MB/sec
+    - CPU処理: 仮に50 MB/sec (JSONデシリアライズ含む)
+    - ボトルネック: CPU → 50 MB/sec
+
+必要なConsumer数:
+  100 MB/sec ÷ 50 MB/sec = 2 Consumer (最低)
+  安全マージン2倍 → 4 Consumer
+
+パーティション数:
+  1 Consumer = 1 Partition (同一Consumer Group内)
+  → 4 Partition が最小
+  実際は将来のスケールアップ考慮し 12 Partition 推奨
+
+Replication Factor の計算:
+  Replication Factor = 3 (標準)
+  Write Amplification = メッセージ数 × Replication Factor
+  100 MB/sec × 3 = 300 MB/sec の書き込み
+  各Brokerへの書き込み分散を考慮した容量計画が必要
+
+ディスク容量見積もり:
+  保持期間: 7日 (604800秒)
+  100 MB/sec × 604800 sec × 3 (replication) = 約179 TB
+  圧縮率(lz4で約60%削減): 179 × 0.4 ≈ 72 TB
+"""
+
+<span class="cm"># 計算コード</span>
+msg_per_sec = 100_000
+msg_size_kb = 1
+throughput_mb = (msg_per_sec * msg_size_kb) / 1024
+consumer_capacity_mb = 50
+min_partitions = math.ceil(throughput_mb / consumer_capacity_mb)
+recommended_partitions = min_partitions * 3  <span class="cm"># 将来の拡張用</span>
+retention_days = 7
+replication_factor = 3
+
+disk_tb = (throughput_mb * 86400 * retention_days * replication_factor * 0.4) / 1024**2
+print(f"スループット: {throughput_mb:.0f} MB/sec")
+print(f"推奨パーティション数: {recommended_partitions}")
+print(f"必要ディスク容量: {disk_tb:.0f} TB")</code></pre>
+  </div>
+
+  <h3>演習3: Kafkaアンチパターン診断（5問）</h3>
+  <div class="card">
+    <h4>問題1: 1つのTopicにすべてのイベントを送信</h4>
+    <pre><code>producer.send("all-events", {"type": "OrderPlaced", ...})
+producer.send("all-events", {"type": "UserRegistered", ...})
+producer.send("all-events", {"type": "PaymentProcessed", ...})</code></pre>
+    <div class="callout danger"><p><strong>問題:</strong> 全イベントが1Topicに混在するため、特定イベントにしか関心のないConsumerも全メッセージを受信してフィルタリングする必要がある。パーティション内の順序保証が崩れる。<br><strong>修正:</strong> イベント種別ごとにTopicを分ける（orders、users、payments等）。</p></div>
+
+    <h4>問題2: Consumer Group IDを設定しない</h4>
+    <pre><code>consumer = KafkaConsumer("orders")  # group_id未設定</code></pre>
+    <div class="callout danger"><p><strong>問題:</strong> Consumer Groupなしでは、複数インスタンスを起動しても同じメッセージを全インスタンスが受信する（Pub/Sub動作になる）。水平スケールによる負荷分散ができない。<br><strong>修正:</strong> <code>group_id="order-processor"</code>を必ず設定する。</p></div>
+
+    <h4>問題3: 処理前にオフセットをコミット</h4>
+    <pre><code>for msg in consumer:
+    consumer.commit()      # 先にコミット
+    result = process(msg)  # 処理中にクラッシュ!</code></pre>
+    <div class="callout danger"><p><strong>問題:</strong> コミット後に処理がクラッシュすると、そのメッセージは永久に失われる（At-most-onceになる）。<br><strong>修正:</strong> 処理完了後にコミットする（At-least-once）。冪等性を担保した上でExactly-onceを目指す。</p></div>
+
+    <h4>問題4: パーティション数 &lt; Consumer数</h4>
+    <div class="callout warn"><p><strong>問題:</strong> パーティション=6、Consumer=10の場合、4つのConsumerがアイドル状態になる。パーティション≥Consumer数でなければスケールアウトの恩恵を受けられない。<br><strong>修正:</strong> パーティション数を多めに設定する（後から増やせるが、Consumerのリバランスが発生するため慎重に）。</p></div>
+
+    <h4>問題5: enable.auto.commit=trueで重い処理</h4>
+    <div class="callout danger"><p><strong>問題:</strong> auto.commit.interval.ms（デフォルト5000ms）ごとに自動コミットされる。メッセージのpollingから処理完了まで5秒以上かかると、処理未完了のオフセットがコミットされてデータロストが発生する可能性がある。<br><strong>修正:</strong> <code>enable.auto.commit=False</code>にして手動コミット。処理完了後に明示的に<code>consumer.commit()</code>を呼ぶ。</p></div>
+  </div>
+</section>
+
+</body>
+</html>

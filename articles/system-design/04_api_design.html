@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 API設計 | システムデザイン学習</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.7;font-size:15px;}
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.nav-brand{font-weight:700;font-size:1rem;color:var(--accent);text-decoration:none;letter-spacing:-.01em;}
+.nav-links{display:flex;gap:.25rem;}
+.nav-links a{color:var(--text2);text-decoration:none;font-size:.82rem;padding:.3rem .7rem;border-radius:6px;border:1px solid transparent;transition:all .2s;}
+.nav-links a:hover{color:var(--text);border-color:var(--border);background:var(--surface);}
+.nav-links a.active{color:var(--accent);border-color:var(--accent);background:rgba(99,102,241,.08);}
+.hero{padding:4rem 2rem 3rem;text-align:center;background:linear-gradient(135deg,rgba(99,102,241,.12) 0%,rgba(34,211,238,.06) 50%,rgba(16,185,129,.06) 100%);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(99,102,241,.18),transparent);pointer-events:none;}
+.hero-badge{display:inline-block;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);color:var(--accent);font-size:.75rem;font-weight:600;padding:.25rem .8rem;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1rem;}
+.hero h1{font-size:2.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.6rem;background:linear-gradient(135deg,#e2e8f0 30%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{color:var(--text2);font-size:1.05rem;max-width:640px;margin:0 auto 1.5rem;}
+.hero-tags{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;}
+.hero-tags span{background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:.75rem;padding:.2rem .6rem;border-radius:20px;}
+.container{max-width:1100px;margin:0 auto;padding:0 2rem;}
+.section{padding:3rem 0 2rem;}
+.section-header{margin-bottom:1.8rem;}
+.section-number{font-size:.75rem;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem;}
+.section-title{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--text);}
+.section-subtitle{color:var(--text2);margin-top:.4rem;font-size:.95rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;}
+.card-grid{display:grid;gap:1rem;}
+.card-grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+.card-grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.card-grid.cols-4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+.card h3{font-size:1rem;font-weight:700;margin-bottom:.6rem;color:var(--text);}
+.card p{color:var(--text2);font-size:.88rem;line-height:1.6;}
+.card-accent{border-color:var(--accent);background:rgba(99,102,241,.05);}
+.card-green{border-color:var(--green);background:rgba(16,185,129,.05);}
+.card-cyan{border-color:var(--accent2);background:rgba(34,211,238,.05);}
+.card-amber{border-color:var(--accent3);background:rgba(245,158,11,.05);}
+.card-red{border-color:var(--red);background:rgba(239,68,68,.05);}
+.card-purple{border-color:var(--purple);background:rgba(167,139,250,.05);}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;}
+.badge-accent{background:rgba(99,102,241,.2);color:var(--accent);}
+.badge-green{background:rgba(16,185,129,.2);color:var(--green);}
+.badge-cyan{background:rgba(34,211,238,.2);color:var(--accent2);}
+.badge-amber{background:rgba(245,158,11,.2);color:var(--accent3);}
+.badge-red{background:rgba(239,68,68,.2);color:var(--red);}
+.badge-purple{background:rgba(167,139,250,.2);color:var(--purple);}
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:.85rem;}
+thead tr{background:var(--surface2);}
+thead th{padding:.7rem 1rem;text-align:left;font-weight:700;color:var(--text);font-size:.8rem;letter-spacing:.03em;white-space:nowrap;}
+tbody tr{border-top:1px solid var(--border);}
+tbody tr:nth-child(even){background:rgba(255,255,255,.02);}
+tbody td{padding:.65rem 1rem;color:var(--text2);vertical-align:top;}
+tbody td:first-child{color:var(--text);font-weight:600;}
+.code-block{background:#0d0f1a;border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.4rem;overflow-x:auto;margin:.8rem 0;}
+.code-block pre{font-family:'JetBrains Mono','Fira Code','Courier New',monospace;font-size:.82rem;line-height:1.7;color:#c9d1d9;}
+.code-label{font-size:.7rem;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;}
+.kw{color:#ff79c6;} .fn{color:#50fa7b;} .cm{color:#6272a4;font-style:italic;}
+.str{color:#f1fa8c;} .num{color:#bd93f9;} .op{color:#ff79c6;}
+.type{color:#8be9fd;} .var{color:#f8f8f2;}
+.diagram-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;overflow-x:auto;}
+.diagram-wrap svg{display:block;margin:0 auto;}
+.callout{border-radius:10px;padding:1rem 1.2rem;margin:.8rem 0;border-left:3px solid;}
+.callout-info{background:rgba(99,102,241,.08);border-color:var(--accent);}
+.callout-warn{background:rgba(245,158,11,.08);border-color:var(--accent3);}
+.callout-tip{background:rgba(16,185,129,.08);border-color:var(--green);}
+.callout-danger{background:rgba(239,68,68,.08);border-color:var(--red);}
+.callout-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;}
+.callout-info .callout-title{color:var(--accent);}
+.callout-warn .callout-title{color:var(--accent3);}
+.callout-tip .callout-title{color:var(--green);}
+.callout-danger .callout-title{color:var(--red);}
+.callout p{color:var(--text2);font-size:.88rem;}
+ul.feature-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
+ul.feature-list li{color:var(--text2);font-size:.88rem;padding-left:1.2rem;position:relative;}
+ul.feature-list li::before{content:'▸';position:absolute;left:0;color:var(--accent);font-size:.8rem;}
+.tips-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.tip-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;}
+.tip-q{font-size:.82rem;font-weight:700;color:var(--accent3);margin-bottom:.4rem;}
+.tip-a{font-size:.85rem;color:var(--text2);line-height:1.6;}
+.footer-nav{border-top:1px solid var(--border);padding:2rem;margin-top:3rem;}
+.footer-nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-link{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--text2);font-size:.88rem;padding:.5rem .9rem;border:1px solid var(--border);border-radius:8px;transition:all .2s;}
+.footer-link:hover{border-color:var(--accent);color:var(--accent);}
+.footer-link span{font-size:.75rem;color:var(--text3);}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:2rem 0;}
+.highlight-row{background:rgba(99,102,241,.07)!important;}
+@media(max-width:600px){.hero h1{font-size:1.8rem;}.card-grid.cols-3,.card-grid.cols-4{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-brand" href="00_index.html">⚡ システムデザイン</a>
+    <div class="nav-links">
+      <a href="00_index.html">Home</a>
+      <a href="03_databases.html">← Prev</a>
+      <a href="04_api_design.html" class="active">04 API設計</a>
+      <a href="05_caching.html">Next →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Chapter 04</div>
+  <h1>API設計</h1>
+  <p>REST・GraphQL・gRPCの設計原則から、ページネーション・冪等性・APIゲートウェイ・セキュリティまで体系的に学ぶ</p>
+  <div class="hero-tags">
+    <span>REST 6原則</span><span>HTTPメソッド</span><span>APIバージョニング</span>
+    <span>ページネーション</span><span>冪等性</span><span>GraphQL</span>
+    <span>gRPC</span><span>APIゲートウェイ</span><span>OAuth2 / JWT</span>
+    <span>レートリミット</span>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="container">
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">目次</div>
+    <div class="section-title">このページで学ぶこと</div>
+  </div>
+  <div class="card-grid cols-4">
+    <a href="#rest" style="text-decoration:none"><div class="card card-accent"><h3>① REST API設計</h3><p>6原則・URL設計・HTTPメソッド・ステータスコード</p></div></a>
+    <a href="#versioning" style="text-decoration:none"><div class="card card-cyan"><h3>② APIバージョニング</h3><p>URI / Header / Accept ヘッダーの比較</p></div></a>
+    <a href="#pagination" style="text-decoration:none"><div class="card card-green"><h3>③ ページネーション</h3><p>Offset / Cursor / Keyset の使い分け</p></div></a>
+    <a href="#idempotency" style="text-decoration:none"><div class="card card-amber"><h3>④ 冪等性</h3><p>冪等性キー・決済処理での活用</p></div></a>
+    <a href="#graphql" style="text-decoration:none"><div class="card card-purple"><h3>⑤ GraphQL</h3><p>N+1問題・DataLoader・Schema設計</p></div></a>
+    <a href="#grpc" style="text-decoration:none"><div class="card card-cyan"><h3>⑥ gRPC</h3><p>Protocol Buffers・4通信パターン</p></div></a>
+    <a href="#gateway" style="text-decoration:none"><div class="card card-accent"><h3>⑦ APIゲートウェイ</h3><p>役割・BFFパターン</p></div></a>
+    <a href="#security" style="text-decoration:none"><div class="card card-red"><h3>⑧ APIセキュリティ</h3><p>JWT・OAuth2・レートリミット</p></div></a>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 1: REST -->
+<div class="container">
+<div class="section" id="rest">
+  <div class="section-header">
+    <div class="section-number">Section 01</div>
+    <div class="section-title">REST API設計</div>
+    <div class="section-subtitle">Representational State Transfer — Webの設計思想に基づいたアーキテクチャスタイル</div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">RESTとは</div>
+    <p>REST（Representational State Transfer）は、Roy Fieldingが2000年の博士論文で提唱したアーキテクチャスタイルです。HTTPプロトコルの機能を最大限に活用し、スケーラブルでシンプルなAPIを設計するための指針を提供します。</p>
+  </div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">REST 6原則</h3>
+  <div class="card-grid cols-3">
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.5rem">原則 1</span>
+      <h3>Uniform Interface</h3>
+      <p>統一されたインターフェース。リソースはURIで識別し、HTTPメソッドで操作する。レスポンスはリソースの表現（JSON/XML）で返す。HATEOASによりクライアントはリンクを辿れる。</p>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.5rem">原則 2</span>
+      <h3>Stateless（ステートレス）</h3>
+      <p>サーバーはクライアントのセッション状態を保持しない。各リクエストは完全な情報を含み独立して処理される。スケールアウトが容易になる。</p>
+    </div>
+    <div class="card card-cyan">
+      <span class="badge badge-cyan" style="margin-bottom:.5rem">原則 3</span>
+      <h3>Cacheable（キャッシュ可能）</h3>
+      <p>レスポンスはキャッシュ可能かどうかを明示する（Cache-Control ヘッダー）。適切なキャッシュでパフォーマンスを向上し、サーバー負荷を削減。</p>
+    </div>
+    <div class="card card-amber">
+      <span class="badge badge-amber" style="margin-bottom:.5rem">原則 4</span>
+      <h3>Client-Server</h3>
+      <p>クライアントとサーバーの関心を分離する。UIはクライアント側、データストレージはサーバー側。独立した進化が可能になる。</p>
+    </div>
+    <div class="card card-purple">
+      <span class="badge badge-purple" style="margin-bottom:.5rem">原則 5</span>
+      <h3>Layered System（階層化）</h3>
+      <p>クライアントは直接エンドサーバーに接続しているか中間層（ロードバランサ・キャッシュ・ゲートウェイ）を経由しているかを知らなくてよい。</p>
+    </div>
+    <div class="card card-red">
+      <span class="badge badge-red" style="margin-bottom:.5rem">原則 6</span>
+      <h3>Code on Demand（任意）</h3>
+      <p>サーバーからクライアントに実行可能なコード（JavaScript等）を送信できる。唯一のオプション原則。現代のWebアプリでは一般的に使用。</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">URLリソース命名規則</h3>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="callout callout-tip">
+        <div class="callout-title">良い例 (Good)</div>
+        <p>名詞・複数形・階層構造を使用する</p>
+      </div>
+      <div class="code-block">
+        <div class="code-label">推奨URL設計</div>
+        <pre><span class="cm"># リソースは名詞・複数形</span>
+GET    /users              <span class="cm"># 一覧取得</span>
+POST   /users              <span class="cm"># 作成</span>
+GET    /users/123          <span class="cm"># 個別取得</span>
+PUT    /users/123          <span class="cm"># 完全更新</span>
+PATCH  /users/123          <span class="cm"># 部分更新</span>
+DELETE /users/123          <span class="cm"># 削除</span>
+
+<span class="cm"># 階層（ネスト）リソース</span>
+GET    /users/123/orders   <span class="cm"># ユーザーの注文一覧</span>
+GET    /users/123/orders/456 <span class="cm"># 特定の注文</span>
+
+<span class="cm"># フィルタ・ソートはクエリパラメータ</span>
+GET /products?category=books&sort=price&order=asc&limit=20</pre>
+      </div>
+    </div>
+    <div>
+      <div class="callout callout-danger">
+        <div class="callout-title">悪い例 (Bad)</div>
+        <p>動詞・単数形・非RESTfulな設計</p>
+      </div>
+      <div class="code-block">
+        <div class="code-label">避けるべきURL設計</div>
+        <pre><span class="cm"># NG: 動詞をURLに含める</span>
+GET  /getUsers
+POST /createUser
+GET  /deleteUser?id=123
+
+<span class="cm"># NG: 単数形の使用</span>
+GET /user/123
+
+<span class="cm"># NG: 動作をURLに含める</span>
+POST /users/123/doActivate
+POST /users/123/sendEmail
+
+<span class="cm"># OK: アクション系は例外的に許容</span>
+POST /users/123/activate   <span class="cm"># 状態変更アクション</span>
+POST /payments/123/refund  <span class="cm"># ビジネスアクション</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">HTTPメソッドの正しい使い方</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>メソッド</th>
+          <th>用途</th>
+          <th>冪等性</th>
+          <th>安全性</th>
+          <th>リクエストBody</th>
+          <th>典型的な用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-green">GET</span></td>
+          <td>リソースの取得</td>
+          <td><span class="badge badge-green">✓ 冪等</span></td>
+          <td><span class="badge badge-green">✓ 安全</span></td>
+          <td>なし</td>
+          <td>一覧・詳細取得</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-accent">POST</span></td>
+          <td>リソースの作成</td>
+          <td><span class="badge badge-red">✗ 非冪等</span></td>
+          <td><span class="badge badge-red">✗ 非安全</span></td>
+          <td>あり</td>
+          <td>新規作成・アクション実行</td>
+        </tr>
+        <tr class="highlight-row">
+          <td><span class="badge badge-amber">PUT</span></td>
+          <td>リソースの完全更新</td>
+          <td><span class="badge badge-green">✓ 冪等</span></td>
+          <td><span class="badge badge-red">✗ 非安全</span></td>
+          <td>あり（全フィールド）</td>
+          <td>全フィールド置換</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-cyan">PATCH</span></td>
+          <td>リソースの部分更新</td>
+          <td><span class="badge badge-amber">△ 実装依存</span></td>
+          <td><span class="badge badge-red">✗ 非安全</span></td>
+          <td>あり（変更フィールドのみ）</td>
+          <td>一部フィールド更新</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">DELETE</span></td>
+          <td>リソースの削除</td>
+          <td><span class="badge badge-green">✓ 冪等</span></td>
+          <td><span class="badge badge-red">✗ 非安全</span></td>
+          <td>なし（任意）</td>
+          <td>削除操作</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-purple">HEAD</span></td>
+          <td>ヘッダーのみ取得</td>
+          <td><span class="badge badge-green">✓ 冪等</span></td>
+          <td><span class="badge badge-green">✓ 安全</span></td>
+          <td>なし</td>
+          <td>存在確認・メタデータ取得</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-accent">OPTIONS</span></td>
+          <td>利用可能メソッド確認</td>
+          <td><span class="badge badge-green">✓ 冪等</span></td>
+          <td><span class="badge badge-green">✓ 安全</span></td>
+          <td>なし</td>
+          <td>CORSプリフライト</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">HTTPステータスコード完全リファレンス</h3>
+  <div class="card-grid cols-2" style="gap:1.2rem">
+    <div>
+      <div style="font-weight:700;color:var(--green);margin-bottom:.7rem;font-size:.9rem">2xx 成功</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>コード</th><th>意味</th><th>典型的な使い方</th></tr></thead>
+          <tbody>
+            <tr><td>200 OK</td><td>成功</td><td>GET/PUT/PATCH の成功</td></tr>
+            <tr><td>201 Created</td><td>作成成功</td><td>POST でリソース作成</td></tr>
+            <tr><td>202 Accepted</td><td>受理（非同期）</td><td>非同期処理の受付</td></tr>
+            <tr><td>204 No Content</td><td>コンテンツなし</td><td>DELETE 成功</td></tr>
+            <tr><td>206 Partial Content</td><td>部分コンテンツ</td><td>Range リクエスト</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-weight:700;color:var(--accent);margin:.8rem 0 .7rem;font-size:.9rem">3xx リダイレクト</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>コード</th><th>意味</th><th>典型的な使い方</th></tr></thead>
+          <tbody>
+            <tr><td>301 Moved Permanently</td><td>恒久移動</td><td>URL変更</td></tr>
+            <tr><td>302 Found</td><td>一時移動</td><td>一時的リダイレクト</td></tr>
+            <tr><td>304 Not Modified</td><td>未変更</td><td>キャッシュ利用</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--accent3);margin-bottom:.7rem;font-size:.9rem">4xx クライアントエラー</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>コード</th><th>意味</th><th>典型的な使い方</th></tr></thead>
+          <tbody>
+            <tr><td>400 Bad Request</td><td>不正リクエスト</td><td>バリデーションエラー</td></tr>
+            <tr><td>401 Unauthorized</td><td>未認証</td><td>認証が必要</td></tr>
+            <tr><td>403 Forbidden</td><td>禁止</td><td>権限なし</td></tr>
+            <tr><td>404 Not Found</td><td>未発見</td><td>リソースが存在しない</td></tr>
+            <tr><td>405 Method Not Allowed</td><td>メソッド不可</td><td>許可されていないHTTPメソッド</td></tr>
+            <tr><td>409 Conflict</td><td>競合</td><td>重複作成・楽観的ロック</td></tr>
+            <tr><td>410 Gone</td><td>消滅</td><td>永久削除済み</td></tr>
+            <tr><td>422 Unprocessable Entity</td><td>処理不可</td><td>意味的バリデーションエラー</td></tr>
+            <tr><td>429 Too Many Requests</td><td>過多リクエスト</td><td>レートリミット超過</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-weight:700;color:var(--red);margin:.8rem 0 .7rem;font-size:.9rem">5xx サーバーエラー</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>コード</th><th>意味</th><th>典型的な使い方</th></tr></thead>
+          <tbody>
+            <tr><td>500 Internal Server Error</td><td>サーバー内部エラー</td><td>予期しない例外</td></tr>
+            <tr><td>502 Bad Gateway</td><td>不正ゲートウェイ</td><td>上流サービス障害</td></tr>
+            <tr><td>503 Service Unavailable</td><td>サービス停止</td><td>メンテナンス・過負荷</td></tr>
+            <tr><td>504 Gateway Timeout</td><td>ゲートウェイタイムアウト</td><td>上流タイムアウト</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">リクエスト/レスポンス設計</h3>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="code-label">リクエスト例 — ユーザー作成</div>
+      <div class="code-block">
+        <pre><span class="cm"># HTTPリクエスト</span>
+<span class="kw">POST</span> /api/v1/users
+<span class="type">Content-Type</span>: application/json
+<span class="type">Authorization</span>: Bearer eyJhbGc...
+<span class="type">X-Request-ID</span>: abc-123-def
+
+<span class="str">{
+  "name": "山田太郎",
+  "email": "yamada@example.com",
+  "role": "editor",
+  "metadata": {
+    "source": "web_signup"
+  }
+}</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="code-label">レスポンス例 — 作成成功</div>
+      <div class="code-block">
+        <pre><span class="cm"># HTTPレスポンス</span>
+<span class="num">HTTP/1.1 201 Created</span>
+<span class="type">Content-Type</span>: application/json
+<span class="type">Location</span>: /api/v1/users/456
+<span class="type">X-Request-ID</span>: abc-123-def
+
+<span class="str">{
+  "data": {
+    "id": "456",
+    "name": "山田太郎",
+    "email": "yamada@example.com",
+    "role": "editor",
+    "createdAt": "2026-06-24T10:00:00Z"
+  },
+  "meta": {
+    "requestId": "abc-123-def"
+  }
+}</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="code-label" style="margin-top:1rem">エラーレスポンス設計 — 標準化が重要</div>
+  <div class="code-block">
+    <pre><span class="num">HTTP/1.1 422 Unprocessable Entity</span>
+<span class="str">{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "入力データの検証に失敗しました",
+    "details": [
+      {
+        "field": "email",
+        "code": "INVALID_FORMAT",
+        "message": "有効なメールアドレスを入力してください"
+      },
+      {
+        "field": "name",
+        "code": "REQUIRED",
+        "message": "名前は必須です"
+      }
+    ]
+  },
+  "meta": {
+    "requestId": "abc-123-def",
+    "timestamp": "2026-06-24T10:00:00Z"
+  }
+}</span></pre>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 2: VERSIONING -->
+<div class="container">
+<div class="section" id="versioning">
+  <div class="section-header">
+    <div class="section-number">Section 02</div>
+    <div class="section-title">APIバージョニング</div>
+    <div class="section-subtitle">後方互換性を保ちながらAPIを進化させるための戦略</div>
+  </div>
+
+  <div class="callout callout-warn">
+    <div class="callout-title">なぜバージョニングが必要か</div>
+    <p>公開APIは一度リリースすると既存クライアントを壊さずに変更する必要があります。フィールドの削除・型変更・エンドポイント廃止などの破壊的変更（Breaking Change）を安全に行うためにバージョニング戦略が必要です。</p>
+  </div>
+
+  <div class="card-grid cols-3" style="margin-top:1.2rem">
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.6rem">方式 1</span>
+      <h3>URI バージョニング</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre>GET /api/<span class="fn">v1</span>/users
+GET /api/<span class="fn">v2</span>/users</pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ メリット:</strong> 最も直感的・URLで一目瞭然・キャッシュしやすい・ブラウザのアドレスバーでテスト可能</li>
+        <li><strong style="color:var(--red)">✗ デメリット:</strong> URLが汚くなる・「URIはリソースを表すべき」というRESTの理念に反する・v1とv2のコード二重管理</li>
+        <li><strong style="color:var(--accent3)">採用:</strong> GitHub API・Twitter API・Stripe API（業界標準）</li>
+      </ul>
+    </div>
+    <div class="card card-cyan">
+      <span class="badge badge-cyan" style="margin-bottom:.6rem">方式 2</span>
+      <h3>カスタムヘッダー</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre>GET /api/users
+<span class="type">X-API-Version</span>: 2</pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ メリット:</strong> URLをクリーンに保てる・RESTの理念に沿う・同じURIで複数バージョン対応</li>
+        <li><strong style="color:var(--red)">✗ デメリット:</strong> カスタムヘッダーは非標準・キャッシュが効きにくい（Vary ヘッダー設定が必要）・テストが面倒</li>
+        <li><strong style="color:var(--accent3)">採用:</strong> 一部のエンタープライズAPI</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.6rem">方式 3</span>
+      <h3>Accept ヘッダー（メディアタイプ）</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre>GET /api/users
+<span class="type">Accept</span>: application/vnd.
+  myapp.v2+json</pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ メリット:</strong> HTTP仕様に最も忠実・コンテントネゴシエーション活用・URLは完全にクリーン</li>
+        <li><strong style="color:var(--red)">✗ デメリット:</strong> 複雑で学習コスト高・キャッシュ難しい・ブラウザからの直接アクセス不可</li>
+        <li><strong style="color:var(--accent3)">採用:</strong> GitHub API（サブオプション）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1.5rem 0 1rem;color:var(--text)">バージョニング方式の比較・採用基準</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>評価軸</th><th>URI バージョニング</th><th>カスタムヘッダー</th><th>Accept ヘッダー</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>発見しやすさ</td><td><span class="badge badge-green">◎ 高</span></td><td><span class="badge badge-amber">△ 低</span></td><td><span class="badge badge-red">✗ 極低</span></td></tr>
+        <tr><td>キャッシュ互換性</td><td><span class="badge badge-green">◎ 高</span></td><td><span class="badge badge-amber">△ 要設定</span></td><td><span class="badge badge-amber">△ 要設定</span></td></tr>
+        <tr><td>REST純粋性</td><td><span class="badge badge-red">✗ 低</span></td><td><span class="badge badge-green">◎ 高</span></td><td><span class="badge badge-green">◎ 最高</span></td></tr>
+        <tr><td>実装の簡単さ</td><td><span class="badge badge-green">◎ 易</span></td><td><span class="badge badge-accent">○ 中</span></td><td><span class="badge badge-red">✗ 難</span></td></tr>
+        <tr><td>クライアント実装</td><td><span class="badge badge-green">◎ 易</span></td><td><span class="badge badge-accent">○ 中</span></td><td><span class="badge badge-red">✗ 難</span></td></tr>
+        <tr class="highlight-row"><td>業界採用率</td><td><span class="badge badge-green">◎ 最多</span></td><td><span class="badge badge-amber">△ 少</span></td><td><span class="badge badge-red">✗ 稀</span></td></tr>
+        <tr><td>推奨場面</td><td>公開API・外部パートナー向け</td><td>内部API・社内ツール</td><td>超厳格なREST設計</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-tip" style="margin-top:1rem">
+    <div class="callout-title">実践的な推奨</div>
+    <p>公開APIを設計する場合、業界標準の<strong>URIバージョニング（/api/v1/...）</strong>を採用することを推奨します。開発者体験（DX）が最も高く、ドキュメント化・テスト・デバッグが容易です。セマンティックバージョニングのメジャーバージョンのみをURLに含めるのが一般的です（v1, v2 — パッチ・マイナーはURLに含めない）。</p>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 3: PAGINATION -->
+<div class="container">
+<div class="section" id="pagination">
+  <div class="section-header">
+    <div class="section-number">Section 03</div>
+    <div class="section-title">ページネーション</div>
+    <div class="section-subtitle">大量データを効率的に分割取得する3つの戦略</div>
+  </div>
+
+  <div class="card-grid cols-3">
+    <div class="card card-amber">
+      <span class="badge badge-amber" style="margin-bottom:.5rem">方式 1</span>
+      <h3>Offset-based（オフセット）</h3>
+      <p style="margin-bottom:.6rem">SQLの <code style="color:var(--accent2)">LIMIT/OFFSET</code> に直接対応。最も直感的。</p>
+      <div class="code-block">
+        <pre>GET /users?page=3&limit=20
+<span class="cm"># または</span>
+GET /users?offset=40&limit=20
+
+<span class="cm"># SQL変換</span>
+SELECT * FROM users
+LIMIT 20 OFFSET 40;</pre>
+      </div>
+      <div style="margin-top:.8rem">
+        <div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:.3rem">メリット</div>
+        <ul class="feature-list">
+          <li>実装が簡単</li>
+          <li>任意ページへジャンプ可能</li>
+          <li>ページ番号をUIに表示しやすい</li>
+        </ul>
+        <div style="font-size:.8rem;font-weight:700;color:var(--red);margin:.6rem 0 .3rem">デメリット（重要）</div>
+        <ul class="feature-list">
+          <li>レコード移動問題：取得中に新データが挿入されると同じデータが2回表示される</li>
+          <li>大きなOFFSETはDBに負荷（全件スキャン後にスキップ）</li>
+          <li>10万件以降は著しく遅くなる</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.5rem">方式 2</span>
+      <h3>Cursor-based（カーソル）</h3>
+      <p style="margin-bottom:.6rem">最後に取得したレコードの位置をカーソルとして次のリクエストに渡す。大規模データに最適。</p>
+      <div class="code-block">
+        <pre><span class="cm"># 最初のリクエスト</span>
+GET /users?limit=20
+
+<span class="cm"># レスポンス</span>
+<span class="str">{
+  "data": [...],
+  "cursor": {
+    "next": "eyJpZCI6MjB9",
+    "hasMore": true
+  }
+}</span>
+
+<span class="cm"># 次ページ</span>
+GET /users?cursor=eyJpZCI6MjB9&limit=20</pre>
+      </div>
+      <div style="margin-top:.8rem">
+        <div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:.3rem">メリット</div>
+        <ul class="feature-list">
+          <li>レコード移動問題が発生しない</li>
+          <li>大量データでも一定の高速性</li>
+          <li>インフィニットスクロールに最適</li>
+        </ul>
+        <div style="font-size:.8rem;font-weight:700;color:var(--red);margin:.6rem 0 .3rem">デメリット</div>
+        <ul class="feature-list">
+          <li>任意ページへのジャンプ不可</li>
+          <li>実装が複雑（カーソルのBase64エンコードなど）</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.5rem">方式 3</span>
+      <h3>Keyset-based（キーセット）</h3>
+      <p style="margin-bottom:.6rem">主キーや一意インデックス列を使って次ページを特定。Cursor-basedの一形態。</p>
+      <div class="code-block">
+        <pre><span class="cm"># IDベース</span>
+GET /users?after_id=100&limit=20
+
+<span class="cm"># タイムスタンプベース</span>
+GET /posts?after=2026-06-01T00:00:00Z&limit=20
+
+<span class="cm"># SQL変換</span>
+SELECT * FROM users
+WHERE id > 100
+ORDER BY id
+LIMIT 20;</pre>
+      </div>
+      <div style="margin-top:.8rem">
+        <div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:.3rem">メリット</div>
+        <ul class="feature-list">
+          <li>インデックスを最大限活用</li>
+          <li>何百万件でも一定速度</li>
+          <li>実装がシンプル</li>
+        </ul>
+        <div style="font-size:.8rem;font-weight:700;color:var(--red);margin:.6rem 0 .3rem">デメリット</div>
+        <ul class="feature-list">
+          <li>ソート順が固定（主キー順など）</li>
+          <li>複合ソートが複雑</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">ページネーション比較表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>評価軸</th><th>Offset-based</th><th>Cursor-based</th><th>Keyset-based</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>実装難易度</td><td><span class="badge badge-green">易</span></td><td><span class="badge badge-amber">中</span></td><td><span class="badge badge-green">易〜中</span></td></tr>
+        <tr><td>大規模データのパフォーマンス</td><td><span class="badge badge-red">低下</span></td><td><span class="badge badge-green">安定</span></td><td><span class="badge badge-green">高速</span></td></tr>
+        <tr><td>レコード移動問題</td><td><span class="badge badge-red">発生する</span></td><td><span class="badge badge-green">発生しない</span></td><td><span class="badge badge-green">発生しない</span></td></tr>
+        <tr><td>任意ページジャンプ</td><td><span class="badge badge-green">可能</span></td><td><span class="badge badge-red">不可</span></td><td><span class="badge badge-red">不可</span></td></tr>
+        <tr><td>ソート柔軟性</td><td><span class="badge badge-green">高</span></td><td><span class="badge badge-accent">中</span></td><td><span class="badge badge-amber">低</span></td></tr>
+        <tr class="highlight-row"><td>推奨用途</td><td>小〜中規模・管理画面</td><td>SNSフィード・大規模API</td><td>時系列データ・イベントログ</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-warn" style="margin-top:1rem">
+    <div class="callout-title">レコード移動問題（Offset-basedの罠）</div>
+    <p>ページ1（offset=0, limit=10）を取得中に新しいレコードが先頭に挿入されると、ページ2（offset=10, limit=10）でページ1の最後のレコードが再度返ってくる問題。SNSやリアルタイム更新のある画面ではCursor-basedを使うべき。</p>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 4: IDEMPOTENCY -->
+<div class="container">
+<div class="section" id="idempotency">
+  <div class="section-header">
+    <div class="section-number">Section 04</div>
+    <div class="section-title">冪等性 (Idempotency)</div>
+    <div class="section-subtitle">同じ操作を何度実行しても結果が変わらない性質 — 分散システムの信頼性の基礎</div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">冪等性とは</div>
+    <p>数学的定義：f(f(x)) = f(x)。APIにおいては「同一リクエストを複数回送信しても、1回送信した場合と同じ結果になること」。ネットワーク障害・タイムアウト・リトライによる重複実行を安全にするために不可欠な性質です。</p>
+  </div>
+
+  <div class="card-grid cols-3" style="margin-top:1.2rem">
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.5rem">冪等 + 安全</span>
+      <h3>GET / HEAD / OPTIONS</h3>
+      <p>読み取り専用。何度呼んでも状態が変化しない。キャッシュ可能。</p>
+      <div class="code-block" style="margin-top:.6rem">
+        <pre><span class="cm"># 何度呼んでも同じ結果</span>
+GET /users/123  <span class="kw">→</span> 200 OK
+GET /users/123  <span class="kw">→</span> 200 OK
+GET /users/123  <span class="kw">→</span> 200 OK</pre>
+      </div>
+    </div>
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.5rem">冪等（状態変化あり）</span>
+      <h3>PUT / DELETE</h3>
+      <p>同じ操作を複数回しても最終状態は同じ。ただし状態は変化する。</p>
+      <div class="code-block" style="margin-top:.6rem">
+        <pre><span class="cm"># PUTは何度しても同じ状態</span>
+PUT /users/123 {name:"田中"}
+<span class="kw">→</span> 200: name = "田中"
+PUT /users/123 {name:"田中"}
+<span class="kw">→</span> 200: name = "田中" (同じ)
+
+<span class="cm"># DELETEも冪等（2回目は404）</span>
+DELETE /users/123 <span class="kw">→</span> 204
+DELETE /users/123 <span class="kw">→</span> 404 (既に削除済)</pre>
+      </div>
+    </div>
+    <div class="card card-red">
+      <span class="badge badge-red" style="margin-bottom:.5rem">非冪等</span>
+      <h3>POST</h3>
+      <p>毎回新しいリソースを作成する。リトライすると重複が発生する。</p>
+      <div class="code-block" style="margin-top:.6rem">
+        <pre><span class="cm"># POSTはリトライで重複!</span>
+POST /orders {item:"本"}
+<span class="kw">→</span> 201: order_id=1 (注文作成)
+POST /orders {item:"本"}
+<span class="kw">→</span> 201: order_id=2 (別の注文!)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">冪等性キー（Idempotency Key）による重複防止設計</h3>
+  <div class="callout callout-tip">
+    <div class="callout-title">冪等性キーパターン</div>
+    <p>クライアントが一意のキー（UUID等）をリクエストヘッダーに含める。サーバーはキーをキャッシュし、同じキーの2回目以降のリクエストには最初のレスポンスをそのまま返す。Stripeが普及させた業界標準パターン。</p>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:1rem">
+    <div>
+      <div class="code-label">クライアント側の実装</div>
+      <div class="code-block">
+        <pre><span class="cm">// クライアント: 冪等性キーを生成して送信</span>
+<span class="kw">const</span> <span class="var">idempotencyKey</span> = crypto.randomUUID();
+
+<span class="kw">async function</span> <span class="fn">createPaymentWithRetry</span>() {
+  <span class="kw">for</span> (<span class="kw">let</span> i = 0; i < 3; i++) {
+    <span class="kw">try</span> {
+      <span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">'/payments'</span>, {
+        method: <span class="str">'POST'</span>,
+        headers: {
+          <span class="str">'Idempotency-Key'</span>: idempotencyKey,
+          <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+        },
+        body: JSON.stringify({
+          amount: 10000,
+          currency: <span class="str">'jpy'</span>
+        })
+      });
+      <span class="kw">if</span> (res.ok) <span class="kw">return</span> res.json();
+    } <span class="kw">catch</span> (e) {
+      <span class="cm">// リトライ — 同じキーなので安全</span>
+      <span class="kw">await</span> sleep(1000 * 2**i);
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <div>
+      <div class="code-label">サーバー側の実装</div>
+      <div class="code-block">
+        <pre><span class="cm">// サーバー: 冪等性キーでキャッシュ管理</span>
+<span class="kw">async function</span> <span class="fn">handlePayment</span>(req, res) {
+  <span class="kw">const</span> key = req.headers[<span class="str">'idempotency-key'</span>];
+
+  <span class="kw">if</span> (key) {
+    <span class="cm">// Redisで既存レスポンスを確認</span>
+    <span class="kw">const</span> cached = <span class="kw">await</span> redis.get(
+      <span class="str">`idem:</span>${key}<span class="str">`</span>
+    );
+    <span class="kw">if</span> (cached) {
+      <span class="cm">// 同じレスポンスをそのまま返す</span>
+      <span class="kw">return</span> res.json(JSON.parse(cached));
+    }
+  }
+
+  <span class="cm">// 初回: 実際に決済処理</span>
+  <span class="kw">const</span> payment = <span class="kw">await</span> processPayment(req.body);
+  <span class="kw">const</span> response = { id: payment.id, status: <span class="str">'succeeded'</span> };
+
+  <span class="kw">if</span> (key) {
+    <span class="cm">// 結果をRedisにキャッシュ（24時間）</span>
+    <span class="kw">await</span> redis.setex(
+      <span class="str">`idem:</span>${key}<span class="str">`</span>, 86400, JSON.stringify(response)
+    );
+  }
+
+  res.status(201).json(response);
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram-wrap" style="margin-top:1.2rem">
+    <div class="code-label" style="margin-bottom:.6rem;text-align:center">冪等性キーのフロー図</div>
+    <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" width="700" height="200">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+      </defs>
+      <!-- Client -->
+      <rect x="20" y="70" width="110" height="60" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="75" y="95" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="700">クライアント</text>
+      <text x="75" y="113" fill="#94a3b8" font-size="9" text-anchor="middle">idempotency-key:</text>
+      <text x="75" y="125" fill="#f1fa8c" font-size="9" text-anchor="middle">abc-123</text>
+
+      <!-- Arrow 1 -->
+      <line x1="130" y1="100" x2="200" y2="100" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="165" y="93" fill="#94a3b8" font-size="9" text-anchor="middle">POST /payments</text>
+
+      <!-- Server -->
+      <rect x="200" y="70" width="130" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="265" y="95" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="700">APIサーバー</text>
+      <text x="265" y="113" fill="#94a3b8" font-size="9" text-anchor="middle">Redisで</text>
+      <text x="265" y="125" fill="#94a3b8" font-size="9" text-anchor="middle">キーを確認</text>
+
+      <!-- Arrow to Redis -->
+      <line x1="330" y1="100" x2="400" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="365" y="93" fill="#94a3b8" font-size="9" text-anchor="middle">GET idem:abc-123</text>
+
+      <!-- Redis -->
+      <rect x="400" y="70" width="110" height="60" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="455" y="95" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="700">Redis</text>
+      <text x="455" y="113" fill="#94a3b8" font-size="9" text-anchor="middle">キャッシュ</text>
+      <text x="455" y="125" fill="#94a3b8" font-size="9" text-anchor="middle">ストア</text>
+
+      <!-- Arrow to DB (conditional) -->
+      <line x1="510" y1="100" x2="580" y2="100" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4"/>
+      <text x="545" y="90" fill="#10b981" font-size="9" text-anchor="middle">初回のみ</text>
+
+      <!-- DB -->
+      <rect x="580" y="70" width="100" height="60" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="630" y="95" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="700">決済DB</text>
+      <text x="630" y="113" fill="#94a3b8" font-size="9" text-anchor="middle">処理実行</text>
+
+      <!-- Labels at bottom -->
+      <text x="265" y="165" fill="#94a3b8" font-size="9" text-anchor="middle">キャッシュHIT→即返却</text>
+      <text x="455" y="165" fill="#f59e0b" font-size="9" text-anchor="middle">TTL: 24時間</text>
+    </svg>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 5: GRAPHQL -->
+<div class="container">
+<div class="section" id="graphql">
+  <div class="section-header">
+    <div class="section-number">Section 05</div>
+    <div class="section-title">GraphQL</div>
+    <div class="section-subtitle">Facebookが開発したクエリ言語 — クライアントが必要なデータを正確に指定できる</div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">GraphQLとは</div>
+    <p>GraphQLは2015年にFacebook（Meta）がオープンソース化したAPIクエリ言語・ランタイムです。「クライアントが必要なデータを正確に要求できる」という思想で、RESTのOver-fetching（取りすぎ）とUnder-fetching（取り不足）問題を解決します。</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">REST vs GraphQL — Over-fetching / Under-fetching問題</h3>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="callout callout-danger">
+        <div class="callout-title">REST の問題</div>
+        <p>Over-fetching（不要なデータまで取得）とUnder-fetching（必要なデータが足りず複数回リクエスト）が発生しやすい。</p>
+      </div>
+      <div class="code-block">
+        <pre><span class="cm"># Over-fetching: ユーザー名だけ欲しいが</span>
+<span class="cm"># 不要なフィールドも返ってくる</span>
+GET /users/123
+<span class="str">{
+  "id": 123,
+  "name": "山田太郎",    <span class="fn">← 必要</span>
+  "email": "...",          <span class="cm">← 不要</span>
+  "address": "...",        <span class="cm">← 不要</span>
+  "preferences": {...},    <span class="cm">← 不要</span>
+  "createdAt": "..."       <span class="cm">← 不要</span>
+}</span>
+
+<span class="cm"># Under-fetching: 投稿一覧を取るのに</span>
+<span class="cm"># 各投稿の著者情報が別リクエスト必要</span>
+GET /posts           <span class="cm">← リクエスト1</span>
+GET /users/1         <span class="cm">← リクエスト2</span>
+GET /users/2         <span class="cm">← リクエスト3</span>
+GET /users/3         <span class="cm">← リクエスト4 (N+1問題)</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="callout callout-tip">
+        <div class="callout-title">GraphQL の解決</div>
+        <p>クライアントが必要なフィールドのみを指定。1リクエストで複数リソースを取得可能。</p>
+      </div>
+      <div class="code-block">
+        <pre><span class="cm"># 必要なフィールドだけ指定</span>
+<span class="kw">query</span> {
+  user(id: <span class="num">123</span>) {
+    name      <span class="cm"># 必要なものだけ</span>
+  }
+}
+<span class="str"># → { "user": { "name": "山田太郎" } }</span>
+
+<span class="cm"># 1リクエストでネストしたデータを取得</span>
+<span class="kw">query</span> {
+  posts {
+    title
+    author {
+      name      <span class="cm"># ネストして著者も取得</span>
+      avatar
+    }
+    comments {
+      body
+      createdAt
+    }
+  }
+}
+<span class="cm"># → 1リクエストで全部返ってくる!</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">GraphQL Schema定義</h3>
+  <div class="code-block">
+    <div class="code-label">Schema Definition Language (SDL)</div>
+    <pre><span class="cm"># 型定義</span>
+<span class="kw">type</span> <span class="type">User</span> {
+  id:       <span class="type">ID!</span>           <span class="cm"># ! = 非null必須</span>
+  name:     <span class="type">String!</span>
+  email:    <span class="type">String!</span>
+  posts:    [<span class="type">Post!</span>]!      <span class="cm"># ユーザーの投稿一覧</span>
+  createdAt: <span class="type">String!</span>
+}
+
+<span class="kw">type</span> <span class="type">Post</span> {
+  id:      <span class="type">ID!</span>
+  title:   <span class="type">String!</span>
+  body:    <span class="type">String!</span>
+  author:  <span class="type">User!</span>          <span class="cm"># 投稿者</span>
+  tags:    [<span class="type">String!</span>]!
+}
+
+<span class="cm"># クエリ（読み取り）</span>
+<span class="kw">type</span> <span class="type">Query</span> {
+  user(id: <span class="type">ID!</span>): <span class="type">User</span>
+  users(page: <span class="type">Int</span>, limit: <span class="type">Int</span>): [<span class="type">User!</span>]!
+  posts(authorId: <span class="type">ID</span>): [<span class="type">Post!</span>]!
+}
+
+<span class="cm"># ミューテーション（書き込み）</span>
+<span class="kw">type</span> <span class="type">Mutation</span> {
+  createUser(input: <span class="type">CreateUserInput!</span>): <span class="type">User!</span>
+  updateUser(id: <span class="type">ID!</span>, input: <span class="type">UpdateUserInput!</span>): <span class="type">User!</span>
+  deleteUser(id: <span class="type">ID!</span>): <span class="type">Boolean!</span>
+}
+
+<span class="cm"># サブスクリプション（リアルタイム）</span>
+<span class="kw">type</span> <span class="type">Subscription</span> {
+  userCreated: <span class="type">User!</span>              <span class="cm"># 新規ユーザー作成を購読</span>
+  postPublished(userId: <span class="type">ID</span>): <span class="type">Post!</span>  <span class="cm"># 投稿公開を購読</span>
+}
+
+<span class="cm"># 入力型</span>
+<span class="kw">input</span> <span class="type">CreateUserInput</span> {
+  name:  <span class="type">String!</span>
+  email: <span class="type">String!</span>
+}</pre>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">N+1問題とDataLoaderによる解決</h3>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="callout callout-danger">
+        <div class="callout-title">N+1問題</div>
+        <p>投稿10件の著者を取得するとき、10回別々のDBクエリが走る問題。</p>
+      </div>
+      <div class="code-block">
+        <pre><span class="cm">// N+1問題の発生するResolver</span>
+<span class="kw">const</span> resolvers = {
+  Post: {
+    <span class="fn">author</span>: (post) => {
+      <span class="cm">// 各投稿ごとにDBクエリ!</span>
+      <span class="cm">// 10投稿 = 10回のDB呼び出し</span>
+      <span class="kw">return</span> db.users.findById(post.authorId);
+    }
+  }
+};
+
+<span class="cm">// 実行されるSQLの数</span>
+<span class="cm">// SELECT * FROM posts LIMIT 10; (1回)</span>
+<span class="cm">// SELECT * FROM users WHERE id=1; (N回)</span>
+<span class="cm">// SELECT * FROM users WHERE id=2;</span>
+<span class="cm">// ... 合計N+1回!</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="callout callout-tip">
+        <div class="callout-title">DataLoaderで解決</div>
+        <p>複数のIDをバッチにまとめて1回のSQLで取得する。</p>
+      </div>
+      <div class="code-block">
+        <pre><span class="kw">import</span> DataLoader <span class="kw">from</span> <span class="str">'dataloader'</span>;
+
+<span class="cm">// バッチ関数: IDをまとめて1回取得</span>
+<span class="kw">const</span> userLoader = <span class="kw">new</span> <span class="fn">DataLoader</span>(
+  <span class="kw">async</span> (userIds) => {
+    <span class="cm">// IN句で一括取得!</span>
+    <span class="kw">const</span> users = <span class="kw">await</span> db.users.findMany({
+      where: { id: { in: userIds } }
+    });
+    <span class="cm">// IDの順序を保持して返す</span>
+    <span class="kw">return</span> userIds.map(id =>
+      users.find(u => u.id === id)
+    );
+  }
+);
+
+<span class="cm">// Resolverでloaderを使用</span>
+<span class="kw">const</span> resolvers = {
+  Post: {
+    <span class="fn">author</span>: (post) => {
+      <span class="kw">return</span> userLoader.load(post.authorId);
+      <span class="cm">// → 自動バッチ化! 1回のSQLに</span>
+    }
+  }
+};
+<span class="cm">// SELECT * FROM users WHERE id IN (1,2,...10);</span></pre>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 6: gRPC -->
+<div class="container">
+<div class="section" id="grpc">
+  <div class="section-header">
+    <div class="section-number">Section 06</div>
+    <div class="section-title">gRPC</div>
+    <div class="section-subtitle">Googleが開発した高性能RPC フレームワーク — マイクロサービス間通信の標準</div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">gRPCとは</div>
+    <p>gRPC（gRPC Remote Procedure Call）はGoogleが開発したオープンソースのRPCフレームワークです。HTTP/2を基盤とし、Protocol Buffersによるスキーマ定義・バイナリシリアライズを使用。JSONベースのREST APIと比較して大幅に高速・軽量で、特にマイクロサービス間の内部通信に適しています。</p>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:1.2rem">
+    <div>
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:.8rem;color:var(--text)">Protocol Buffers（.protoファイル）</h3>
+      <div class="code-block">
+        <pre><span class="cm">// user.proto</span>
+syntax = <span class="str">"proto3"</span>;
+
+<span class="kw">package</span> user;
+
+<span class="cm">// サービス定義</span>
+<span class="kw">service</span> <span class="type">UserService</span> {
+  rpc GetUser (<span class="type">GetUserRequest</span>)
+      returns (<span class="type">User</span>);
+
+  rpc ListUsers (<span class="type">ListUsersRequest</span>)
+      returns (<span class="type">ListUsersResponse</span>);
+
+  rpc CreateUser (<span class="type">CreateUserRequest</span>)
+      returns (<span class="type">User</span>);
+
+  <span class="cm">// サーバーストリーミング</span>
+  rpc WatchUsers (<span class="type">WatchRequest</span>)
+      returns (<span class="kw">stream</span> <span class="type">User</span>);
+}
+
+<span class="cm">// メッセージ定義（型付きスキーマ）</span>
+<span class="kw">message</span> <span class="type">User</span> {
+  <span class="type">string</span> id = 1;
+  <span class="type">string</span> name = 2;
+  <span class="type">string</span> email = 3;
+  <span class="type">int64</span>  created_at = 4;
+}
+
+<span class="kw">message</span> <span class="type">GetUserRequest</span> {
+  <span class="type">string</span> id = 1;
+}
+
+<span class="kw">message</span> <span class="type">ListUsersResponse</span> {
+  <span class="kw">repeated</span> <span class="type">User</span> users = 1;
+  <span class="type">int32</span> total = 2;
+}</pre>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:.8rem;color:var(--text)">gRPCの4つの通信パターン</h3>
+      <div class="card card-accent" style="margin-bottom:.7rem">
+        <span class="badge badge-accent" style="margin-bottom:.3rem">パターン 1</span>
+        <h3 style="font-size:.9rem">Unary RPC（単方向）</h3>
+        <p>通常のリクエスト/レスポンス。REST APIと同じ。1リクエスト→1レスポンス。最も一般的。</p>
+        <div class="code-block" style="margin-top:.4rem"><pre>Client: GetUser(id) → Server: User{}</pre></div>
+      </div>
+      <div class="card card-cyan" style="margin-bottom:.7rem">
+        <span class="badge badge-cyan" style="margin-bottom:.3rem">パターン 2</span>
+        <h3 style="font-size:.9rem">Server Streaming RPC</h3>
+        <p>クライアントが1リクエスト、サーバーが複数レスポンスをストリームで返す。ログ配信・リアルタイム更新に使用。</p>
+        <div class="code-block" style="margin-top:.4rem"><pre>Client: Watch() → Server: User{}, User{}, ...</pre></div>
+      </div>
+      <div class="card card-green" style="margin-bottom:.7rem">
+        <span class="badge badge-green" style="margin-bottom:.3rem">パターン 3</span>
+        <h3 style="font-size:.9rem">Client Streaming RPC</h3>
+        <p>クライアントが複数リクエストをストリームで送り、サーバーが1レスポンスを返す。ファイルアップロード・センサーデータ収集に使用。</p>
+        <div class="code-block" style="margin-top:.4rem"><pre>Client: data1, data2, ... → Server: Result{}</pre></div>
+      </div>
+      <div class="card card-purple">
+        <span class="badge badge-purple" style="margin-bottom:.3rem">パターン 4</span>
+        <h3 style="font-size:.9rem">Bidirectional Streaming RPC</h3>
+        <p>双方向ストリーミング。チャット・ゲーム・リアルタイム協調作業などに使用。WebSocketに相当。</p>
+        <div class="code-block" style="margin-top:.4rem"><pre>Client: msg1 ⇄ Server: reply1
+Client: msg2 ⇄ Server: reply2</pre></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">REST vs gRPC vs GraphQL 三者比較</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>評価軸</th><th>REST</th><th>GraphQL</th><th>gRPC</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>通信プロトコル</td><td>HTTP/1.1 + JSON</td><td>HTTP/1.1 + JSON</td><td>HTTP/2 + Protobuf</td></tr>
+        <tr><td>スキーマ定義</td><td>任意（OpenAPI）</td><td>必須（SDL）</td><td>必須（.proto）</td></tr>
+        <tr><td>型安全性</td><td><span class="badge badge-amber">△ 弱い</span></td><td><span class="badge badge-accent">○ 中</span></td><td><span class="badge badge-green">◎ 強い</span></td></tr>
+        <tr><td>パフォーマンス</td><td><span class="badge badge-accent">○ 普通</span></td><td><span class="badge badge-accent">○ 普通</span></td><td><span class="badge badge-green">◎ 高速</span></td></tr>
+        <tr><td>ブラウザ対応</td><td><span class="badge badge-green">◎ 完全</span></td><td><span class="badge badge-green">◎ 完全</span></td><td><span class="badge badge-amber">△ 要gRPC-Web</span></td></tr>
+        <tr><td>Over-fetching</td><td><span class="badge badge-red">✗ 発生しやすい</span></td><td><span class="badge badge-green">◎ 発生しない</span></td><td><span class="badge badge-green">◎ 発生しない</span></td></tr>
+        <tr><td>学習コスト</td><td><span class="badge badge-green">◎ 低</span></td><td><span class="badge badge-accent">○ 中</span></td><td><span class="badge badge-red">✗ 高</span></td></tr>
+        <tr><td>リアルタイム</td><td><span class="badge badge-amber">△ SSE/Webhook</span></td><td><span class="badge badge-accent">○ Subscription</span></td><td><span class="badge badge-green">◎ 双方向ストリーム</span></td></tr>
+        <tr><td>コード生成</td><td><span class="badge badge-amber">△ 任意</span></td><td><span class="badge badge-accent">○ 可能</span></td><td><span class="badge badge-green">◎ 自動生成</span></td></tr>
+        <tr class="highlight-row"><td>主な用途</td><td>公開API・Webサービス</td><td>BFF・モバイルAPI</td><td>マイクロサービス間通信</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 7: API GATEWAY -->
+<div class="container">
+<div class="section" id="gateway">
+  <div class="section-header">
+    <div class="section-number">Section 07</div>
+    <div class="section-title">APIゲートウェイ</div>
+    <div class="section-subtitle">クライアントとバックエンドサービスの間に立つ「玄関口」— 横断的関心事を一元管理</div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">APIゲートウェイとは</div>
+    <p>APIゲートウェイは、すべてのクライアントリクエストの単一入口点（Single Entry Point）となるサーバーです。認証・認可、レートリミット、ロギング、ルーティング、プロトコル変換などの横断的関心事（Cross-cutting Concerns）を各マイクロサービスから切り離して一元管理できます。</p>
+  </div>
+
+  <div class="diagram-wrap" style="margin:1.2rem 0">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" width="720" height="300">
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+      </defs>
+
+      <!-- Clients -->
+      <rect x="10" y="40" width="90" height="40" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="55" y="55" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">Webブラウザ</text>
+      <text x="55" y="70" fill="#94a3b8" font-size="8" text-anchor="middle">HTTP/1.1</text>
+
+      <rect x="10" y="110" width="90" height="40" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="55" y="125" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">モバイルApp</text>
+      <text x="55" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">HTTP/2</text>
+
+      <rect x="10" y="180" width="90" height="40" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="55" y="195" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">外部パートナー</text>
+      <text x="55" y="210" fill="#94a3b8" font-size="8" text-anchor="middle">REST</text>
+
+      <!-- Arrows to gateway -->
+      <line x1="100" y1="60" x2="190" y2="130" stroke="#6366f1" stroke-width="1.2" marker-end="url(#arr2)"/>
+      <line x1="100" y1="130" x2="190" y2="140" stroke="#6366f1" stroke-width="1.2" marker-end="url(#arr2)"/>
+      <line x1="100" y1="200" x2="190" y2="155" stroke="#6366f1" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+      <!-- Gateway box -->
+      <rect x="190" y="80" width="170" height="160" rx="10" fill="#13151f" stroke="#a78bfa" stroke-width="2"/>
+      <text x="275" y="103" fill="#a78bfa" font-size="11" text-anchor="middle" font-weight="800">API Gateway</text>
+      <text x="275" y="122" fill="#94a3b8" font-size="9" text-anchor="middle">✓ 認証 / 認可</text>
+      <text x="275" y="137" fill="#94a3b8" font-size="9" text-anchor="middle">✓ レートリミット</text>
+      <text x="275" y="152" fill="#94a3b8" font-size="9" text-anchor="middle">✓ リクエストルーティング</text>
+      <text x="275" y="167" fill="#94a3b8" font-size="9" text-anchor="middle">✓ ログ / メトリクス</text>
+      <text x="275" y="182" fill="#94a3b8" font-size="9" text-anchor="middle">✓ SSL終端</text>
+      <text x="275" y="197" fill="#94a3b8" font-size="9" text-anchor="middle">✓ プロトコル変換</text>
+      <text x="275" y="212" fill="#94a3b8" font-size="9" text-anchor="middle">✓ キャッシュ</text>
+      <text x="275" y="227" fill="#94a3b8" font-size="9" text-anchor="middle">✓ レスポンス集約</text>
+
+      <!-- Arrows to services -->
+      <line x1="360" y1="120" x2="440" y2="80" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="360" y1="145" x2="440" y2="145" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="360" y1="175" x2="440" y2="210" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="360" y1="195" x2="440" y2="265" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr3)"/>
+
+      <!-- Services -->
+      <rect x="440" y="55" width="120" height="45" rx="6" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="500" y="73" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">ユーザーサービス</text>
+      <text x="500" y="88" fill="#94a3b8" font-size="8" text-anchor="middle">/api/users/*</text>
+
+      <rect x="440" y="122" width="120" height="45" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="500" y="140" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">注文サービス</text>
+      <text x="500" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">/api/orders/*</text>
+
+      <rect x="440" y="189" width="120" height="45" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="500" y="207" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">商品サービス</text>
+      <text x="500" y="222" fill="#94a3b8" font-size="8" text-anchor="middle">/api/products/*</text>
+
+      <rect x="440" y="245" width="120" height="45" rx="6" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="500" y="263" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="600">決済サービス</text>
+      <text x="500" y="278" fill="#94a3b8" font-size="8" text-anchor="middle">/api/payments/*</text>
+
+      <!-- Labels -->
+      <text x="145" y="270" fill="#6366f1" font-size="9" text-anchor="middle">外部（Internet）</text>
+      <text x="490" y="30" fill="#22d3ee" font-size="9" text-anchor="middle">内部（Intranet）</text>
+    </svg>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">BFF（Backend For Frontend）パターン</h3>
+  <div class="callout callout-tip">
+    <div class="callout-title">BFFとは</div>
+    <p>BFF（Backend For Frontend）は、フロントエンドの種類（Web・モバイル・TV等）ごとに専用のAPIゲートウェイ/集約層を用意するパターンです。各クライアントの要件に合わせた最適なデータ形式・フィールドを返せます。Sam Newmanが提唱。</p>
+  </div>
+  <div class="card-grid cols-3" style="margin-top:1rem">
+    <div class="card card-accent">
+      <h3>Web BFF</h3>
+      <p>PCブラウザ向け。大画面・大帯域前提。詳細なデータ・多くのフィールドを返す。Reactアプリに最適化。</p>
+      <ul class="feature-list" style="margin-top:.6rem">
+        <li>フル解像度画像</li>
+        <li>詳細なユーザー情報</li>
+        <li>SSE/WebSocket対応</li>
+      </ul>
+    </div>
+    <div class="card card-cyan">
+      <h3>Mobile BFF</h3>
+      <p>iOS/Android向け。帯域・バッテリー考慮。必要最低限のデータ・圧縮済みレスポンス。プッシュ通知連携。</p>
+      <ul class="feature-list" style="margin-top:.6rem">
+        <li>サムネイル画像</li>
+        <li>最小限フィールド</li>
+        <li>オフライン対応設計</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <h3>Partner API BFF</h3>
+      <p>外部パートナー企業向け。厳格な認証・レートリミット。公開APIドキュメント完備。バージョニング必須。</p>
+      <ul class="feature-list" style="margin-top:.6rem">
+        <li>OAuth2認証</li>
+        <li>厳格なレートリミット</li>
+        <li>Webhookサポート</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">直接APIアクセス vs APIゲートウェイ</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>評価軸</th><th>直接APIアクセス</th><th>APIゲートウェイ経由</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>認証の実装</td><td>各サービスで個別実装</td><td><span class="badge badge-green">ゲートウェイで一元化</span></td></tr>
+        <tr><td>レートリミット</td><td>各サービスで個別実装</td><td><span class="badge badge-green">一元管理</span></td></tr>
+        <tr><td>ログ/監視</td><td>分散・集計が困難</td><td><span class="badge badge-green">全リクエストを一箇所で</span></td></tr>
+        <tr><td>SSL証明書</td><td>各サービスで管理</td><td><span class="badge badge-green">ゲートウェイで終端</span></td></tr>
+        <tr><td>サービス内部構造の露出</td><td><span class="badge badge-red">露出する</span></td><td><span class="badge badge-green">隠蔽できる</span></td></tr>
+        <tr><td>レイテンシ</td><td><span class="badge badge-green">低い（直接）</span></td><td><span class="badge badge-amber">ゲートウェイ分の追加レイテンシ</span></td></tr>
+        <tr><td>単一障害点</td><td><span class="badge badge-green">なし</span></td><td><span class="badge badge-amber">ゲートウェイが単一障害点になりうる</span></td></tr>
+        <tr class="highlight-row"><td>推奨規模</td><td>小規模・シンプルなAPI</td><td>マイクロサービス・中〜大規模</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 8: SECURITY -->
+<div class="container">
+<div class="section" id="security">
+  <div class="section-header">
+    <div class="section-number">Section 08</div>
+    <div class="section-title">APIセキュリティ基礎</div>
+    <div class="section-subtitle">認証・認可・CORS・レートリミット — セキュアなAPIを設計するための必須知識</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">APIキー vs JWT vs OAuth2</h3>
+  <div class="card-grid cols-3">
+    <div class="card card-amber">
+      <span class="badge badge-amber" style="margin-bottom:.5rem">方式 1</span>
+      <h3>APIキー</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre>GET /api/data
+<span class="type">X-API-Key</span>: sk_live_abc123xyz</pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ シンプル</strong>: 発行・管理が容易</li>
+        <li><strong style="color:var(--green)">◎ サーバー間通信に最適</strong></li>
+        <li><strong style="color:var(--red)">✗ ユーザー単位の認証不可</strong></li>
+        <li><strong style="color:var(--red)">✗ 有効期限なし（漏洩リスク）</strong></li>
+        <li><strong style="color:var(--red)">✗ キーが盗まれたら即使用可能</strong></li>
+      </ul>
+      <div style="font-size:.8rem;color:var(--text3);margin-top:.6rem">用途: 外部パートナー・CI/CD・機械間通信</div>
+    </div>
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.5rem">方式 2</span>
+      <h3>JWT（JSON Web Token）</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre>GET /api/data
+<span class="type">Authorization</span>: Bearer eyJhbGci...
+<span class="cm"># header.payload.signature</span></pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ ステートレス</strong>: DB照合不要</li>
+        <li><strong style="color:var(--green)">◎ ユーザー情報を含める</strong>（ペイロード）</li>
+        <li><strong style="color:var(--green)">◎ 有効期限設定可能</strong></li>
+        <li><strong style="color:var(--red)">✗ 失効（Revoke）が困難</strong></li>
+        <li><strong style="color:var(--red)">✗ ペイロードは暗号化されない</strong>（Base64のみ）</li>
+      </ul>
+      <div style="font-size:.8rem;color:var(--text3);margin-top:.6rem">用途: Webアプリ・モバイルアプリ認証</div>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.5rem">方式 3</span>
+      <h3>OAuth2 + OIDC</h3>
+      <div class="code-block" style="margin:.6rem 0">
+        <pre><span class="cm"># 認可コードフロー</span>
+1. ユーザー → 認可サーバーへリダイレクト
+2. 認可コードを受け取る
+3. コードをアクセストークンに交換
+4. トークンでAPI呼び出し</pre>
+      </div>
+      <ul class="feature-list">
+        <li><strong style="color:var(--green)">◎ 業界標準の委任認証</strong></li>
+        <li><strong style="color:var(--green)">◎ スコープで細かな権限制御</strong></li>
+        <li><strong style="color:var(--green)">◎ リフレッシュトークンで長期利用</strong></li>
+        <li><strong style="color:var(--red)">✗ 実装が複雑</strong></li>
+      </ul>
+      <div style="font-size:.8rem;color:var(--text3);margin-top:.6rem">用途: 「Googleでログイン」・サードパーティアプリ認可</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">JWTの構造</h3>
+  <div class="card-grid cols-2">
+    <div class="code-block">
+      <div class="code-label">JWTの3部構成（Base64URLエンコード）</div>
+      <pre><span class="cm">// Header（アルゴリズム情報）</span>
+{
+  <span class="str">"alg"</span>: <span class="str">"HS256"</span>,
+  <span class="str">"typ"</span>: <span class="str">"JWT"</span>
+}
+
+<span class="cm">// Payload（クレーム — 公開情報!）</span>
+{
+  <span class="str">"sub"</span>: <span class="str">"user_123"</span>,     <span class="cm">// Subject</span>
+  <span class="str">"name"</span>: <span class="str">"山田太郎"</span>,
+  <span class="str">"role"</span>: <span class="str">"admin"</span>,
+  <span class="str">"iat"</span>: 1750000000,    <span class="cm">// Issued At</span>
+  <span class="str">"exp"</span>: 1750003600     <span class="cm">// Expiration (1h後)</span>
+}
+
+<span class="cm">// Signature（秘密鍵で署名）</span>
+HMACSHA256(
+  base64url(header) + <span class="str">"."</span> + base64url(payload),
+  SECRET_KEY
+)</pre>
+    </div>
+    <div>
+      <div class="callout callout-warn" style="margin-bottom:.8rem">
+        <div class="callout-title">JWTの注意点</div>
+        <p>ペイロードはBase64URLエンコードされているだけで<strong>暗号化されていません</strong>。誰でもデコードして中身を見られます。パスワード・個人情報をペイロードに含めないこと。</p>
+      </div>
+      <div class="callout callout-tip">
+        <div class="callout-title">ベストプラクティス</div>
+        <p>1) アクセストークンは短命（15分〜1時間）に設定する。2) リフレッシュトークンでサイレント更新する。3) HTTPOnly Cookieでトークンを保存（XSS対策）。4) HTTPS必須。5) トークンの失効にはブラックリスト（Redis）を使用。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">CORS（Cross-Origin Resource Sharing）</h3>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="callout callout-info">
+        <div class="callout-title">CORSとは</div>
+        <p>ブラウザのセキュリティ機能。異なるオリジン（ドメイン/ポート/スキーム）へのリクエストをデフォルトでブロックし、サーバーが明示的に許可したオリジンのみアクセスを認める仕組み。</p>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-label">CORSヘッダー設定例</div>
+      <pre><span class="cm"># サーバーのレスポンスヘッダー</span>
+<span class="type">Access-Control-Allow-Origin</span>: https://app.example.com
+<span class="type">Access-Control-Allow-Methods</span>: GET, POST, PUT, DELETE
+<span class="type">Access-Control-Allow-Headers</span>: Content-Type, Authorization
+<span class="type">Access-Control-Max-Age</span>: 86400  <span class="cm"># プリフライトキャッシュ</span>
+<span class="type">Access-Control-Allow-Credentials</span>: true  <span class="cm"># Cookie送信許可</span>
+
+<span class="cm"># 注意: * (ワイルドカード) はCredentialsと併用不可</span>
+<span class="cm"># NG: Access-Control-Allow-Origin: *</span>
+<span class="cm">#     + Access-Control-Allow-Credentials: true</span></pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">レートリミット設計 — 4つのアルゴリズム</h3>
+  <div class="card-grid cols-2" style="gap:1rem">
+    <div class="card card-amber">
+      <span class="badge badge-amber" style="margin-bottom:.5rem">アルゴリズム 1</span>
+      <h3>固定窓（Fixed Window）</h3>
+      <p style="margin-bottom:.6rem">一定時間窓（例: 1分間）でリクエスト数をカウント。実装最も簡単。</p>
+      <div class="code-block">
+        <pre><span class="cm">// 1分間に100リクエストまで</span>
+window = <span class="fn">floor</span>(now / 60)
+key = <span class="str">`rate:</span>${userId}<span class="str">:</span>${window}<span class="str">`</span>
+count = redis.<span class="fn">incr</span>(key)
+<span class="kw">if</span> (count == 1) redis.<span class="fn">expire</span>(key, 60)
+<span class="kw">if</span> (count > 100) <span class="kw">return</span> 429</pre>
+      </div>
+      <div class="callout callout-danger" style="margin-top:.6rem">
+        <div class="callout-title">問題点</div>
+        <p>窓の境界でバースト可能。0:59に100回 + 1:00に100回 = 2秒間に200リクエスト通過。</p>
+      </div>
+    </div>
+    <div class="card card-cyan">
+      <span class="badge badge-cyan" style="margin-bottom:.5rem">アルゴリズム 2</span>
+      <h3>スライディング窓（Sliding Window）</h3>
+      <p style="margin-bottom:.6rem">現在時刻から遡った直近N時間のリクエストをカウント。固定窓の境界問題を解消。</p>
+      <div class="code-block">
+        <pre><span class="cm">// Redisのsorted setで実装</span>
+now = Date.now()
+key = <span class="str">`rate:</span>${userId}<span class="str">`</span>
+
+<span class="cm">// 古いエントリを削除（1分以前）</span>
+redis.<span class="fn">zremrangebyscore</span>(key, 0, now - 60000)
+
+<span class="cm">// 現在のカウントを確認</span>
+count = redis.<span class="fn">zcard</span>(key)
+<span class="kw">if</span> (count >= 100) <span class="kw">return</span> 429
+
+<span class="cm">// 新リクエストを追加</span>
+redis.<span class="fn">zadd</span>(key, now, now + <span class="fn">random</span>())</pre>
+      </div>
+    </div>
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="margin-bottom:.5rem">アルゴリズム 3</span>
+      <h3>トークンバケット（Token Bucket）</h3>
+      <p style="margin-bottom:.6rem">バケツにトークンが一定レートで補充される。トークンがあればリクエスト処理。バーストを許容。</p>
+      <div class="code-block">
+        <pre><span class="cm">// 概念的な実装</span>
+capacity = 100    <span class="cm">// バケツの容量</span>
+refillRate = 10   <span class="cm">// 1秒あたり10トークン補充</span>
+
+tokens = min(capacity,
+  lastTokens + (now - lastRefill) * refillRate
+)
+<span class="kw">if</span> (tokens < 1) <span class="kw">return</span> 429
+tokens -= 1      <span class="cm">// トークン消費</span></pre>
+      </div>
+      <div class="callout callout-tip" style="margin-top:.6rem">
+        <div class="callout-title">特長</div>
+        <p>Stripe・Twilioが採用。一時的なバーストを許容しながら平均レートを制御。</p>
+      </div>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="margin-bottom:.5rem">アルゴリズム 4</span>
+      <h3>リーキーバケット（Leaky Bucket）</h3>
+      <p style="margin-bottom:.6rem">キューにリクエストを溜め、一定レートで処理する。出力レートが一定になりトラフィックを平滑化。</p>
+      <div class="code-block">
+        <pre><span class="cm">// FIFOキューで実装</span>
+queue = []
+processRate = 10  <span class="cm">// 1秒あたり10件処理</span>
+
+<span class="cm">// リクエスト到着時</span>
+<span class="kw">if</span> (queue.length >= capacity) {
+  <span class="kw">return</span> 429  <span class="cm">// キューが満杯</span>
+}
+queue.<span class="fn">push</span>(request)
+
+<span class="cm">// 一定間隔で処理</span>
+setInterval(() => {
+  <span class="kw">if</span> (queue.length > 0) process(queue.<span class="fn">shift</span>())
+}, 1000 / processRate)</pre>
+      </div>
+      <div class="callout callout-tip" style="margin-top:.6rem">
+        <div class="callout-title">特長</div>
+        <p>トラフィックの平滑化に最適。Nginx のリミット実装に使用されている。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:1.15rem;font-weight:700;margin:1rem 0 .8rem;color:var(--text)">レートリミット比較表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>アルゴリズム</th><th>実装難易度</th><th>バースト許容</th><th>一定出力</th><th>メモリ効率</th><th>採用例</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>固定窓</td><td><span class="badge badge-green">易</span></td><td><span class="badge badge-red">境界でバースト</span></td><td><span class="badge badge-red">✗</span></td><td><span class="badge badge-green">◎</span></td><td>シンプルな内部API</td></tr>
+        <tr><td>スライディング窓</td><td><span class="badge badge-accent">中</span></td><td><span class="badge badge-green">◎ 制御</span></td><td><span class="badge badge-amber">△</span></td><td><span class="badge badge-amber">△</span></td><td>多くのAPIゲートウェイ</td></tr>
+        <tr class="highlight-row"><td>トークンバケット</td><td><span class="badge badge-accent">中</span></td><td><span class="badge badge-green">◎ 許容</span></td><td><span class="badge badge-amber">△</span></td><td><span class="badge badge-green">◎</span></td><td>Stripe・Twilio・AWS</td></tr>
+        <tr><td>リーキーバケット</td><td><span class="badge badge-amber">中〜難</span></td><td><span class="badge badge-red">✗ 平滑化</span></td><td><span class="badge badge-green">◎ 一定</span></td><td><span class="badge badge-amber">△</span></td><td>Nginx・プロキシ</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- INTERVIEW TIPS -->
+<div class="container">
+<div class="section" id="tips">
+  <div class="section-header">
+    <div class="section-number">面接対策</div>
+    <div class="section-title">よく出るインタビュー質問と回答指針</div>
+    <div class="section-subtitle">システムデザイン面接でAPI設計について問われたときの回答フレームワーク</div>
+  </div>
+
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="tip-q">Q: RESTとGraphQLをどう使い分けますか？</div>
+      <div class="tip-a">公開APIや単純なCRUDにはREST（業界標準・キャッシュ容易）。モバイルアプリや複雑なデータ要件にはGraphQL（Over-fetching回避・1リクエスト完結）。マイクロサービス内部通信にはgRPC（高速・型安全・ストリーミング）。クライアントの多様性とデータ複雑度で判断。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: APIのバージョニング戦略を設計してください</div>
+      <div class="tip-a">公開APIはURIバージョニング（/api/v1/）を推奨。破壊的変更（フィールド削除・型変更・エンドポイント廃止）はメジャーバージョンを上げる。マイナー追加は後方互換を保つ。廃止予定エンドポイントにはDeprecationヘッダーとSunsetヘッダーで事前通知し、最低6〜12ヶ月の移行期間を設ける。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: 大量データのAPIページネーションをどう設計しますか？</div>
+      <div class="tip-a">データ量・ユースケースで選択。管理画面や小規模（〜10万件）はOffset-based（ページ番号UIとの相性が良い）。SNSフィードやリアルタイム更新はCursor-based（レコード移動問題回避）。時系列データやイベントログはKeyset-based（主キーでINDEX活用、高速）。10万件以上ではOffset避けてCursor/Keysetを選択。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: 決済APIで二重課金を防ぐにはどうしますか？</div>
+      <div class="tip-a">冪等性キー（Idempotency Key）パターンを使用。クライアントがUUIDをリクエストヘッダー（Idempotency-Key）に付与し、サーバーはRedisにキー→レスポンスをTTL付きでキャッシュ。同じキーの2回目以降は実際の処理をスキップして初回のレスポンスをそのまま返す。Stripeが業界標準として普及させた手法。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: APIゲートウェイは何のために使いますか？</div>
+      <div class="tip-a">横断的関心事（Cross-cutting Concerns）の一元管理。具体的には：認証・認可の共通化、レートリミット、ロギング・メトリクス収集、SSL終端、リクエストルーティング、プロトコル変換（外部REST→内部gRPC）、レスポンス集約。マイクロサービスアーキテクチャでは実質必須。単一障害点リスクはHA構成で対策。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: 401 Unauthorized と 403 Forbidden の違いは？</div>
+      <div class="tip-a">401は「誰だかわからない（認証が必要）」。ログインしていない・トークンが無効・期限切れ。クライアントは認証情報を付けて再試行すべき。403は「誰だかはわかるが、権限がない（認可失敗）」。ログイン済みだが他ユーザーのリソースや管理者専用機能へのアクセス。再試行しても無駄で権限付与が必要。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: GraphQLのN+1問題とは何ですか？解決法は？</div>
+      <div class="tip-a">投稿10件の著者を取得する際、各投稿ごとにDB呼び出しが走り合計N+1回のクエリになる問題。解決策はDataLoader（Facebookが開発）を使ったバッチ処理：複数IDを集めて1回のIN句クエリ（SELECT * FROM users WHERE id IN (1,2,...10)）に変換。リクエストスコープでインスタンスを生成しキャッシュも兼ねる。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: APIのレートリミットはどう設計しますか？</div>
+      <div class="tip-a">ユーザーID・APIキー・IPアドレスなどでバケット分割。アルゴリズムはStripe採用のトークンバケットが汎用的（バーストを許容しつつ平均レートを制御）。実装はRedis + Lua スクリプトでアトミックに。レスポンスヘッダーにX-RateLimit-Limit/Remaining/Resetを含める。制限超過は429 Too Many Requestsを返す。</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- QUICK REFERENCE -->
+<div class="container">
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">クイックリファレンス</div>
+    <div class="section-title">API設計チェックリスト</div>
+  </div>
+  <div class="card-grid cols-3">
+    <div class="card card-green">
+      <h3>REST設計</h3>
+      <ul class="feature-list">
+        <li>URLは名詞・複数形を使う</li>
+        <li>動詞をURLに含めない</li>
+        <li>適切なHTTPメソッドを選ぶ</li>
+        <li>正確なHTTPステータスコードを返す</li>
+        <li>エラーレスポンスを標準化する</li>
+        <li>APIバージョニング戦略を決める</li>
+      </ul>
+    </div>
+    <div class="card card-accent">
+      <h3>パフォーマンス・可用性</h3>
+      <ul class="feature-list">
+        <li>大量データはCursor/Keyset ページネーション</li>
+        <li>POSTはIdempotency-Key必須</li>
+        <li>適切なHTTPキャッシュヘッダーを設定</li>
+        <li>非同期処理は202 Acceptedを返す</li>
+        <li>タイムアウト・リトライ戦略を定義</li>
+        <li>gRPCストリーミングで大容量データ転送</li>
+      </ul>
+    </div>
+    <div class="card card-red">
+      <h3>セキュリティ</h3>
+      <ul class="feature-list">
+        <li>全エンドポイントにHTTPS必須</li>
+        <li>JWTは短命（15〜60分）に設定</li>
+        <li>HTTPOnly CookieでXSS対策</li>
+        <li>CORSの許可オリジンを最小限に</li>
+        <li>全エンドポイントにレートリミット</li>
+        <li>APIゲートウェイで認証を一元化</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FOOTER NAV -->
+<div class="footer-nav">
+  <div class="footer-nav-inner">
+    <a class="footer-link" href="03_databases.html">
+      <span>←</span>
+      <div><span>前のページ</span><br>03 データベース設計</div>
+    </a>
+    <a class="footer-link" href="00_index.html">
+      <div style="text-align:center"><span>ホーム</span><br>目次に戻る</div>
+    </a>
+    <a class="footer-link" href="05_caching.html">
+      <div style="text-align:right"><span>次のページ</span><br>05 キャッシング戦略</div>
+      <span>→</span>
+    </a>
+  </div>
+</div>
+
+
+<!-- ============================
+     深掘り & 実践セクション
+     ============================ -->
+<div class="container">
+<div style="border-top:2px solid var(--border);padding-top:3rem;margin-top:1rem;">
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">REST成熟度モデル（Richardson Maturity Model）</h2>
+    <p class="section-subtitle">APIがどの程度「RESTful」かを4段階で評価するモデル</p>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-bottom:1rem;">
+    <div class="card card-red">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="badge" style="background:var(--red);color:#fff;">Level 0</span>
+        <h3 style="margin:0;">RPCスタイル（1エンドポイント）</h3>
+      </div>
+      <p>全操作を1つのURLに対してPOSTで送る。SOAPなどの古いアーキテクチャがこれに当たる。</p>
+      <pre style="font-size:0.78rem;margin-top:8px;"><code><span class="cm">// すべての操作が同じURL</span>
+POST /api
+{<span class="str">"action"</span>: <span class="str">"getUser"</span>, <span class="str">"id"</span>: <span class="num">123</span>}
+
+POST /api
+{<span class="str">"action"</span>: <span class="str">"createOrder"</span>,
+ <span class="str">"userId"</span>: <span class="num">123</span>, <span class="str">"items"</span>: [...]}
+
+<span class="cm">// 問題: HTTPの機能（キャッシュ・ステータス）</span>
+<span class="cm">// を全く活用できない</span></code></pre>
+    </div>
+    <div class="card card-amber">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="badge" style="background:var(--accent3);color:#000;">Level 1</span>
+        <h3 style="margin:0;">リソース分離</h3>
+      </div>
+      <p>URLをリソースごとに分けるが、HTTPメソッドは統一されていない。</p>
+      <pre style="font-size:0.78rem;margin-top:8px;"><code><span class="cm">// URLはリソースを表すが…</span>
+POST /users/getUser
+POST /users/createUser
+POST /orders/getOrder
+POST /orders/createOrder
+
+<span class="cm">// 改善: URLがリソースを示す</span>
+<span class="cm">// 問題: POSTしか使わず、動詞をURLに入れている</span>
+<span class="cm">// HTTP のセマンティクスを活用できていない</span></code></pre>
+    </div>
+    <div class="card card-green">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="badge" style="background:var(--green);color:#fff;">Level 2</span>
+        <h3 style="margin:0;">HTTP Verbsの正しい使用 ★推奨</h3>
+      </div>
+      <p>REST APIの現実的な目標。GET/POST/PUT/PATCH/DELETEを正しいセマンティクスで使う。</p>
+      <pre style="font-size:0.78rem;margin-top:8px;"><code>GET    /users/123      <span class="cm">← 取得（冪等・キャッシュ可）</span>
+POST   /users          <span class="cm">← 作成（非冪等）</span>
+PUT    /users/123      <span class="cm">← 全更新（冪等）</span>
+PATCH  /users/123      <span class="cm">← 部分更新</span>
+DELETE /users/123      <span class="cm">← 削除（冪等）</span>
+
+<span class="cm">// 正しいステータスコード</span>
+<span class="num">200</span> OK, <span class="num">201</span> Created, <span class="num">204</span> No Content
+<span class="num">400</span> Bad Request, <span class="num">401</span> Unauthorized
+<span class="num">404</span> Not Found, <span class="num">409</span> Conflict
+<span class="num">429</span> Too Many Requests, <span class="num">500</span> Internal Error</code></pre>
+    </div>
+    <div class="card card-accent">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="badge" style="background:var(--accent);color:#fff;">Level 3</span>
+        <h3 style="margin:0;">HATEOAS（ハイパーメディア）</h3>
+      </div>
+      <p>レスポンスに「次に取れるアクション」のリンクを含める。APIが自己記述的になる。</p>
+      <pre style="font-size:0.78rem;margin-top:8px;"><code><span class="cm">// GET /orders/456 のレスポンス</span>
+{
+  <span class="str">"id"</span>: <span class="num">456</span>,
+  <span class="str">"status"</span>: <span class="str">"pending"</span>,
+  <span class="str">"_links"</span>: {
+    <span class="str">"self"</span>: {<span class="str">"href"</span>: <span class="str">"/orders/456"</span>},
+    <span class="str">"cancel"</span>: {<span class="str">"href"</span>: <span class="str">"/orders/456/cancel"</span>,
+               <span class="str">"method"</span>: <span class="str">"POST"</span>},
+    <span class="str">"payment"</span>: {<span class="str">"href"</span>: <span class="str">"/orders/456/pay"</span>}
+  }
+}
+<span class="cm">// クライアントはURLを知らなくてもナビゲート可能</span>
+<span class="cm">// 現実: 実装コスト高 → Level 2が現実的な目標</span></code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">GraphQL N+1問題の完全解決策</h2>
+    <p class="section-subtitle">DataLoaderのバッチ処理とキャッシュで効率的なデータ取得を実現する</p>
+  </div>
+
+  <div class="card card-purple" style="margin-bottom:1rem;">
+    <h3>DataLoaderの仕組み（JavaScript実装）</h3>
+    <pre><code><span class="cm">// 問題: N+1クエリ</span>
+<span class="cm">// Query: users { posts { author { name } } }</span>
+<span class="cm">// → 100ユーザー × 各ユーザーの投稿数 分のSQLが発行される</span>
+
+<span class="cm">// DataLoader: バッチ + キャッシュで解決</span>
+<span class="kw">const</span> DataLoader = <span class="fn">require</span>(<span class="str">'dataloader'</span>)
+
+<span class="cm">// バッチ関数: IDの配列を受け取り、一括取得</span>
+<span class="kw">const</span> userLoader = <span class="kw">new</span> <span class="fn">DataLoader</span>(<span class="kw">async</span> (userIds) => {
+  <span class="cm">// 1回のSQLで全ユーザーを取得</span>
+  <span class="kw">const</span> users = <span class="kw">await</span> db.<span class="fn">query</span>(
+    <span class="str">`SELECT * FROM users WHERE id IN (?)`</span>,
+    [userIds]
+  )
+  <span class="cm">// DataLoaderはIDの順序通りに結果を返す必要がある</span>
+  <span class="kw">return</span> userIds.<span class="fn">map</span>(id => users.<span class="fn">find</span>(u => u.id === id))
+})
+
+<span class="cm">// GraphQL Resolver</span>
+<span class="kw">const</span> resolvers = {
+  Post: {
+    author: (post, _, { loaders }) => {
+      <span class="cm">// load() はキューに追加 → イベントループの次ティックで一括処理</span>
+      <span class="kw">return</span> loaders.user.<span class="fn">load</span>(post.author_id)
+    }
+  }
+}
+
+<span class="cm">// 結果: 100投稿でも userIds=[1,2,3,...,100] で1クエリ</span>
+<span class="cm">// キャッシュ: 同じリクエスト内で同じIDは2回取得しない</span></code></pre>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-bottom:1rem;">
+    <div class="card card-cyan">
+      <h3>@defer / @stream による段階的レスポンス</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm"># @defer: 重い部分を後で送信</span>
+query GetUser {
+  user(id: <span class="str">"123"</span>) {
+    name
+    email
+    ... <span class="kw">on</span> User @defer {
+      <span class="cm"># 計算コストの高いフィールド</span>
+      recommendedPosts { title }
+      friendSuggestions { name }
+    }
+  }
+}
+<span class="cm"># レスポンス1: name, email を即時返却</span>
+<span class="cm"># レスポンス2: recommendedPosts を後で送信</span>
+<span class="cm"># → 初期表示を高速化</span>
+
+<span class="cm"># @stream: リストを逐次送信</span>
+query GetFeed {
+  feed @stream(initialCount: <span class="num">3</span>) {
+    id title
+  }
+}
+<span class="cm"># → 最初の3件を即時表示、残りは続々送信</span></code></pre>
+    </div>
+    <div class="card card-amber">
+      <h3>Persisted Queries によるセキュリティ強化</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// 通常のGraphQL: 任意のクエリを送れる</span>
+POST /graphql
+{<span class="str">"query"</span>: <span class="str">"{ users { id email password } }"</span>}
+<span class="cm">// → 攻撃者が任意のクエリを試せる</span>
+<span class="cm">// → Introspectionで全スキーマを調査可能</span>
+
+<span class="cm">// Persisted Queries: 事前登録クエリのみ許可</span>
+<span class="cm">// 登録時（デプロイ時）</span>
+hash = <span class="fn">SHA256</span>(queryString)
+registry.<span class="fn">set</span>(hash, queryString)
+
+<span class="cm">// クライアントはハッシュのみ送信</span>
+POST /graphql
+{<span class="str">"extensions"</span>: {
+  <span class="str">"persistedQuery"</span>: {
+    <span class="str">"sha256Hash"</span>: <span class="str">"abc123..."</span>
+  }
+}}
+<span class="cm">// → 未登録クエリはサーバーが拒否</span>
+<span class="cm">// → 帯域削減 + セキュリティ向上</span></code></pre>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <div class="alert-label">Apollo Client キャッシュ戦略</div>
+    Apollo Client は InMemoryCache で正規化キャッシュを持つ。同じ型+IDのオブジェクトは自動的に統合される（`User:123` が1箇所に保存され、複数クエリが同じキャッシュを参照）。`fetchPolicy: 'cache-first'` でオフライン対応も可能。
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">APIゲートウェイの実装パターン</h2>
+    <p class="section-subtitle">Kong / AWS API Gateway の設定例とサーキットブレーカー実装</p>
+  </div>
+
+  <div class="card card-accent" style="margin-bottom:1rem;">
+    <h3>Kong Gateway 設定例（Rate Limiting + JWT + CORS）</h3>
+    <pre><code><span class="cm"># Kong の宣言的設定（deck / decK YAML）</span>
+services:
+  - name: user-service
+    url: http://user-service:3000
+    routes:
+      - name: user-api
+        paths: [<span class="str">"/api/users"</span>]
+        methods: [<span class="str">"GET"</span>, <span class="str">"POST"</span>, <span class="str">"PUT"</span>]
+    plugins:
+      <span class="cm"># Rate Limiting（IPごとに1分100リクエスト）</span>
+      - name: rate-limiting
+        config:
+          minute: <span class="num">100</span>
+          hour: <span class="num">1000</span>
+          policy: local        <span class="cm"># local/cluster/redis</span>
+          hide_client_headers: <span class="kw">false</span>
+          fault_tolerant: <span class="kw">true</span>  <span class="cm"># Rate Limit DB障害時もリクエスト通過</span>
+
+      <span class="cm"># JWT 認証</span>
+      - name: jwt
+        config:
+          secret_is_base64: <span class="kw">false</span>
+          claims_to_verify: [<span class="str">"exp"</span>]
+          key_claim_name: <span class="str">"kid"</span>
+
+      <span class="cm"># CORS</span>
+      - name: cors
+        config:
+          origins: [<span class="str">"https://app.example.com"</span>]
+          methods: [<span class="str">"GET"</span>, <span class="str">"POST"</span>, <span class="str">"PUT"</span>, <span class="str">"DELETE"</span>]
+          headers: [<span class="str">"Authorization"</span>, <span class="str">"Content-Type"</span>]
+          credentials: <span class="kw">true</span>
+          max_age: <span class="num">3600</span></code></pre>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-bottom:1rem;">
+    <div class="card card-green">
+      <h3>Circuit Breaker をAPIゲートウェイで実装</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// サーキットブレーカーの3状態</span>
+CLOSED  → 正常: リクエストを通過させる
+OPEN    → 異常: 全リクエストをフォールバック
+HALF_OPEN → 回復確認: 一部リクエストを試験的に通過
+
+<span class="cm">// 実装例（Resilience4j）</span>
+CircuitBreakerConfig config = CircuitBreakerConfig
+  .custom()
+  .failureRateThreshold(<span class="num">50</span>)      <span class="cm">// 50%失敗でOPEN</span>
+  .waitDurationInOpenState(
+    Duration.ofSeconds(<span class="num">30</span>))       <span class="cm">// 30秒後にHALF_OPENへ</span>
+  .slidingWindowSize(<span class="num">10</span>)         <span class="cm">// 直近10リクエストで判断</span>
+  .build();
+
+<span class="cm">// フォールバック</span>
+<span class="kw">return</span> circuitBreaker
+  .executeSupplier(() -> userService.getUser(id))
+  .recover(ex -> User.fromCache(id));  <span class="cm">// キャッシュから返す</span></code></pre>
+    </div>
+    <div class="card card-cyan">
+      <h3>API バージョニングの移行戦略</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// v1 → v2 の段階的廃止</span>
+
+<span class="cm">// Step 1: v2 リリース（v1と並行運用）</span>
+/api/v1/users  <span class="cm">← 引き続き動作</span>
+/api/v2/users  <span class="cm">← 新機能追加版</span>
+
+<span class="cm">// Step 2: Deprecation ヘッダで警告</span>
+HTTP/1.1 200 OK
+Deprecation: <span class="str">"Sun, 31 Dec 2024 23:59:59 GMT"</span>
+Sunset: <span class="str">"Sun, 31 Dec 2024 23:59:59 GMT"</span>
+Link: &lt;/api/v2/users&gt;; rel=<span class="str">"successor-version"</span>
+
+<span class="cm">// Step 3: 廃止6ヶ月前にメール通知</span>
+<span class="cm">// Step 4: 廃止3ヶ月前に 301リダイレクト</span>
+GET /api/v1/users
+→ 301 Moved Permanently
+   Location: /api/v2/users
+
+<span class="cm">// Step 5: 廃止日にエラー返却</span>
+GET /api/v1/users
+→ 410 Gone
+   {"error": "API v1 was deprecated on 2024-12-31"}</code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">実践 +</div>
+    <h2 class="section-title">REST API設計レビュー</h2>
+    <p class="section-subtitle">以下のAPI設計のどこが問題か？正しい設計を答えよう</p>
+  </div>
+
+  <div class="card-grid cols-1" style="gap:1rem;margin-bottom:1rem;">
+
+    <div class="card" style="border-left:4px solid var(--red);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--red);color:#fff;">問題1</span>
+        <h3 style="margin:0;">HTTPメソッドの誤り</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">悪い設計</p>
+          <pre style="font-size:0.8rem;"><code>POST /getUser
+POST /getUsersByAge
+POST /searchProducts?q=laptop</code></pre>
+          <p style="color:var(--text2);font-size:0.85rem;margin-top:6px;">問題: GETすべき操作をPOSTで実装。キャッシュが効かず、ブラウザの戻るボタンで再送確認ダイアログが表示される。</p>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計</p>
+          <pre style="font-size:0.8rem;"><code>GET /users/123
+GET /users?age=25
+GET /products?q=laptop</code></pre>
+          <p style="color:var(--text2);font-size:0.85rem;margin-top:6px;">GETはべき等かつキャッシュ可能。CDNやブラウザキャッシュが効き、パフォーマンスが大幅に向上する。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--red);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--red);color:#fff;">問題2</span>
+        <h3 style="margin:0;">危険な一括削除エンドポイント</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">悪い設計</p>
+          <pre style="font-size:0.8rem;"><code>DELETE /users/all
+DELETE /products</code></pre>
+          <p style="color:var(--text2);font-size:0.85rem;margin-top:6px;">誤ってアクセスされると全データが削除される。バグやCSRFで壊滅的な被害が出る。</p>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計</p>
+          <pre style="font-size:0.8rem;"><code>DELETE /users/123     <span class="cm">← 1件ずつ</span>
+<span class="cm"># 一括削除が必要な場合</span>
+POST /users/bulk-delete
+{"ids": [1, 2, 3], "confirm": true}
+<span class="cm"># → 明示的なIDリスト + 確認フラグ</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--red);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--red);color:#fff;">問題3</span>
+        <h3 style="margin:0;">エラー時も常に200を返す</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">悪い設計</p>
+          <pre style="font-size:0.8rem;"><code>HTTP/1.1 200 OK
+{
+  "success": false,
+  "error": "User not found",
+  "data": null
+}</code></pre>
+          <p style="color:var(--text2);font-size:0.85rem;margin-top:6px;">モニタリングツール・ロードバランサー・CDNがエラーを検知できない。ログ解析も困難。</p>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計</p>
+          <pre style="font-size:0.8rem;"><code>HTTP/1.1 404 Not Found
+{
+  "error": "USER_NOT_FOUND",
+  "message": "ユーザーID 123 は存在しません",
+  "request_id": "req-abc123",
+  "docs_url": "/docs/errors#USER_NOT_FOUND"
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--accent3);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--accent3);color:#000;">問題4</span>
+        <h3 style="margin:0;">ページネーションなしの大量データ返却</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">悪い設計</p>
+          <pre style="font-size:0.8rem;"><code>GET /orders
+<span class="cm">→ 100万件のJSONを一気に返す</span>
+<span class="cm">→ メモリ不足、タイムアウト</span>
+<span class="cm">→ クライアント側もクラッシュ</span></code></pre>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計（カーソルページネーション）</p>
+          <pre style="font-size:0.8rem;"><code>GET /orders?limit=20&cursor=xxx
+{
+  "data": [...],  <span class="cm">// 20件</span>
+  "pagination": {
+    "next_cursor": "eyJpZCI6MTAwfQ",
+    "has_more": true
+  }
+}
+<span class="cm">// カーソルはオフセットより高速</span>
+<span class="cm">// （大量データでもページ移動が O(1)）</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--red);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--red);color:#fff;">問題5</span>
+        <h3 style="margin:0;">パスワードをGETパラメータで渡す</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">危険な設計</p>
+          <pre style="font-size:0.8rem;"><code>GET /login?username=alice
+         &password=secret123
+
+<span class="cm">// URLはアクセスログに記録される</span>
+<span class="cm">// ブラウザ履歴に残る</span>
+<span class="cm">// リファラーヘッダで外部に漏洩</span>
+<span class="cm">// → パスワードが平文で流出!</span></code></pre>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計</p>
+          <pre style="font-size:0.8rem;"><code>POST /auth/login
+Content-Type: application/json
+{
+  "username": "alice",
+  "password": "secret123"
+}
+<span class="cm">// POSTボディはHTTPS暗号化で保護</span>
+<span class="cm">// ログにはURLのみ記録（ボディは記録しない）</span>
+<span class="cm">// ブラウザ履歴・リファラーに残らない</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--accent3);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span class="badge" style="background:var(--accent3);color:#000;">問題6</span>
+        <h3 style="margin:0;">レスポンスに不要な機密情報を含む</h3>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--red);font-weight:600;font-size:0.85rem;margin-bottom:6px;">危険な設計</p>
+          <pre style="font-size:0.8rem;"><code>GET /users/123
+{
+  "id": 123,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "password_hash": "$2b$10$...",
+  "api_key": "sk-live-xxxxx",
+  "internal_user_id": "USR-123",
+  "credit_card_number": "4111..."
+}</code></pre>
+        </div>
+        <div>
+          <p style="color:var(--green);font-weight:600;font-size:0.85rem;margin-bottom:6px;">正しい設計（必要最小限のみ）</p>
+          <pre style="font-size:0.8rem;"><code>GET /users/123
+{
+  "id": 123,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "created_at": "2024-01-15"
+}
+<span class="cm">// 機密情報は専用エンドポイントで</span>
+<span class="cm">// 認証後に最小権限で取得</span>
+<span class="cm">// Allowlist（返してよいフィールド）方式推奨</span>
+<span class="cm">// Denylist（返してはいけないフィールド）は漏れやすい</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">実践 +</div>
+    <h2 class="section-title">OpenAPI 3.0 仕様書（Todo API）</h2>
+    <p class="section-subtitle">認証・エラーレスポンス・スキーマ定義・example を含む完全な仕様例</p>
+  </div>
+
+  <div class="card card-accent">
+    <h3>openapi.yaml — Todo API 完全仕様</h3>
+    <pre style="font-size:0.76rem;"><code>openapi: <span class="str">"3.0.3"</span>
+info:
+  title: Todo API
+  version: <span class="str">"1.0.0"</span>
+  description: |
+    シンプルなTodo管理API。
+    JWT Bearer認証が必要。
+
+servers:
+  - url: https://api.example.com/v1
+    description: 本番環境
+
+<span class="cm"># セキュリティスキーマ定義</span>
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  <span class="cm"># 再利用可能なスキーマ</span>
+  schemas:
+    Todo:
+      type: object
+      required: [id, title, completed, created_at]
+      properties:
+        id:
+          type: integer
+          example: <span class="num">1</span>
+        title:
+          type: string
+          minLength: <span class="num">1</span>
+          maxLength: <span class="num">200</span>
+          example: <span class="str">"牛乳を買う"</span>
+        completed:
+          type: boolean
+          example: <span class="kw">false</span>
+        created_at:
+          type: string
+          format: date-time
+          example: <span class="str">"2024-01-15T09:00:00Z"</span>
+
+    CreateTodoRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: <span class="num">1</span>
+          maxLength: <span class="num">200</span>
+          example: <span class="str">"買い物リストを作る"</span>
+        due_date:
+          type: string
+          format: date
+          example: <span class="str">"2024-01-20"</span>
+
+    <span class="cm"># 標準エラーレスポンス</span>
+    ErrorResponse:
+      type: object
+      required: [error, message, request_id]
+      properties:
+        error:
+          type: string
+          example: <span class="str">"TODO_NOT_FOUND"</span>
+        message:
+          type: string
+          example: <span class="str">"指定されたTodo IDが存在しません"</span>
+        request_id:
+          type: string
+          example: <span class="str">"req-abc123"</span>
+
+    <span class="cm"># ページネーションラッパー</span>
+    PaginatedTodos:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: <span class="str">'#/components/schemas/Todo'</span>
+        pagination:
+          type: object
+          properties:
+            next_cursor:
+              type: string
+              nullable: <span class="kw">true</span>
+              example: <span class="str">"eyJpZCI6MTAwfQ"</span>
+            has_more:
+              type: boolean
+              example: <span class="kw">true</span>
+            total_count:
+              type: integer
+              example: <span class="num">42</span>
+
+  <span class="cm"># 再利用可能なレスポンス</span>
+  responses:
+    Unauthorized:
+      description: 認証エラー
+      content:
+        application/json:
+          schema:
+            $ref: <span class="str">'#/components/schemas/ErrorResponse'</span>
+          example:
+            error: <span class="str">"UNAUTHORIZED"</span>
+            message: <span class="str">"有効なBearerトークンが必要です"</span>
+            request_id: <span class="str">"req-xyz789"</span>
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            $ref: <span class="str">'#/components/schemas/ErrorResponse'</span>
+    TooManyRequests:
+      description: レート制限超過
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: 次のリクエストまでの待機秒数
+      content:
+        application/json:
+          schema:
+            $ref: <span class="str">'#/components/schemas/ErrorResponse'</span>
+
+<span class="cm"># グローバル認証設定</span>
+security:
+  - BearerAuth: []
+
+paths:
+  /todos:
+    get:
+      summary: Todo一覧取得
+      operationId: listTodos
+      tags: [Todos]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: <span class="num">1</span>
+            maximum: <span class="num">100</span>
+            default: <span class="num">20</span>
+          example: <span class="num">20</span>
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: ページネーションカーソル
+        - name: completed
+          in: query
+          schema:
+            type: boolean
+          description: 完了済みのみフィルタ
+      responses:
+        <span class="str">'200'</span>:
+          description: 成功
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/PaginatedTodos'</span>
+        <span class="str">'401'</span>:
+          $ref: <span class="str">'#/components/responses/Unauthorized'</span>
+        <span class="str">'429'</span>:
+          $ref: <span class="str">'#/components/responses/TooManyRequests'</span>
+
+    post:
+      summary: Todo作成
+      operationId: createTodo
+      tags: [Todos]
+      requestBody:
+        required: <span class="kw">true</span>
+        content:
+          application/json:
+            schema:
+              $ref: <span class="str">'#/components/schemas/CreateTodoRequest'</span>
+            examples:
+              basic:
+                summary: シンプルなTodo
+                value:
+                  title: <span class="str">"牛乳を買う"</span>
+              with_due_date:
+                summary: 期限付きTodo
+                value:
+                  title: <span class="str">"レポートを提出する"</span>
+                  due_date: <span class="str">"2024-01-20"</span>
+      responses:
+        <span class="str">'201'</span>:
+          description: 作成成功
+          headers:
+            Location:
+              schema:
+                type: string
+              description: 作成されたリソースのURL
+              example: <span class="str">"/v1/todos/123"</span>
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/Todo'</span>
+        <span class="str">'400'</span>:
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/ErrorResponse'</span>
+              example:
+                error: <span class="str">"VALIDATION_ERROR"</span>
+                message: <span class="str">"title は1文字以上200文字以内で入力してください"</span>
+                request_id: <span class="str">"req-abc123"</span>
+        <span class="str">'401'</span>:
+          $ref: <span class="str">'#/components/responses/Unauthorized'</span>
+
+  /todos/{id}:
+    get:
+      summary: Todo詳細取得
+      operationId: getTodo
+      tags: [Todos]
+      parameters:
+        - name: id
+          in: path
+          required: <span class="kw">true</span>
+          schema:
+            type: integer
+          example: <span class="num">123</span>
+      responses:
+        <span class="str">'200'</span>:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/Todo'</span>
+        <span class="str">'401'</span>:
+          $ref: <span class="str">'#/components/responses/Unauthorized'</span>
+        <span class="str">'404'</span>:
+          $ref: <span class="str">'#/components/responses/NotFound'</span>
+
+    patch:
+      summary: Todo更新（部分更新）
+      operationId: updateTodo
+      tags: [Todos]
+      parameters:
+        - name: id
+          in: path
+          required: <span class="kw">true</span>
+          schema:
+            type: integer
+      requestBody:
+        required: <span class="kw">true</span>
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: <span class="num">1</span>
+              properties:
+                title:
+                  type: string
+                  minLength: <span class="num">1</span>
+                  maxLength: <span class="num">200</span>
+                completed:
+                  type: boolean
+            examples:
+              complete:
+                summary: 完了にする
+                value:
+                  completed: <span class="kw">true</span>
+              rename:
+                summary: タイトル変更
+                value:
+                  title: <span class="str">"新しいタイトル"</span>
+      responses:
+        <span class="str">'200'</span>:
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/Todo'</span>
+        <span class="str">'400'</span>:
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: <span class="str">'#/components/schemas/ErrorResponse'</span>
+        <span class="str">'404'</span>:
+          $ref: <span class="str">'#/components/responses/NotFound'</span>
+
+    delete:
+      summary: Todo削除
+      operationId: deleteTodo
+      tags: [Todos]
+      parameters:
+        - name: id
+          in: path
+          required: <span class="kw">true</span>
+          schema:
+            type: integer
+      responses:
+        <span class="str">'204'</span>:
+          description: 削除成功（ボディなし）
+        <span class="str">'404'</span>:
+          $ref: <span class="str">'#/components/responses/NotFound'</span></code></pre>
+    <div class="alert alert-tip" style="margin-top:12px;">
+      <div class="alert-label">OpenAPI 仕様書のベストプラクティス</div>
+      <strong>components で再利用</strong>: スキーマ・レスポンス・パラメータを $ref で参照し、重複を避ける。<br>
+      <strong>examples を充実させる</strong>: 複数のexampleで正常系・異常系を示す。<br>
+      <strong>operationId</strong>: SDK自動生成時のメソッド名になるため、動詞+名詞で一意に命名する（listTodos, createTodo等）。<br>
+      <strong>エラーレスポンスを統一</strong>: 全エンドポイントで同じ ErrorResponse スキーマを使うことでクライアント実装が簡単になる。
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+</body>
+</html>

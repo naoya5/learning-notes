@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 データベース設計 & スケーリング | システムデザイン学習</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.7;font-size:15px;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.nav-brand{font-weight:700;font-size:1rem;color:var(--accent);text-decoration:none;letter-spacing:-.01em;}
+.nav-links{display:flex;gap:.25rem;}
+.nav-links a{color:var(--text2);text-decoration:none;font-size:.82rem;padding:.3rem .7rem;border-radius:6px;border:1px solid transparent;transition:all .2s;}
+.nav-links a:hover{color:var(--text);border-color:var(--border);background:var(--surface);}
+.nav-links a.active{color:var(--accent);border-color:var(--accent);background:rgba(99,102,241,.08);}
+
+/* HEADER */
+.hero{padding:4rem 2rem 3rem;text-align:center;background:linear-gradient(135deg,rgba(99,102,241,.12) 0%,rgba(34,211,238,.06) 50%,rgba(16,185,129,.06) 100%);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(99,102,241,.18),transparent);pointer-events:none;}
+.hero-badge{display:inline-block;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);color:var(--accent);font-size:.75rem;font-weight:600;padding:.25rem .8rem;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1rem;}
+.hero h1{font-size:2.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.6rem;background:linear-gradient(135deg,#e2e8f0 30%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{color:var(--text2);font-size:1.05rem;max-width:640px;margin:0 auto 1.5rem;}
+.hero-tags{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;}
+.hero-tags span{background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:.75rem;padding:.2rem .6rem;border-radius:20px;}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:0 2rem;}
+.section{padding:3rem 0 2rem;}
+.section-header{margin-bottom:1.8rem;}
+.section-number{font-size:.75rem;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem;}
+.section-title{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--text);}
+.section-subtitle{color:var(--text2);margin-top:.4rem;font-size:.95rem;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;}
+.card-grid{display:grid;gap:1rem;}
+.card-grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+.card-grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.card-grid.cols-4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+.card h3{font-size:1rem;font-weight:700;margin-bottom:.6rem;color:var(--text);}
+.card p{color:var(--text2);font-size:.88rem;line-height:1.6;}
+.card-accent{border-color:var(--accent);background:rgba(99,102,241,.05);}
+.card-green{border-color:var(--green);background:rgba(16,185,129,.05);}
+.card-cyan{border-color:var(--accent2);background:rgba(34,211,238,.05);}
+.card-amber{border-color:var(--accent3);background:rgba(245,158,11,.05);}
+.card-red{border-color:var(--red);background:rgba(239,68,68,.05);}
+.card-purple{border-color:var(--purple);background:rgba(167,139,250,.05);}
+
+/* BADGE */
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;}
+.badge-accent{background:rgba(99,102,241,.2);color:var(--accent);}
+.badge-green{background:rgba(16,185,129,.2);color:var(--green);}
+.badge-cyan{background:rgba(34,211,238,.2);color:var(--accent2);}
+.badge-amber{background:rgba(245,158,11,.2);color:var(--accent3);}
+.badge-red{background:rgba(239,68,68,.2);color:var(--red);}
+.badge-purple{background:rgba(167,139,250,.2);color:var(--purple);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:.85rem;}
+thead tr{background:var(--surface2);}
+thead th{padding:.7rem 1rem;text-align:left;font-weight:700;color:var(--text);font-size:.8rem;letter-spacing:.03em;white-space:nowrap;}
+tbody tr{border-top:1px solid var(--border);}
+tbody tr:nth-child(even){background:rgba(255,255,255,.02);}
+tbody td{padding:.65rem 1rem;color:var(--text2);vertical-align:top;}
+tbody td:first-child{color:var(--text);font-weight:600;}
+
+/* CODE */
+.code-block{background:#0d0f1a;border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.4rem;overflow-x:auto;margin:.8rem 0;}
+.code-block pre{font-family:'JetBrains Mono','Fira Code','Courier New',monospace;font-size:.82rem;line-height:1.7;color:#c9d1d9;}
+.code-label{font-size:.7rem;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;}
+.kw{color:#ff79c6;} .fn{color:#50fa7b;} .cm{color:#6272a4;font-style:italic;}
+.str{color:#f1fa8c;} .num{color:#bd93f9;} .op{color:#ff79c6;}
+.type{color:#8be9fd;} .var{color:#f8f8f2;}
+
+/* DIAGRAM */
+.diagram-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;overflow-x:auto;}
+.diagram-wrap svg{display:block;margin:0 auto;}
+
+/* CALLOUT */
+.callout{border-radius:10px;padding:1rem 1.2rem;margin:.8rem 0;border-left:3px solid;}
+.callout-info{background:rgba(99,102,241,.08);border-color:var(--accent);}
+.callout-warn{background:rgba(245,158,11,.08);border-color:var(--accent3);}
+.callout-tip{background:rgba(16,185,129,.08);border-color:var(--green);}
+.callout-danger{background:rgba(239,68,68,.08);border-color:var(--red);}
+.callout-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;}
+.callout-info .callout-title{color:var(--accent);}
+.callout-warn .callout-title{color:var(--accent3);}
+.callout-tip .callout-title{color:var(--green);}
+.callout-danger .callout-title{color:var(--red);}
+.callout p{color:var(--text2);font-size:.88rem;}
+
+/* LIST */
+ul.feature-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
+ul.feature-list li{color:var(--text2);font-size:.88rem;padding-left:1.2rem;position:relative;}
+ul.feature-list li::before{content:'▸';position:absolute;left:0;color:var(--accent);font-size:.8rem;}
+
+/* INTERVIEW TIPS */
+.tips-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.tip-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;}
+.tip-q{font-size:.82rem;font-weight:700;color:var(--accent3);margin-bottom:.4rem;}
+.tip-a{font-size:.85rem;color:var(--text2);line-height:1.6;}
+
+/* FOOTER NAV */
+.footer-nav{border-top:1px solid var(--border);padding:2rem;margin-top:3rem;}
+.footer-nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-link{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--text2);font-size:.88rem;padding:.5rem .9rem;border:1px solid var(--border);border-radius:8px;transition:all .2s;}
+.footer-link:hover{border-color:var(--accent);color:var(--accent);}
+.footer-link span{font-size:.75rem;color:var(--text3);}
+
+/* DIVIDER */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:2rem 0;}
+
+/* HIGHLIGHT ROW */
+.highlight-row{background:rgba(99,102,241,.07)!important;}
+
+/* PROGRESS BAR */
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:.4rem 0 .8rem;}
+.progress-fill{height:100%;border-radius:2px;}
+
+/* RESPONSIVE */
+@media(max-width:600px){.hero h1{font-size:1.8rem;}.card-grid.cols-3,.card-grid.cols-4{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="00_index.html" class="nav-brand">⬡ システムデザイン</a>
+    <div class="nav-links">
+      <a href="00_index.html">Home</a>
+      <a href="02_networking.html">← Prev</a>
+      <a href="03_databases.html" class="active">03 DB</a>
+      <a href="04_api_design.html">Next →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-badge">Chapter 03</div>
+  <h1>データベース設計 &amp; スケーリング</h1>
+  <p>SQL vs NoSQL の選択から、レプリケーション・シャーディングによる大規模スケーリングまで、本番システムで必要な知識を体系的に学ぶ</p>
+  <div class="hero-tags">
+    <span>SQL / NoSQL</span><span>ACID / BASE</span><span>インデックス</span>
+    <span>レプリケーション</span><span>シャーディング</span><span>接続プール</span>
+    <span>クエリ最適化</span><span>PostgreSQL / Redis / Cassandra</span>
+  </div>
+</header>
+
+<main class="container">
+
+<!-- ============================================================ -->
+<!-- 1. SQL vs NoSQL -->
+<!-- ============================================================ -->
+<section class="section" id="sql-nosql">
+  <div class="section-header">
+    <div class="section-number">Section 01</div>
+    <h2 class="section-title">SQL vs NoSQL</h2>
+    <p class="section-subtitle">どちらを選ぶか ― ユースケース別の判断基準</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>観点</th>
+          <th>SQL (リレーショナル)</th>
+          <th>NoSQL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>データ構造</td><td>スキーマ固定、テーブル・行・列</td><td>スキーマレス or 柔軟（JSON、KV、グラフ等）</td></tr>
+        <tr><td>クエリ言語</td><td>標準 SQL — 強力な JOIN・集計</td><td>DB 固有 API / 限定的なクエリ能力</td></tr>
+        <tr><td>トランザクション</td><td>完全 ACID 保証</td><td>多くは BASE（一部は ACID 対応）</td></tr>
+        <tr><td>スケーリング</td><td>主に垂直スケール（水平は難しい）</td><td>水平スケール前提で設計</td></tr>
+        <tr><td>一貫性</td><td>強一貫性</td><td>結果整合性が多い</td></tr>
+        <tr><td>代表製品</td><td>PostgreSQL, MySQL, Oracle, SQLite</td><td>MongoDB, Redis, Cassandra, DynamoDB</td></tr>
+        <tr><td>得意なユースケース</td><td>金融・決済・ERP・OLTP</td><td>SNS・IoT・リアルタイム分析・大量書き込み</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-tip" style="margin-top:1.2rem;">
+    <div class="callout-title">選択の黄金律</div>
+    <p>「NoSQL の方が速い」は誤解。<strong>データ構造・アクセスパターン・一貫性要件</strong>で選ぶ。多くのシステムは SQL + NoSQL を組み合わせる Polyglot Persistence を採用する。</p>
+  </div>
+
+  <!-- NoSQL Types -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">NoSQL の 4 タイプ</h3>
+  <div class="card-grid cols-2">
+    <div class="card card-accent">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;">
+        <span class="badge badge-accent">Document</span>
+      </div>
+      <h3>ドキュメント型</h3>
+      <p>JSON / BSON 形式でデータを保存。ネストした構造をそのまま格納できる。スキーマ変更が容易。</p>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">代表: <span style="color:var(--accent2)">MongoDB</span>, CouchDB, Firestore</div>
+      <div style="margin-top:.4rem;font-size:.82rem;color:var(--text2);">✓ カタログ, CMS, ユーザープロファイル</div>
+    </div>
+    <div class="card card-green">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;">
+        <span class="badge badge-green">Key-Value</span>
+      </div>
+      <h3>キー・バリュー型</h3>
+      <p>最もシンプルな構造。キーで値を O(1) 取得。超高速だが複雑なクエリは不可。</p>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">代表: <span style="color:var(--green)">Redis</span>, DynamoDB, Memcached</div>
+      <div style="margin-top:.4rem;font-size:.82rem;color:var(--text2);">✓ セッション管理, キャッシュ, リーダーボード</div>
+    </div>
+    <div class="card card-cyan">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;">
+        <span class="badge badge-cyan">Wide Column</span>
+      </div>
+      <h3>ワイドカラム型</h3>
+      <p>行キー + 列ファミリーでデータを整理。大量の書き込みと時系列データが得意。</p>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">代表: <span style="color:var(--accent2)">Cassandra</span>, HBase, Bigtable</div>
+      <div style="margin-top:.4rem;font-size:.82rem;color:var(--text2);">✓ IoT センサー, ログ, 時系列分析</div>
+    </div>
+    <div class="card card-purple">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;">
+        <span class="badge badge-purple">Graph</span>
+      </div>
+      <h3>グラフ型</h3>
+      <p>ノードとエッジでデータを表現。多段リレーション探索が極めて高速。</p>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">代表: <span style="color:var(--purple)">Neo4j</span>, Amazon Neptune, JanusGraph</div>
+      <div style="margin-top:.4rem;font-size:.82rem;color:var(--text2);">✓ SNS の友人関係, レコメンド, 不正検知</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 2. ACID -->
+<!-- ============================================================ -->
+<section class="section" id="acid">
+  <div class="section-header">
+    <div class="section-number">Section 02</div>
+    <h2 class="section-title">ACID 特性と BASE</h2>
+    <p class="section-subtitle">トランザクション保証の原則と結果整合性の世界</p>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="card card-accent">
+      <span class="badge badge-accent" style="font-size:.85rem;padding:.3rem .8rem;margin-bottom:.8rem;display:inline-block;">A — Atomicity（原子性）</span>
+      <h3>すべて成功 or すべて失敗</h3>
+      <p>トランザクション内の操作は不可分。銀行振込: 送金元の引き落としと送金先への入金は両方成功するか両方ロールバックする。途中状態は存在しない。</p>
+      <div class="code-block" style="margin-top:.8rem;">
+        <div class="code-label">SQL 例</div>
+        <pre><span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - 1000 <span class="kw">WHERE</span> id = 1;
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance + 1000 <span class="kw">WHERE</span> id = 2;
+<span class="kw">COMMIT</span>; <span class="cm">-- 両方成功時のみ確定</span></pre>
+      </div>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green" style="font-size:.85rem;padding:.3rem .8rem;margin-bottom:.8rem;display:inline-block;">C — Consistency（一貫性）</span>
+      <h3>制約を常に満たす</h3>
+      <p>トランザクション前後でデータは必ず整合状態を維持する。口座残高は 0 以上という制約があれば、残高不足の引き落としは拒否される。</p>
+      <ul class="feature-list" style="margin-top:.6rem;">
+        <li>外部キー制約</li>
+        <li>UNIQUE / NOT NULL 制約</li>
+        <li>CHECK 制約（残高 &gt;= 0 など）</li>
+        <li>アプリレベルのビジネスルール</li>
+      </ul>
+    </div>
+    <div class="card card-cyan">
+      <span class="badge badge-cyan" style="font-size:.85rem;padding:.3rem .8rem;margin-bottom:.8rem;display:inline-block;">I — Isolation（分離性）</span>
+      <h3>並行トランザクションの相互影響を防ぐ</h3>
+      <p>複数トランザクションが並行実行されても、それぞれが独立して実行されたように見える。分離レベル（READ COMMITTED, REPEATABLE READ, SERIALIZABLE）で調整。</p>
+      <div class="table-wrap" style="margin-top:.8rem;">
+        <table>
+          <thead><tr><th>分離レベル</th><th>Dirty Read</th><th>Non-Repeatable</th><th>Phantom</th></tr></thead>
+          <tbody>
+            <tr><td>Read Uncommitted</td><td style="color:var(--red)">×</td><td style="color:var(--red)">×</td><td style="color:var(--red)">×</td></tr>
+            <tr><td>Read Committed</td><td style="color:var(--green)">✓</td><td style="color:var(--red)">×</td><td style="color:var(--red)">×</td></tr>
+            <tr><td>Repeatable Read</td><td style="color:var(--green)">✓</td><td style="color:var(--green)">✓</td><td style="color:var(--red)">×</td></tr>
+            <tr><td>Serializable</td><td style="color:var(--green)">✓</td><td style="color:var(--green)">✓</td><td style="color:var(--green)">✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card card-amber">
+      <span class="badge badge-amber" style="font-size:.85rem;padding:.3rem .8rem;margin-bottom:.8rem;display:inline-block;">D — Durability（永続性）</span>
+      <h3>コミット後のデータは失われない</h3>
+      <p>コミットされたトランザクションは、電源断やクラッシュが発生してもデータが保持される。WAL（Write-Ahead Log）により実現。</p>
+      <ul class="feature-list" style="margin-top:.6rem;">
+        <li>WAL（先行書き込みログ）</li>
+        <li>fsync によるディスク同期</li>
+        <li>redo ログによるリカバリ</li>
+        <li>クラッシュリカバリプロセス</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- BASE -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">BASE ― NoSQL の哲学</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <span class="badge badge-purple">BA</span>
+      <h3 style="margin-top:.5rem;">Basically Available</h3>
+      <p>システムは常に応答を返す。障害時も部分的に利用可能。SLA よりも可用性を優先する設計。</p>
+    </div>
+    <div class="card">
+      <span class="badge badge-purple">S</span>
+      <h3 style="margin-top:.5rem;">Soft State</h3>
+      <p>入力がなくても時間経過で状態が変化しうる。ノード間の同期が進行中のため、瞬間的な不整合が存在しうる。</p>
+    </div>
+    <div class="card">
+      <span class="badge badge-purple">E</span>
+      <h3 style="margin-top:.5rem;">Eventual Consistency</h3>
+      <p>更新後、一定時間経過すれば全レプリカが最終的に同じ値になる。DNS の伝播やSNSのいいね数が典型例。</p>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">CAP 定理</div>
+    <p>分散システムは <strong>Consistency（一貫性）</strong>・<strong>Availability（可用性）</strong>・<strong>Partition Tolerance（分断耐性）</strong> の 3 つを同時に満たせない。ネットワーク分断は避けられないため、CP（一貫性重視: HBase, Zookeeper）か AP（可用性重視: Cassandra, DynamoDB）かを選択することになる。</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 3. INDEX -->
+<!-- ============================================================ -->
+<section class="section" id="index">
+  <div class="section-header">
+    <div class="section-number">Section 03</div>
+    <h2 class="section-title">インデックス</h2>
+    <p class="section-subtitle">検索を劇的に高速化する仕組みと落とし穴</p>
+  </div>
+
+  <div class="card-grid cols-3">
+    <div class="card card-accent">
+      <span class="badge badge-accent">B-Tree Index</span>
+      <h3 style="margin-top:.5rem;">B-Tree インデックス</h3>
+      <p>最も一般的。<strong>範囲検索・等値検索・ORDER BY</strong> に対応。木の高さが O(log n) なので大規模でも安定したパフォーマンス。</p>
+      <ul class="feature-list" style="margin-top:.6rem;">
+        <li>= 、&lt;、&gt;、BETWEEN、LIKE 'abc%'</li>
+        <li>ORDER BY / GROUP BY の最適化</li>
+        <li>PostgreSQL / MySQL のデフォルト</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <span class="badge badge-green">Hash Index</span>
+      <h3 style="margin-top:.5rem;">Hash インデックス</h3>
+      <p>等値検索 (=) のみ対応。O(1) で非常に高速だが、<strong>範囲検索は不可</strong>。メモリ上のハッシュテーブル構造。</p>
+      <ul class="feature-list" style="margin-top:.6rem;">
+        <li>= のみ（&lt;, &gt; は使えない）</li>
+        <li>ORDER BY に使えない</li>
+        <li>Redis の内部実装に活用</li>
+      </ul>
+    </div>
+    <div class="card card-cyan">
+      <span class="badge badge-cyan">Composite</span>
+      <h3 style="margin-top:.5rem;">複合インデックス</h3>
+      <p>複数カラムを組み合わせたインデックス。<strong>左端のカラムから順に有効</strong>（最左プレフィックス原則）。</p>
+      <div class="code-block" style="margin-top:.6rem;">
+        <pre><span class="cm">-- (a, b, c) の複合インデックス</span>
+<span class="cm">-- 有効: WHERE a=1</span>
+<span class="cm">-- 有効: WHERE a=1 AND b=2</span>
+<span class="cm">-- 無効: WHERE b=2 AND c=3</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clustered vs Non-clustered -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">クラスタードインデックス vs ノンクラスタードインデックス</h3>
+  <div class="card-grid cols-2">
+    <div class="card card-amber">
+      <h3>クラスタードインデックス</h3>
+      <p>インデックスの順序 = データの物理的な格納順序。テーブルに <strong>1 つだけ</strong>作れる。PRIMARY KEY が通常これになる。範囲スキャンが高速。</p>
+      <div class="callout callout-warn" style="margin-top:.8rem;">
+        <div class="callout-title">注意</div>
+        <p>PRIMARY KEY を UUID にすると挿入時に物理ページの再配置が頻発し書き込みが遅くなる（ページスプリット）。連番 (SERIAL / AUTO_INCREMENT) が推奨。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>ノンクラスタードインデックス</h3>
+      <p>インデックスとデータは別領域。テーブルに<strong>複数</strong>作れる。等値検索に強いが、実データへのポインタ参照（ブックマーク参照）が追加コスト。</p>
+      <div style="margin-top:.8rem;">
+        <div style="font-size:.82rem;color:var(--text3);margin-bottom:.4rem;">カバリングインデックス</div>
+        <p style="font-size:.85rem;color:var(--text2);">クエリで必要な全カラムをインデックスに含めると、テーブル本体へのアクセスが不要になる（Index Only Scan）。非常に高速。</p>
+        <div class="code-block">
+          <pre><span class="cm">-- クエリ</span>
+<span class="kw">SELECT</span> email, name <span class="kw">FROM</span> users <span class="kw">WHERE</span> email = <span class="str">'a@b.com'</span>;
+<span class="cm">-- カバリングインデックス</span>
+<span class="kw">CREATE INDEX</span> idx_cover <span class="kw">ON</span> users (email, name);</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Index Cost -->
+  <div class="callout callout-danger" style="margin-top:1.2rem;">
+    <div class="callout-title">インデックスの弊害 ― 書き込みオーバーヘッド</div>
+    <p>インデックスは SELECT を高速化する一方、<strong>INSERT / UPDATE / DELETE のたびにインデックスツリーも更新</strong>が必要。インデックスが多いほど書き込みが遅くなる。書き込みヘビーなテーブルでは最低限のインデックスに留めること。通常は 5〜6 個が上限の目安。</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">インデックス作成例 (PostgreSQL)</div>
+    <pre><span class="cm">-- 通常のインデックス</span>
+<span class="kw">CREATE INDEX</span> idx_users_email <span class="kw">ON</span> users (email);
+
+<span class="cm">-- 複合インデックス（order_date が先 → 範囲スキャンに有利）</span>
+<span class="kw">CREATE INDEX</span> idx_orders_date_user <span class="kw">ON</span> orders (order_date, user_id);
+
+<span class="cm">-- 部分インデックス（条件付き — アクティブユーザーのみ）</span>
+<span class="kw">CREATE INDEX</span> idx_active_users <span class="kw">ON</span> users (email) <span class="kw">WHERE</span> is_active = <span class="kw">true</span>;
+
+<span class="cm">-- 関数インデックス（大文字小文字を無視した検索）</span>
+<span class="kw">CREATE INDEX</span> idx_lower_email <span class="kw">ON</span> users (LOWER(email));</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 4. REPLICATION -->
+<!-- ============================================================ -->
+<section class="section" id="replication">
+  <div class="section-header">
+    <div class="section-number">Section 04</div>
+    <h2 class="section-title">データベースレプリケーション</h2>
+    <p class="section-subtitle">高可用性と読み取りスケールアウトを実現するアーキテクチャ</p>
+  </div>
+
+  <!-- SVG Diagram: Primary-Replica -->
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 760 320" width="760" height="320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Primary-Replica レプリケーション構成図">
+      <title>Primary-Replica レプリケーション</title>
+      <!-- Background -->
+      <rect width="760" height="320" fill="#13151f" rx="8"/>
+
+      <!-- Application -->
+      <rect x="300" y="20" width="160" height="50" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="380" y="41" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Application</text>
+      <text x="380" y="57" text-anchor="middle" fill="#94a3b8" font-size="10">Web Server</text>
+
+      <!-- Write arrow down to Primary -->
+      <line x1="320" y1="70" x2="240" y2="115" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr-accent)"/>
+      <text x="263" y="98" fill="#6366f1" font-size="10" font-weight="600">WRITE</text>
+
+      <!-- Read arrows down to Replicas -->
+      <line x1="440" y1="70" x2="480" y2="115" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
+      <line x1="450" y1="70" x2="600" y2="115" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
+      <text x="480" y="98" fill="#22d3ee" font-size="10" font-weight="600">READ</text>
+
+      <!-- Primary -->
+      <rect x="140" y="115" width="180" height="70" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="2"/>
+      <text x="230" y="140" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="800">PRIMARY</text>
+      <text x="230" y="157" text-anchor="middle" fill="#94a3b8" font-size="10">Read + Write</text>
+      <text x="230" y="172" text-anchor="middle" fill="#64748b" font-size="9">WAL 送信</text>
+
+      <!-- Replica 1 -->
+      <rect x="390" y="115" width="150" height="70" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="465" y="140" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">REPLICA 1</text>
+      <text x="465" y="157" text-anchor="middle" fill="#94a3b8" font-size="10">Read Only</text>
+      <text x="465" y="172" text-anchor="middle" fill="#64748b" font-size="9">standby</text>
+
+      <!-- Replica 2 -->
+      <rect x="560" y="115" width="150" height="70" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="635" y="140" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">REPLICA 2</text>
+      <text x="635" y="157" text-anchor="middle" fill="#94a3b8" font-size="10">Read Only</text>
+      <text x="635" y="172" text-anchor="middle" fill="#64748b" font-size="9">standby</text>
+
+      <!-- Replication arrows -->
+      <line x1="320" y1="155" x2="390" y2="155" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-amber)"/>
+      <line x1="320" y1="160" x2="560" y2="160" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-amber)"/>
+
+      <!-- Labels replication -->
+      <text x="352" y="147" fill="#f59e0b" font-size="10" font-weight="600">WAL Streaming</text>
+
+      <!-- Failover arrow -->
+      <path d="M230 185 Q230 240 465 240" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#arr-red)"/>
+      <text x="320" y="255" text-anchor="middle" fill="#ef4444" font-size="10">Failover（Primary 障害時）</text>
+
+      <!-- Lag label -->
+      <rect x="550" y="210" width="160" height="35" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="630" y="227" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700">⚠ Replication Lag</text>
+      <text x="630" y="241" text-anchor="middle" fill="#94a3b8" font-size="9">非同期では遅延が発生</text>
+
+      <!-- Legend -->
+      <text x="30" y="285" fill="#64748b" font-size="9">━━</text>
+      <text x="48" y="285" fill="#6366f1" font-size="9">書き込み</text>
+      <text x="110" y="285" fill="#64748b" font-size="9">━━</text>
+      <text x="128" y="285" fill="#22d3ee" font-size="9">読み取り</text>
+      <text x="190" y="285" fill="#64748b" font-size="9">- -</text>
+      <text x="205" y="285" fill="#f59e0b" font-size="9">レプリケーション</text>
+      <text x="305" y="285" fill="#64748b" font-size="9">- -</text>
+      <text x="320" y="285" fill="#ef4444" font-size="9">フェイルオーバー</text>
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arr-accent" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr-cyan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+        </marker>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- Sync vs Async -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">同期 vs 非同期レプリケーション</h3>
+  <div class="card-grid cols-2">
+    <div class="card card-accent">
+      <h3>同期レプリケーション</h3>
+      <p>Primary がコミットを確定する前に、Replica が受信・書き込みを確認するまで待機する。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li style="color:var(--green);">データロスなし（RPO = 0）</li>
+        <li style="color:var(--green);">強一貫性を保証</li>
+        <li style="color:var(--red);">Replica の遅延が書き込みレイテンシに直結</li>
+        <li style="color:var(--red);">Replica 障害で Primary も停止リスク</li>
+      </ul>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">PostgreSQL: <code>synchronous_standby_names</code> で設定</div>
+    </div>
+    <div class="card card-cyan">
+      <h3>非同期レプリケーション</h3>
+      <p>Primary はコミット後すぐに応答を返す。WAL は非同期でバックグラウンド送信される。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li style="color:var(--green);">書き込みレイテンシが低い</li>
+        <li style="color:var(--green);">Replica 障害の影響を受けない</li>
+        <li style="color:var(--red);">フェイルオーバー時にデータロスの可能性</li>
+        <li style="color:var(--red);">Replica から古いデータを読む可能性（Replication Lag）</li>
+      </ul>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text3);">MySQL: デフォルトが非同期。Semi-sync もオプションで可能</div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn" style="margin-top:1rem;">
+    <div class="callout-title">Replication Lag の問題</div>
+    <p>非同期レプリケーションでは、書き込み直後に Replica から読み取ると古いデータが返ることがある（Read-Your-Writes 問題）。対策: ① 書き込み直後の読み取りは Primary へ、② 読み取り時にタイムスタンプチェック、③ Sessions Consistency ミドルウェア。</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 5. SHARDING -->
+<!-- ============================================================ -->
+<section class="section" id="sharding">
+  <div class="section-header">
+    <div class="section-number">Section 05</div>
+    <h2 class="section-title">シャーディング (Sharding)</h2>
+    <p class="section-subtitle">データを水平分割して書き込みをスケールアウトする</p>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">シャーディングとは</div>
+    <p>単一 DB では捌けない大量データ/書き込みに対応するため、<strong>データを複数の DB インスタンス（シャード）に水平分割</strong>する手法。各シャードは独立したデータを保持する。レプリケーション（同じデータのコピー）とは異なる。</p>
+  </div>
+
+  <!-- Sharding SVG -->
+  <div class="diagram-wrap" style="margin:1.2rem 0;">
+    <svg viewBox="0 0 760 280" width="760" height="280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="シャーディング構成図">
+      <title>シャーディング</title>
+      <rect width="760" height="280" fill="#13151f" rx="8"/>
+
+      <!-- Client -->
+      <rect x="300" y="15" width="160" height="45" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="380" y="37" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Application</text>
+      <text x="380" y="52" text-anchor="middle" fill="#94a3b8" font-size="10">user_id: 12345</text>
+
+      <!-- Arrow to Router -->
+      <line x1="380" y1="60" x2="380" y2="95" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr2-accent)"/>
+
+      <!-- Shard Router -->
+      <rect x="280" y="95" width="200" height="45" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="2"/>
+      <text x="380" y="116" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="800">Shard Router</text>
+      <text x="380" y="131" text-anchor="middle" fill="#94a3b8" font-size="9">hash(user_id) % 3</text>
+
+      <!-- Arrows to Shards -->
+      <line x1="310" y1="140" x2="160" y2="175" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr2-purple)"/>
+      <line x1="380" y1="140" x2="380" y2="175" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr2-purple)"/>
+      <line x1="450" y1="140" x2="600" y2="175" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr2-purple)"/>
+
+      <!-- Shard 0 -->
+      <rect x="60" y="175" width="190" height="70" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="155" y="198" text-anchor="middle" fill="#10b981" font-size="12" font-weight="700">Shard 0</text>
+      <text x="155" y="214" text-anchor="middle" fill="#94a3b8" font-size="9">user_id % 3 == 0</text>
+      <text x="155" y="228" text-anchor="middle" fill="#64748b" font-size="9">IDs: 0, 3, 6, 9 ...</text>
+
+      <!-- Shard 1 -->
+      <rect x="280" y="175" width="190" height="70" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="375" y="198" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">Shard 1</text>
+      <text x="375" y="214" text-anchor="middle" fill="#94a3b8" font-size="9">user_id % 3 == 1</text>
+      <text x="375" y="228" text-anchor="middle" fill="#64748b" font-size="9">IDs: 1, 4, 7, 10 ...</text>
+
+      <!-- Shard 2 -->
+      <rect x="500" y="175" width="190" height="70" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="595" y="198" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700">Shard 2</text>
+      <text x="595" y="214" text-anchor="middle" fill="#94a3b8" font-size="9">user_id % 3 == 2</text>
+      <text x="595" y="228" text-anchor="middle" fill="#64748b" font-size="9">IDs: 2, 5, 8, 11 ...</text>
+
+      <defs>
+        <marker id="arr2-accent" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>
+        <marker id="arr2-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#a78bfa"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- Sharding Strategies -->
+  <h3 style="margin:1.5rem 0 1rem;font-size:1.15rem;color:var(--text);">シャーディング戦略の比較</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>方式</th><th>仕組み</th><th>メリット</th><th>デメリット</th><th>適用例</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-accent">Hash</span></td>
+          <td>hash(key) % N でシャード決定</td>
+          <td>均一な分散、ホットスポットが発生しにくい</td>
+          <td>シャード追加時に大規模なデータ移動が必要</td>
+          <td>ユーザーデータ、メッセージ</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">Range</span></td>
+          <td>キーの値域でシャード分割<br>(例: A-M, N-Z)</td>
+          <td>範囲クエリが効率的、追加が容易</td>
+          <td>アクセス集中（ホットスポット）が発生しやすい</td>
+          <td>時系列データ、アーカイブ</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-cyan">Directory</span></td>
+          <td>ルックアップテーブルでシャードを管理</td>
+          <td>柔軟な割り当て変更が可能</td>
+          <td>ルックアップが単一障害点、追加レイテンシ</td>
+          <td>マルチテナント、地域分割</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-purple">Consistent Hash</span></td>
+          <td>ハッシュリングで仮想ノード管理</td>
+          <td>シャード追加時のデータ移動が最小限</td>
+          <td>実装が複雑、不均一になりやすい</td>
+          <td>Cassandra, Amazon DynamoDB</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-danger" style="margin-top:1.2rem;">
+    <div class="callout-title">ホットスポット問題</div>
+    <p>シャードキーの選択が悪いと特定のシャードに負荷が集中する。例: 「作成日時」をシャードキーにすると最新シャードに書き込みが集中。「ユーザーID の余り」など <strong>カーディナリティが高く均一に分散するキー</strong>を選ぶ。有名人の投稿のような例外は追加のシャードを割り当てる（Celebrity Problem）。</p>
+  </div>
+
+  <div class="callout callout-warn">
+    <div class="callout-title">シャーディングの制約</div>
+    <p>シャードをまたぐ JOIN は非常にコスト高（アプリ側で結合）。分散トランザクションは複雑。シャードキーを後から変更するのは困難。<strong>シャーディングは最後の手段</strong>。まずはレプリケーション、キャッシュ、クエリ最適化で対処する。</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 6. CONNECTION POOL -->
+<!-- ============================================================ -->
+<section class="section" id="connection-pool">
+  <div class="section-header">
+    <div class="section-number">Section 06</div>
+    <h2 class="section-title">接続プール (Connection Pooling)</h2>
+    <p class="section-subtitle">DB 接続コストを劇的に削減する仕組み</p>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">なぜ必要か</div>
+    <p>DB への TCP 接続確立には通常 <strong>20〜100ms</strong> かかる（TCP ハンドシェイク + SSL + 認証）。リクエストごとに接続していては高負荷時にボトルネックとなる。接続プールは確立済みの接続を<strong>再利用</strong>してこのコストをゼロにする。</p>
+  </div>
+
+  <div class="card-grid cols-3">
+    <div class="card card-accent">
+      <h3>pgBouncer</h3>
+      <p>PostgreSQL 専用の軽量プーキサ。3 種のモード:</p>
+      <ul class="feature-list" style="margin-top:.6rem;">
+        <li><strong>Transaction</strong>: トランザクション単位で接続を使い回す（推奨）</li>
+        <li><strong>Session</strong>: 接続を専有</li>
+        <li><strong>Statement</strong>: SQL 文単位</li>
+      </ul>
+      <div style="margin-top:.8rem;font-size:.82rem;color:var(--text2);">10,000 クライアント → 100 DB 接続に集約可能</div>
+    </div>
+    <div class="card card-green">
+      <h3>HikariCP</h3>
+      <p>Java / JVM 向けの超高速接続プール。Spring Boot のデフォルト。ベンチマークで他を圧倒する性能。</p>
+      <div class="code-block" style="margin-top:.8rem;">
+        <pre><span class="cm"># application.yml</span>
+spring.datasource.hikari:
+  maximum-pool-size: <span class="num">10</span>
+  minimum-idle: <span class="num">5</span>
+  connection-timeout: <span class="num">30000</span>
+  idle-timeout: <span class="num">600000</span></pre>
+      </div>
+    </div>
+    <div class="card card-cyan">
+      <h3>適切なプールサイズ</h3>
+      <p>プールが大きすぎても DB 側が詰まる。計算式:</p>
+      <div style="background:var(--surface2);border-radius:8px;padding:.8rem;margin-top:.6rem;text-align:center;">
+        <div style="font-size:.95rem;font-weight:700;color:var(--accent2);">pool_size = T<sub>db</sub> / T<sub>query</sub></div>
+        <div style="font-size:.78rem;color:var(--text3);margin-top:.4rem;">T<sub>db</sub>=処理時間, T<sub>query</sub>=クエリ時間</div>
+      </div>
+      <p style="font-size:.83rem;margin-top:.7rem;color:var(--text2);">目安: <strong>cores × 2 + effective_spindle_count</strong>（PostgreSQL 推奨公式）</p>
+    </div>
+  </div>
+
+  <div class="code-block" style="margin-top:1.2rem;">
+    <div class="code-label">pgBouncer 設定例 (pgbouncer.ini)</div>
+    <pre>[databases]
+mydb = host=127.0.0.1 port=5432 dbname=mydb
+
+[pgbouncer]
+listen_port = 6432
+listen_addr = *
+auth_type = md5
+pool_mode = transaction    <span class="cm"># Transaction mode 推奨</span>
+max_client_conn = 10000    <span class="cm"># アプリからの最大接続数</span>
+default_pool_size = 100    <span class="cm"># DB への実接続数</span>
+min_pool_size = 10
+reserve_pool_size = 5
+server_idle_timeout = 600</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 7. QUERY OPTIMIZATION -->
+<!-- ============================================================ -->
+<section class="section" id="query-opt">
+  <div class="section-header">
+    <div class="section-number">Section 07</div>
+    <h2 class="section-title">クエリ最適化</h2>
+    <p class="section-subtitle">EXPLAIN の読み方、N+1 問題、JOIN 最適化</p>
+  </div>
+
+  <!-- EXPLAIN -->
+  <h3 style="margin:0 0 1rem;font-size:1.15rem;color:var(--text);">EXPLAIN / EXPLAIN ANALYZE の読み方</h3>
+  <div class="code-block">
+    <div class="code-label">PostgreSQL EXPLAIN ANALYZE</div>
+    <pre><span class="kw">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="num">123</span> <span class="kw">AND</span> status = <span class="str">'pending'</span>;
+
+<span class="cm">-- 出力例</span>
+Seq Scan on orders  (cost=0.00..15420.00 rows=12 width=128)
+                    (actual time=0.045..234.123 rows=8 loops=1)
+  Filter: ((user_id = 123) AND (status = 'pending'))
+  Rows Removed by Filter: 892451
+Planning Time: 0.312 ms
+Execution Time: 234.456 ms</pre>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:1rem;">
+    <div class="card">
+      <h3>注目すべきキーワード</h3>
+      <ul class="feature-list">
+        <li><strong style="color:var(--red);">Seq Scan</strong> — テーブル全件スキャン（インデックス未使用）</li>
+        <li><strong style="color:var(--green);">Index Scan</strong> — インデックス使用（良い）</li>
+        <li><strong style="color:var(--accent2);">Index Only Scan</strong> — カバリングインデックス（最速）</li>
+        <li><strong style="color:var(--amber);">Bitmap Heap Scan</strong> — 複数インデックスを合成</li>
+        <li><strong style="color:var(--red);">Hash Join</strong> — 大テーブル同士の JOIN</li>
+        <li><strong style="color:var(--accent);">Nested Loop</strong> — 片方が小さい場合に有効</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>改善後のクエリプラン</h3>
+      <div class="code-block">
+        <pre><span class="cm">-- インデックス追加</span>
+<span class="kw">CREATE INDEX</span> idx_orders_uid_status
+  <span class="kw">ON</span> orders (user_id, status);
+
+<span class="cm">-- 再 EXPLAIN の結果</span>
+Index Scan using idx_orders_uid_status
+  on orders
+  (cost=0.43..8.47 rows=8 width=128)
+  (actual time=0.031..0.048
+   rows=8 loops=1)
+Execution Time: 0.089 ms  <span class="cm">-- 2600x 改善!</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- N+1 -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">N+1 問題とその解決</h3>
+  <div class="card-grid cols-2">
+    <div class="card card-red">
+      <h3>悪い例: N+1 クエリ</h3>
+      <div class="code-block">
+        <pre><span class="cm"># Python ORM の例（悪い）</span>
+users = User.objects.<span class="fn">all</span>()     <span class="cm"># クエリ 1 回</span>
+<span class="kw">for</span> user <span class="kw">in</span> users:
+    <span class="cm"># ユーザーごとに 1 クエリ → N 回!</span>
+    orders = user.orders.<span class="fn">all</span>()
+
+<span class="cm"># 1000 ユーザー → 1001 クエリ発行!</span></pre>
+      </div>
+    </div>
+    <div class="card card-green">
+      <h3>良い例: Eager Loading / JOIN</h3>
+      <div class="code-block">
+        <pre><span class="cm"># Django: select_related / prefetch_related</span>
+users = User.objects\
+  .<span class="fn">prefetch_related</span>(<span class="str">'orders'</span>).<span class="fn">all</span>()
+
+<span class="cm">-- または SQL JOIN</span>
+<span class="kw">SELECT</span> u.*, o.*
+<span class="kw">FROM</span> users u
+<span class="kw">LEFT JOIN</span> orders o
+  <span class="kw">ON</span> u.id = o.user_id;
+<span class="cm">-- クエリ 1 回で完結!</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOIN Tips -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">JOIN 最適化のポイント</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <h3>JOIN 順序</h3>
+      <p>小さいテーブルを外側（駆動表）に配置する。オプティマイザが自動判断するが、ヒントで制御できる場合もある。</p>
+    </div>
+    <div class="card">
+      <h3>JOIN キーのインデックス</h3>
+      <p>ON 句のカラム両方にインデックスがあると Nested Loop Join が使える。外部キー制約を設定するとインデックスが自動作成される DB もある。</p>
+    </div>
+    <div class="card">
+      <h3>不要な JOIN を避ける</h3>
+      <p>COUNT(*) だけ取得したいなら実際のデータを JOIN しない。EXISTS / IN サブクエリが適切な場面も多い。</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">その他の最適化テクニック</div>
+    <pre><span class="cm">-- SELECT * は避ける（不要なカラムの転送コスト）</span>
+<span class="kw">SELECT</span> id, name, email <span class="kw">FROM</span> users;  <span class="cm">-- 必要なカラムだけ</span>
+
+<span class="cm">-- LIMIT で早期終了</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> logs <span class="kw">ORDER BY</span> created_at <span class="kw">DESC LIMIT</span> <span class="num">100</span>;
+
+<span class="cm">-- WHERE 句に計算式を入れるとインデックスが使えない</span>
+<span class="kw">WHERE</span> YEAR(created_at) = <span class="num">2024</span>       <span class="cm">-- × インデックス不使用</span>
+<span class="kw">WHERE</span> created_at >= <span class="str">'2024-01-01'</span>   <span class="cm">-- ○ インデックス使用</span>
+
+<span class="cm">-- OR はインデックスを使いにくい → UNION ALL に変換</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> email = <span class="str">'a@b.com'</span>
+<span class="kw">UNION ALL</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> phone = <span class="str">'090-xxx'</span>;</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- 8. DB TYPES -->
+<!-- ============================================================ -->
+<section class="section" id="db-types">
+  <div class="section-header">
+    <div class="section-number">Section 08</div>
+    <h2 class="section-title">データベースの種類と使い分け</h2>
+    <p class="section-subtitle">システムデザインで即答できる DB 選択の判断軸</p>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="card card-accent">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>PostgreSQL</h3>
+        <span class="badge badge-accent">OLTP / 汎用</span>
+      </div>
+      <p>最も機能豊富な OSS RDBMS。ACID 完全対応、強力な JSON/JSONB サポート、全文検索、地理情報（PostGIS）まで対応。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>複雑なトランザクション、金融・EC</li>
+        <li>JSON カラムで半構造化データ</li>
+        <li>MVCC による高い並行性</li>
+        <li>豊富な拡張機能エコシステム</li>
+      </ul>
+      <div style="margin-top:.8rem;">
+        <div class="progress-bar"><div class="progress-fill" style="width:95%;background:var(--accent);"></div></div>
+        <div style="font-size:.75rem;color:var(--text3);">機能の豊富さ: 95%</div>
+      </div>
+    </div>
+
+    <div class="card card-green">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>MySQL / MariaDB</h3>
+        <span class="badge badge-green">OLTP / Web</span>
+      </div>
+      <p>Web アプリケーションで最もシェアが高い RDBMS。LAMP スタックの定番。InnoDB エンジンで ACID 対応。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>WordPress, Drupal など CMS</li>
+        <li>シンプルな OLTP ワークロード</li>
+        <li>大規模なコミュニティとエコシステム</li>
+        <li>リードレプリカによる読み取りスケール</li>
+      </ul>
+      <div style="margin-top:.8rem;">
+        <div class="progress-bar"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+        <div style="font-size:.75rem;color:var(--text3);">シンプルさ: 80%</div>
+      </div>
+    </div>
+
+    <div class="card card-red">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>Redis</h3>
+        <span class="badge badge-red">Cache / Session</span>
+      </div>
+      <p>インメモリ Key-Value Store。μs オーダーの超低レイテンシ。永続化オプションあり。Pub/Sub、Stream も対応。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>セッション管理（ユーザーセッション）</li>
+        <li>キャッシュレイヤー（DB 負荷軽減）</li>
+        <li>レートリミット（Sliding Window Counter）</li>
+        <li>リーダーボード（Sorted Set）</li>
+        <li>ジョブキュー（List / Stream）</li>
+      </ul>
+    </div>
+
+    <div class="card card-cyan">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>Cassandra</h3>
+        <span class="badge badge-cyan">Write Heavy / IoT</span>
+      </div>
+      <p>分散ワイドカラム型。書き込みが非常に高速。マスターレス（P2P）アーキテクチャで単一障害点なし。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>IoT センサーデータ（大量書き込み）</li>
+        <li>タイムライン・アクティビティフィード</li>
+        <li>メッセージ履歴（Messenger, Discord）</li>
+        <li>グローバルに分散したシステム</li>
+      </ul>
+    </div>
+
+    <div class="card card-amber">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>MongoDB</h3>
+        <span class="badge badge-amber">Document / Flexible</span>
+      </div>
+      <p>ドキュメント型 NoSQL の代表格。JSON 形式でそのまま保存。スキーマ変更が容易でアジャイル開発に向く。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>スキーマが頻繁に変わる開発初期</li>
+        <li>カタログ、商品情報（属性が可変）</li>
+        <li>コンテンツ管理システム</li>
+        <li>リアルタイム分析（Aggregation Pipeline）</li>
+      </ul>
+    </div>
+
+    <div class="card card-purple">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem;">
+        <h3>Elasticsearch</h3>
+        <span class="badge badge-purple">Search / Analytics</span>
+      </div>
+      <p>分散全文検索エンジン。Lucene ベース。転置インデックスにより高速なテキスト検索と集計分析を実現。</p>
+      <ul class="feature-list" style="margin-top:.7rem;">
+        <li>全文検索（ECサイト商品検索）</li>
+        <li>ログ分析（ELK スタック）</li>
+        <li>オートコンプリート機能</li>
+        <li>リアルタイムダッシュボード（Kibana）</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Decision Matrix -->
+  <h3 style="margin:2rem 0 1rem;font-size:1.15rem;color:var(--text);">DB 選択チートシート</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>要件・ユースケース</th><th>推奨 DB</th><th>理由</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>金融・決済システム</td><td><span class="badge badge-accent">PostgreSQL</span></td><td>ACID 完全保証、複雑なトランザクション</td></tr>
+        <tr><td>セッション管理・キャッシュ</td><td><span class="badge badge-red">Redis</span></td><td>μs レイテンシ、TTL 管理が容易</td></tr>
+        <tr><td>SNS タイムライン・大量書き込み</td><td><span class="badge badge-cyan">Cassandra</span></td><td>書き込みスケール、分散設計</td></tr>
+        <tr><td>商品カタログ（可変属性）</td><td><span class="badge badge-amber">MongoDB</span></td><td>スキーマレス、柔軟なドキュメント構造</td></tr>
+        <tr><td>ECサイト全文検索</td><td><span class="badge badge-purple">Elasticsearch</span></td><td>転置インデックス、ファセット検索</td></tr>
+        <tr><td>SNS の友人関係・レコメンド</td><td><span class="badge badge-purple">Neo4j</span></td><td>グラフ探索が O(n) → O(log n) に</td></tr>
+        <tr><td>IoT・時系列データ</td><td><span class="badge badge-cyan">InfluxDB / Cassandra</span></td><td>時系列最適化、圧縮効率が高い</td></tr>
+        <tr><td>汎用 Web アプリ</td><td><span class="badge badge-green">PostgreSQL + Redis</span></td><td>RDBMS + キャッシュの Polyglot 構成</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- INTERVIEW TIPS -->
+<!-- ============================================================ -->
+<section class="section" id="interview">
+  <div class="section-header">
+    <div class="section-number">Interview</div>
+    <h2 class="section-title">システムデザイン面接 頻出 Q&amp;A</h2>
+    <p class="section-subtitle">データベース設計で押さえておくべき質問と回答の骨格</p>
+  </div>
+
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="tip-q">Q: SQL と NoSQL、どちらを選びますか？</div>
+      <div class="tip-a">まず要件を確認します。複雑なトランザクションや厳密な一貫性が必要なら SQL（PostgreSQL）。大量書き込みでスキーマが可変なら NoSQL（MongoDB/Cassandra）。多くのシステムは両者を組み合わせる Polyglot Persistence を採用します。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: DB のスケーリング方法を教えてください</div>
+      <div class="tip-a">段階的に対応します: ①クエリ最適化・インデックス追加 → ②キャッシュレイヤー（Redis）追加 → ③Read Replica でスケールアウト → ④垂直スケールアップ → ⑤最終手段としてシャーディング。シャーディングは複雑度が跳ね上がるので慎重に。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: インデックスの弊害は？</div>
+      <div class="tip-a">INSERT/UPDATE/DELETE のたびにインデックスも更新されるため書き込みが遅くなります。また、インデックスはディスク容量を消費します。書き込みが多いテーブルでは必要最小限に留め、実行計画（EXPLAIN）で実際に使用されているか確認します。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: シャードキーはどう選びますか？</div>
+      <div class="tip-a">高カーディナリティ（値のバリエーションが多い）でアクセスが均等に分散するキーを選びます。user_id などが典型的な良例です。時系列（created_at）や人気度（like_count）はホットスポットを生みやすいので避けます。クエリパターンに合わせてシャードキーで絞り込めるよう設計することも重要です。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: ACID のどれが最も重要ですか？</div>
+      <div class="tip-a">ユースケース次第ですが、金融系では Atomicity（原子性）が最重要です。送金の途中状態は絶対に許されません。Isolation（分離性）も重要で、分離レベルの選択がパフォーマンスとデータ整合性のトレードオフになります。Serializable は最も安全ですがスループットが下がります。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: レプリケーションラグの対処方法は？</div>
+      <div class="tip-a">① 書き込み直後に読む場合は Primary へルーティング、② 「Read Your Writes」一貫性保証をアプリレベルで実装（書き込みタイムスタンプ管理）、③ 一部の処理は最終整合性を許容しビジネス要件を緩和、④ 同期レプリケーションに変更（レイテンシとのトレードオフ）。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: N+1 問題を説明してください</div>
+      <div class="tip-a">親エンティティを 1 回クエリした後、子エンティティを N 回クエリする非効率なパターンです。例: ユーザー一覧を取得し、ループ内で各ユーザーの注文を取得すると 1+N クエリが発行されます。解決策は JOIN または ORM の Eager Loading（Django の prefetch_related、Rails の includes）です。</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-q">Q: 接続プールのサイズをどう決めますか？</div>
+      <div class="tip-a">PostgreSQL の公式推奨は「CPUコア数 × 2 + ストレージデバイス数」です。プールが多すぎると DB サーバーのメモリ/コンテキストスイッチが増加して逆効果です。実際には負荷テストで測定し、Prometheus + pg_stat_activity でアクティブな接続数をモニタリングしながら調整します。</div>
+    </div>
+  </div>
+
+  <!-- Quick Reference -->
+  <h3 style="margin:2.5rem 0 1rem;font-size:1.15rem;color:var(--text);">よく混同するキーワード 一覧</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>用語 A</th><th>vs</th><th>用語 B</th><th>違いの要点</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Replication</td><td>vs</td><td>Sharding</td><td>Replication = 同じデータのコピー（冗長性・読み取りスケール）、Sharding = データを分割（書き込みスケール）</td></tr>
+        <tr><td>Vertical Scaling</td><td>vs</td><td>Horizontal Scaling</td><td>垂直 = 1台を強化（CPU/RAM増強）、水平 = 台数を増やす（スケールアウト）</td></tr>
+        <tr><td>ACID</td><td>vs</td><td>BASE</td><td>ACID = 強一貫性・トランザクション保証、BASE = 高可用性・結果整合性</td></tr>
+        <tr><td>Clustered Index</td><td>vs</td><td>Non-Clustered Index</td><td>クラスタード = データの物理順序（1つだけ）、ノンクラスタード = 独立した索引（複数可）</td></tr>
+        <tr><td>Synchronous Replication</td><td>vs</td><td>Asynchronous Replication</td><td>同期 = データロスなし・レイテンシ高、非同期 = データロスリスクあり・レイテンシ低</td></tr>
+        <tr><td>Read Replica</td><td>vs</td><td>Multi-Master</td><td>Read Replica = 読み取り専用スレーブ、Multi-Master = 全ノードが書き込み可（競合解決が複雑）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER NAV -->
+<footer>
+  <div class="footer-nav">
+    <div class="footer-nav-inner">
+      <a href="02_networking.html" class="footer-link">
+        <span>←</span>
+        <div>
+          <span>前のチャプター</span>
+          <div style="font-size:.88rem;color:var(--text);">02 ネットワーキング</div>
+        </div>
+      </a>
+      <a href="00_index.html" class="footer-link" style="flex-direction:column;gap:.2rem;">
+        <span style="font-size:.8rem;color:var(--text3);">目次へ戻る</span>
+        <span style="font-size:.88rem;color:var(--text);">⬡ システムデザイン</span>
+      </a>
+      <a href="04_api_design.html" class="footer-link">
+        <div>
+          <span>次のチャプター</span>
+          <div style="font-size:.88rem;color:var(--text);">04 API 設計</div>
+        </div>
+        <span>→</span>
+      </a>
+    </div>
+  </div>
+  <div style="text-align:center;padding:1rem;font-size:.78rem;color:var(--text3);border-top:1px solid var(--border);">
+    システムデザイン学習シリーズ — Chapter 03: データベース設計 &amp; スケーリング
+  </div>
+</footer>
+
+
+<!-- ============================
+     深掘り & 実践セクション
+     ============================ -->
+<div class="container">
+<div style="border-top:2px solid var(--border);padding-top:3rem;margin-top:1rem;">
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">B-Treeインデックスの内部構造</h2>
+    <p class="section-subtitle">PostgreSQL/MySQLが実際にインデックスを管理する仕組みを理解する</p>
+  </div>
+
+  <div class="card card-cyan" style="margin-bottom:1rem;">
+    <h3>B-Treeノード構造（内部ノード vs 葉ノード）</h3>
+    <pre><code><span class="cm">// B-Tree の構造（次数3の例）</span>
+<span class="cm">//</span>
+<span class="cm">//          [30 | 60]          ← 内部ノード（検索キーのみ）</span>
+<span class="cm">//         /    |    \</span>
+<span class="cm">//    [10|20] [40|50] [70|80]  ← 葉ノード（キー + 行ポインタ）</span>
+<span class="cm">//</span>
+<span class="cm">// 内部ノード: 子ノードへのポインタ + 分岐キー</span>
+<span class="cm">// 葉ノード: 実際のキー値 + ヒープ上の行アドレス(ctid)</span>
+<span class="cm">// 葉ノードは双方向リンクリスト → 範囲クエリに効率的</span>
+
+<span class="cm">// SELECT id FROM orders WHERE id = 40</span>
+<span class="cm">// 1. ルートノード[30|60] → 40 ∈ (30,60) → 中央の子</span>
+<span class="cm">// 2. 葉ノード[40|50] → id=40 発見 → ctid取得</span>
+<span class="cm">// 3. ヒープファイルの ctid 位置から行を取得</span>
+<span class="cm">// O(log N) で完了</span>
+
+<span class="cm">// SELECT * FROM orders WHERE id BETWEEN 30 AND 60</span>
+<span class="cm">// 1. id=30 の葉ノードを探す</span>
+<span class="cm">// 2. 葉ノードのリンクリストを60まで辿る</span>
+<span class="cm">// → B+Tree の範囲スキャンが高速な理由</span></code></pre>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-bottom:1rem;">
+    <div class="card card-accent">
+      <h3>Partial Index（部分インデックス）</h3>
+      <p>特定の条件に一致する行だけにインデックスを作成。サイズが小さく、更新も速い。</p>
+      <pre style="font-size:0.8rem;"><code><span class="cm">-- 未処理注文だけのインデックス</span>
+<span class="kw">CREATE INDEX</span> idx_pending_orders
+<span class="kw">ON</span> orders(created_at)
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>;
+
+<span class="cm">-- このクエリで使用される</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+  <span class="kw">AND</span> created_at &gt; NOW() - <span class="str">'1 day'</span>;
+
+<span class="cm">-- 全行: 1000万件</span>
+<span class="cm">-- pending行: 1万件</span>
+<span class="cm">-- インデックスサイズ: 1/1000 に削減</span></code></pre>
+    </div>
+    <div class="card card-green">
+      <h3>Index-Only Scan（カバリングインデックス）</h3>
+      <p>クエリで必要な列がすべてインデックスに含まれる場合、ヒープアクセスが不要になる。</p>
+      <pre style="font-size:0.8rem;"><code><span class="cm">-- (user_id, amount) の複合インデックス</span>
+<span class="kw">CREATE INDEX</span> idx_user_amount
+<span class="kw">ON</span> orders(user_id, amount);
+
+<span class="cm">-- ヒープアクセス不要（Index-Only Scan）</span>
+<span class="kw">SELECT</span> <span class="fn">SUM</span>(amount)
+<span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> user_id = <span class="num">123</span>;
+
+<span class="cm">-- EXPLAIN ANALYZE 出力例</span>
+Index Only Scan using idx_user_amount
+  Index Cond: (user_id = <span class="num">123</span>)
+  Heap Fetches: <span class="num">0</span>  <span class="cm">← VMビットが最新の場合</span>
+  Rows Removed: <span class="num">0</span></code></pre>
+    </div>
+  </div>
+
+  <div class="card" style="background:var(--surface2);border:1px solid var(--border);">
+    <h3>EXPLAIN ANALYZE の読み方</h3>
+    <pre><code><span class="cm">-- クエリプランを取得</span>
+<span class="fn">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> user_id = <span class="num">123</span>
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;
+
+<span class="cm">-- 出力例と読み方</span>
+Limit  (cost=<span class="num">0.43..8.45</span> rows=<span class="num">10</span> width=<span class="num">128</span>)
+       (actual time=<span class="num">0.089..0.112</span> ms rows=<span class="num">10</span> loops=<span class="num">1</span>)
+  <span class="cm">--          ↑推定コスト         ↑実際の実行時間</span>
+  -&gt; Index Scan Backward using idx_user_created
+       on orders
+       (cost=<span class="num">0.43..2345.6</span> rows=<span class="num">500</span> width=<span class="num">128</span>)
+       (actual time=<span class="num">0.082..0.098</span> ms rows=<span class="num">10</span> loops=<span class="num">1</span>)
+     Index Cond: (user_id = <span class="num">123</span>)
+     Rows Removed by Filter: <span class="num">0</span>
+
+Planning Time: <span class="num">0.234</span> ms
+Execution Time: <span class="num">0.156</span> ms
+
+<span class="cm">-- 注目すべきキーワード</span>
+<span class="cm">-- Seq Scan → テーブル全件スキャン（インデックス未使用）</span>
+<span class="cm">-- Index Scan → インデックス使用 + ヒープアクセスあり</span>
+<span class="cm">-- Index Only Scan → ヒープアクセスなし（最速）</span>
+<span class="cm">-- Hash Join / Merge Join / Nested Loop → JOIN方法</span>
+<span class="cm">-- rows=500 だが actual rows=10 → 統計情報が古い可能性</span>
+<span class="cm">-- ANALYZE orders; で統計更新</span></code></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">MVCC（多版型同時実行制御）</h2>
+    <p class="section-subtitle">PostgreSQLがロックなしで高い並行性を実現する仕組み</p>
+  </div>
+
+  <div class="card card-purple" style="margin-bottom:1rem;">
+    <h3>PostgreSQL MVCCの仕組み（xmin, xmax）</h3>
+    <pre><code><span class="cm">-- 各行には隠しシステム列がある</span>
+<span class="kw">SELECT</span> xmin, xmax, id, amount <span class="kw">FROM</span> orders <span class="kw">WHERE</span> id = <span class="num">1</span>;
+
+<span class="cm">--  xmin | xmax | id | amount</span>
+<span class="cm">-- ------+------+----+--------</span>
+<span class="cm">--  100  |  0   |  1 |  5000    ← xmin=作成TX, xmax=0(有効)</span>
+
+<span class="cm">-- UPDATEは「旧行を無効化 + 新行を作成」</span>
+<span class="kw">BEGIN</span>; <span class="cm">-- TX ID = 200</span>
+<span class="kw">UPDATE</span> orders <span class="kw">SET</span> amount = <span class="num">6000</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+
+<span class="cm">-- 内部状態</span>
+<span class="cm">-- xmin=100, xmax=200, id=1, amount=5000  ← 旧行（xmax=200で無効化）</span>
+<span class="cm">-- xmin=200, xmax=0,   id=1, amount=6000  ← 新行（TX200から有効）</span>
+
+<span class="cm">-- READ COMMITTED スナップショット</span>
+<span class="cm">-- TX 300 が SELECT した時点で TX 200 がコミット済み → 6000が見える</span>
+<span class="cm">-- TX 300 が SELECT した時点で TX 200 が実行中   → 5000が見える</span>
+<span class="cm">-- → Dirty Read なし（コミット済みデータのみ可視）</span>
+
+<span class="cm">-- SELECT FOR UPDATE（排他ロック）</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR UPDATE</span>;
+<span class="cm">-- → この行を UPDATE しようとする他のTXはロック待ちに</span>
+<span class="cm">-- → NOWAIT: ロック取得失敗時にエラー</span>
+<span class="cm">-- → SKIP LOCKED: ロック中の行をスキップ（キュー処理に便利）</span></code></pre>
+  </div>
+
+  <div class="card card-amber">
+    <h3>Vacuum処理と肥大化問題</h3>
+    <pre><code><span class="cm">-- 旧バージョン行の蓄積（デッドタプル）</span>
+<span class="cm">-- 高頻度UPDATEのテーブルは旧行が残り続ける</span>
+<span class="kw">SELECT</span> schemaname, tablename,
+       n_dead_tup,    <span class="cm">-- デッドタプル数</span>
+       n_live_tup,    <span class="cm">-- 有効タプル数</span>
+       last_autovacuum
+<span class="kw">FROM</span> pg_stat_user_tables
+<span class="kw">ORDER BY</span> n_dead_tup <span class="kw">DESC</span>;
+
+<span class="cm">-- VACUUM の動作</span>
+<span class="cm">-- VACUUM: デッドタプルをマーク → 再利用可能に（ファイルサイズは減らない）</span>
+<span class="cm">-- VACUUM FULL: テーブルを書き直し → ファイルサイズ削減（テーブルロック必要）</span>
+<span class="kw">VACUUM</span> ANALYZE orders;       <span class="cm">-- 通常メンテナンス</span>
+<span class="kw">VACUUM FULL</span> orders;          <span class="cm">-- ディスク回収（オフピーク時）</span>
+
+<span class="cm">-- autovacuum チューニング</span>
+<span class="cm">-- autovacuum_vacuum_scale_factor = 0.2 (デッドタプル20%超でトリガー)</span>
+<span class="cm">-- 高更新テーブルは 0.01〜0.05 に下げると良い</span>
+<span class="kw">ALTER TABLE</span> orders
+  SET (autovacuum_vacuum_scale_factor = <span class="num">0.01</span>);</code></pre>
+    <div class="alert alert-warn">
+      <div class="alert-label">Transaction ID Wraparound に注意</div>
+      TX IDは32bitで約21億。使い切るとデータが見えなくなる（Wraparound）。`pg_stat_user_tables.age`で監視し、定期的なVACUUMFREEZEが必要。本番でこれを起こすと重大障害になる。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">深掘り +</div>
+    <h2 class="section-title">シャーディングキー選定の深掘り</h2>
+    <p class="section-subtitle">シャーディング戦略の選択がシステムの性能と運用コストを決定づける</p>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-bottom:1rem;">
+    <div class="card card-accent">
+      <h3>ユーザーIDシャーディング</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// shard = user_id % shard_count</span>
+shard_id = user_id % <span class="num">8</span>
+
+<span class="cm">// メリット</span>
+<span class="cm">// ✓ 1ユーザーのデータが同じシャードに集中</span>
+<span class="cm">// ✓ JOIN が1シャード内で完結</span>
+<span class="cm">// ✓ 均等分散しやすい</span>
+
+<span class="cm">// Hotspot問題: セレブユーザー</span>
+<span class="cm">// Elon Musk: 1.5億フォロワー</span>
+<span class="cm">// → 彼のシャードに読み込みが集中</span>
+<span class="cm">// 対策: ホットユーザーをメモリキャッシュ</span>
+<span class="cm">// または別の「セレブシャード」に移動</span></code></pre>
+    </div>
+    <div class="card card-cyan">
+      <h3>地理的シャーディング</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// リージョンで分割</span>
+user.region → shard
+<span class="str">"US"</span>  → us-shard-cluster
+<span class="str">"EU"</span>  → eu-shard-cluster
+<span class="str">"APAC"</span> → ap-shard-cluster
+
+<span class="cm">// メリット</span>
+<span class="cm">// ✓ データレジデンシー要件（GDPR等）に対応</span>
+<span class="cm">// ✓ 地理的近接でレイテンシ低減</span>
+
+<span class="cm">// 問題</span>
+<span class="cm">// 人口分布の偏り（米国+欧州に集中）</span>
+<span class="cm">// 国際移住ユーザーのシャード移動</span>
+<span class="cm">// クロスリージョンJOINが高コスト</span></code></pre>
+    </div>
+    <div class="card card-green">
+      <h3>時間ベースシャーディング</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// ログ・タイムシリーズに最適</span>
+shard = <span class="fn">YEAR_MONTH</span>(timestamp)
+2024_01 → shard_202401
+2024_02 → shard_202402
+
+<span class="cm">// メリット</span>
+<span class="cm">// ✓ 古いシャードをコールドストレージに移動</span>
+<span class="cm">// ✓ 最新データへのアクセスが高速</span>
+<span class="cm">// ✓ バックアップ・アーカイブが容易</span>
+
+<span class="cm">// 問題</span>
+<span class="cm">// 直近シャードに書き込みが集中（Hot Write）</span>
+<span class="cm">// 解決: 書き込み先を複数シャードに分散</span>
+<span class="cm">// (user_id % N) + year_month の複合キー</span></code></pre>
+    </div>
+    <div class="card card-amber">
+      <h3>テナントベースシャーディング（SaaS）</h3>
+      <pre style="font-size:0.8rem;"><code><span class="cm">// SaaSマルチテナント: 顧客企業単位で分割</span>
+tenant_id → shard
+
+<span class="cm">// 3つのモデル</span>
+<span class="cm">// 1. Silo: テナントごとに独立DB</span>
+<span class="cm">//    → 完全な分離、コスト高</span>
+<span class="cm">// 2. Bridge: 共有DB、テナントIDで論理分離</span>
+<span class="cm">//    → コスト効率良、データ漏洩リスク</span>
+<span class="cm">// 3. Pool: 規模に応じてどちらか選択</span>
+<span class="cm">//    → Tier1顧客はSilo, Tier2はBridge</span>
+
+<span class="cm">// Shopify の実装</span>
+<span class="cm">// 各ショップは1シャードに固定</span>
+<span class="cm">// ブラックフライデーのHotspot: 人気ショップを</span>
+<span class="cm">// 独立シャードに事前移動</span></code></pre>
+    </div>
+  </div>
+
+  <div class="card" style="background:var(--surface2);border:1px solid var(--border);">
+    <h3>シャードリバランシング: Blue-Green方式</h3>
+    <pre><code><span class="cm">// 問題: シャード数を8→16に増やしたい</span>
+<span class="cm">// user_id % 8 → user_id % 16 への移行</span>
+
+<span class="cm">// Blue-Green シャードマイグレーション手順</span>
+
+Step 1: <span class="cm">新シャード群（Green）を並行構築</span>
+  Old shards (Blue):  shard0〜7  [読み書き可能]
+  New shards (Green): shard0〜15 [書き込み不可]
+
+Step 2: <span class="cm">バックグラウンドで全データをGreenにコピー</span>
+  <span class="kw">for</span> user_id <span class="kw">in</span> all_users:
+    new_shard = user_id % <span class="num">16</span>
+    <span class="fn">copy</span>(blue[user_id % <span class="num">8</span>], green[new_shard])
+
+Step 3: <span class="cm">差分同期（コピー完了後、変更分を追いかける）</span>
+  binlog / WAL から変更をGreenに適用
+
+Step 4: <span class="cm">短時間メンテナンス（数秒〜数分）</span>
+  書き込みを一時停止 → 最終差分同期 → Green切り替え
+
+Step 5: <span class="cm">トラフィック切り替え</span>
+  Router: user_id % <span class="num">8</span> → user_id % <span class="num">16</span> に更新
+  問題があれば即座に Blue に戻す（ロールバック）</code></pre>
+    <div class="alert alert-tip">
+      <div class="alert-label">Consistent Hashingで回避</div>
+      Consistent Hashingを使えばシャード追加時に移動が必要なデータを最小限に抑えられる（n/(n+1)のデータのみ移動）。仮想ノードで均等分散も実現。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">実践 +</div>
+    <h2 class="section-title">SQLクエリ最適化ラボ</h2>
+    <p class="section-subtitle">問題のあるクエリを見て、最適化後のクエリと理由を考えよう</p>
+  </div>
+
+  <div class="card card-red" style="margin-bottom:1rem;">
+    <h3>問題1: N+1問題（ORM生成クエリ）</h3>
+    <pre><code><span class="cm">-- 悪い例: ORMがN+1クエリを生成</span>
+<span class="cm">-- orders テーブルを取得後、各 order に対して user を別クエリ</span>
+orders = Order.<span class="fn">all</span>()          <span class="cm">-- クエリ1回: 100件取得</span>
+<span class="kw">for</span> order <span class="kw">in</span> orders:
+  <span class="fn">print</span>(order.user.name)      <span class="cm">-- 各orderに1クエリ → 合計101クエリ!</span>
+
+<span class="cm">-- 良い例: JOIN で1クエリに集約</span>
+<span class="kw">SELECT</span> o.id, o.amount, u.name
+<span class="kw">FROM</span> orders o
+<span class="kw">JOIN</span> users u <span class="kw">ON</span> u.id = o.user_id
+<span class="kw">WHERE</span> o.created_at &gt; NOW() - INTERVAL <span class="str">'30 days'</span>;
+
+<span class="cm">-- ORM での解決 (eager loading)</span>
+orders = Order.<span class="fn">includes</span>(<span class="str">'user'</span>).<span class="fn">recent</span>()
+<span class="cm">-- → SELECT * FROM orders WHERE ...  (1クエリ)</span>
+<span class="cm">-- → SELECT * FROM users WHERE id IN (1,2,3,...) (1クエリ)</span>
+<span class="cm">-- 合計 2クエリで完了</span></code></pre>
+  </div>
+
+  <div class="card card-amber" style="margin-bottom:1rem;">
+    <h3>問題2〜3: 集計クエリとJSONインデックス</h3>
+    <pre><code><span class="cm">-- 問題2: GROUP BY の誤った使い方</span>
+<span class="cm">-- 悪い例: HAVING で絞り込む前に全件集計</span>
+<span class="kw">SELECT</span> user_id, <span class="fn">COUNT</span>(*) cnt
+<span class="kw">FROM</span> orders
+<span class="kw">GROUP BY</span> user_id
+<span class="kw">HAVING</span> cnt &gt; <span class="num">10</span>;
+
+<span class="cm">-- 良い例: サブクエリ/CTE で先に絞り込み</span>
+<span class="kw">WITH</span> active_users <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> user_id
+  <span class="kw">FROM</span> orders
+  <span class="kw">GROUP BY</span> user_id
+  <span class="kw">HAVING</span> <span class="fn">COUNT</span>(*) &gt; <span class="num">10</span>
+)
+<span class="kw">SELECT</span> u.*, a.order_count
+<span class="kw">FROM</span> users u
+<span class="kw">JOIN</span> active_users a <span class="kw">ON</span> a.user_id = u.id;
+
+<span class="cm">-- 問題3: PostgreSQL JSONB へのインデックス</span>
+<span class="cm">-- 悪い例: JSON 抽出に関数使用 → インデックス未使用</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> products
+<span class="kw">WHERE</span> metadata-&gt;&gt;<span class="str">'category'</span> = <span class="str">'electronics'</span>;
+<span class="cm">-- → Seq Scan（全件スキャン）</span>
+
+<span class="cm">-- 良い例: GINインデックスで高速化</span>
+<span class="kw">CREATE INDEX</span> idx_products_metadata
+  <span class="kw">ON</span> products <span class="kw">USING</span> <span class="fn">GIN</span>(metadata);
+
+<span class="cm">-- または特定キーへの関数インデックス</span>
+<span class="kw">CREATE INDEX</span> idx_products_category
+  <span class="kw">ON</span> products ((metadata-&gt;&gt;<span class="str">'category'</span>));
+<span class="cm">-- → Index Scan が使われるようになる</span></code></pre>
+  </div>
+
+  <div class="card card-green">
+    <h3>問題4〜5: タイムシリーズとパーティショニング</h3>
+    <pre><code><span class="cm">-- 問題4: 巨大テーブルの時系列クエリ</span>
+<span class="cm">-- 1日1億行のログテーブル → 3年で約1000億行</span>
+<span class="cm">-- 通常のインデックスでも限界に近づく</span>
+
+<span class="cm">-- 解決: パーティショニング（PostgreSQL 10+）</span>
+<span class="kw">CREATE TABLE</span> logs (
+  id        BIGSERIAL,
+  event_at  TIMESTAMPTZ <span class="kw">NOT NULL</span>,
+  user_id   BIGINT,
+  action    TEXT
+) <span class="kw">PARTITION BY RANGE</span> (event_at);
+
+<span class="cm">-- 月次パーティション</span>
+<span class="kw">CREATE TABLE</span> logs_2024_01
+  <span class="kw">PARTITION OF</span> logs
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-02-01'</span>);
+
+<span class="cm">-- クエリは自動的に該当パーティションのみスキャン</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> logs
+<span class="kw">WHERE</span> event_at <span class="kw">BETWEEN</span> <span class="str">'2024-01-15'</span> <span class="kw">AND</span> <span class="str">'2024-01-16'</span>;
+<span class="cm">-- → logs_2024_01 のみスキャン（Partition Pruning）</span>
+
+<span class="cm">-- 問題5: 古いデータの削除</span>
+<span class="cm">-- 悪い例: DELETE は遅く、VACUUMも必要</span>
+<span class="kw">DELETE FROM</span> logs <span class="kw">WHERE</span> event_at &lt; <span class="str">'2022-01-01'</span>; <span class="cm">-- 数時間かかる</span>
+
+<span class="cm">-- 良い例: パーティションごと DROP → 瞬時</span>
+<span class="kw">DROP TABLE</span> logs_2022_01;  <span class="cm">-- ほぼ瞬時</span>
+<span class="cm">-- → VACUUM不要、ロックなし（DDL操作だが軽量）</span></code></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-number">実践 +</div>
+    <h2 class="section-title">データベース選定問題</h2>
+    <p class="section-subtitle">5つのユースケースに最適なDBを選び、その理由を答えよう</p>
+  </div>
+
+  <div class="card-grid cols-1" style="gap:1rem;">
+    <div class="card" style="border-left:4px solid var(--accent);">
+      <h3>シナリオ1: SNSのユーザープロフィールとフォロー/フォロワー関係</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--accent3);font-weight:700;">推奨: Neo4j（グラフDB）+ PostgreSQL</p>
+          <p style="color:var(--text2);font-size:0.88rem;margin-top:6px;">フォロー関係は本質的にグラフ構造。「友達の友達」「6次の隔たり」などの多段階経路探索はRDBよりグラフDBが圧倒的に高速。</p>
+        </div>
+        <pre style="font-size:0.78rem;"><code><span class="cm">// Cypher: 2ホップ以内の共通フォロー</span>
+MATCH (me:User {id:<span class="num">123</span>})
+      -[:FOLLOWS*1..2]-&gt;
+      (suggested:User)
+<span class="kw">WHERE NOT</span> (me)-[:FOLLOWS]-&gt;(suggested)
+<span class="kw">RETURN</span> suggested, <span class="fn">count</span>(*) <span class="kw">AS</span> common
+<span class="kw">ORDER BY</span> common <span class="kw">DESC LIMIT</span> <span class="num">10</span></code></pre>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--accent2);">
+      <h3>シナリオ2: ECサイトの商品カタログ（多様な属性、全文検索）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--accent3);font-weight:700;">推奨: Elasticsearch + PostgreSQL</p>
+          <p style="color:var(--text2);font-size:0.88rem;margin-top:6px;">全文検索・ファセット検索はElasticsearchが最適。商品の多様な属性（電子機器: CPU/RAM、服: サイズ/色）はドキュメントDBやPostgreSQLのJSONBが柔軟に対応。</p>
+        </div>
+        <pre style="font-size:0.78rem;"><code><span class="cm">// ES: ファセット検索</span>
+{
+  <span class="str">"query"</span>: {<span class="str">"match"</span>: {<span class="str">"title"</span>: <span class="str">"laptop"</span>}},
+  <span class="str">"aggs"</span>: {
+    <span class="str">"by_brand"</span>: {
+      <span class="str">"terms"</span>: {<span class="str">"field"</span>: <span class="str">"brand"</span>}
+    }
+  },
+  <span class="str">"filter"</span>: {<span class="str">"range"</span>: {
+    <span class="str">"price"</span>: {<span class="str">"gte"</span>: <span class="num">50000</span>}
+  }}
+}</code></pre>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--green);">
+      <h3>シナリオ3: IoTデバイスのセンサーデータ（1秒1データ, 数百万デバイス）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--accent3);font-weight:700;">推奨: TimescaleDB（PostgreSQL拡張）または InfluxDB</p>
+          <p style="color:var(--text2);font-size:0.88rem;margin-top:6px;">タイムシリーズ特化DB。自動パーティショニング、時系列圧縮、ウィンドウ関数が充実。</p>
+        </div>
+        <pre style="font-size:0.78rem;"><code><span class="cm">-- TimescaleDB: 1時間平均を計算</span>
+<span class="kw">SELECT</span>
+  <span class="fn">time_bucket</span>(<span class="str">'1 hour'</span>, ts) <span class="kw">AS</span> bucket,
+  device_id,
+  <span class="fn">AVG</span>(temperature) <span class="kw">AS</span> avg_temp
+<span class="kw">FROM</span> sensor_data
+<span class="kw">WHERE</span> ts &gt; NOW() - <span class="str">'7 days'</span>
+<span class="kw">GROUP BY</span> bucket, device_id
+<span class="kw">ORDER BY</span> bucket;</code></pre>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--accent3);">
+      <h3>シナリオ4: ゲームのリーダーボード（リアルタイムランキング）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--accent3);font-weight:700;">推奨: Redis Sorted Set</p>
+          <p style="color:var(--text2);font-size:0.88rem;margin-top:6px;">O(log N)でのスコア更新・順位取得が可能。100万ユーザーのランキングでもミリ秒で応答。</p>
+        </div>
+        <pre style="font-size:0.78rem;"><code><span class="cm">// スコア更新</span>
+<span class="fn">ZADD</span> leaderboard <span class="num">95000</span> <span class="str">"user:123"</span>
+
+<span class="cm">// 上位10位を取得</span>
+<span class="fn">ZREVRANGE</span> leaderboard <span class="num">0</span> <span class="num">9</span> WITHSCORES
+
+<span class="cm">// 自分の順位を取得</span>
+<span class="fn">ZREVRANK</span> leaderboard <span class="str">"user:123"</span>
+<span class="cm">// → 0から始まる順位 (0 = 1位)</span></code></pre>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--purple);">
+      <h3>シナリオ5: 金融取引の台帳（不変な取引履歴）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <p style="color:var(--accent3);font-weight:700;">推奨: Amazon QLDB または PostgreSQL with Append-Only設計</p>
+          <p style="color:var(--text2);font-size:0.88rem;margin-top:6px;">取引履歴は絶対に変更・削除できない（監査要件）。QQLBは暗号学的に改ざん検知可能な台帳DB。PostgreSQLでも行削除禁止のポリシーとUPDATEトリガー禁止で実現可能。</p>
+        </div>
+        <pre style="font-size:0.78rem;"><code><span class="cm">-- Append-Only設計（更新・削除禁止）</span>
+<span class="kw">CREATE RULE</span> no_update_ledger
+<span class="kw">AS ON UPDATE TO</span> transactions
+<span class="kw">DO INSTEAD NOTHING</span>;
+
+<span class="kw">CREATE RULE</span> no_delete_ledger
+<span class="kw">AS ON DELETE TO</span> transactions
+<span class="kw">DO INSTEAD NOTHING</span>;
+
+<span class="cm">-- 残高は取引の積み上げで計算</span>
+<span class="kw">SELECT</span> <span class="fn">SUM</span>(amount) <span class="kw">FROM</span> transactions
+<span class="kw">WHERE</span> account_id = <span class="num">456</span>;</code></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+</body>
+</html>

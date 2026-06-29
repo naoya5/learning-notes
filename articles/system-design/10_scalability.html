@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch10 スケーラビリティパターン | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0.6rem 1.5rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;font-size:0.85rem;}
+.nav-inner span{color:var(--text3);}
+.nav-badge{background:var(--accent);color:#fff;padding:0.2rem 0.7rem;border-radius:999px;font-size:0.8rem;font-weight:600;}
+
+/* HEADER */
+.hero{background:linear-gradient(135deg,#0b0d14 0%,#1a1040 50%,#0d2233 100%);padding:4rem 1.5rem 3rem;text-align:center;border-bottom:1px solid var(--border);}
+.hero-tag{display:inline-block;background:rgba(103,232,249,0.1);color:#67e8f9;border:1px solid rgba(103,232,249,0.3);padding:0.3rem 1rem;border-radius:999px;font-size:0.8rem;letter-spacing:0.1em;margin-bottom:1rem;}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,#67e8f9,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.8rem;}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:600px;margin:0 auto 1.5rem;}
+.hero-meta{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;}
+.hero-meta span{color:var(--text3);font-size:0.85rem;display:flex;align-items:center;gap:0.3rem;}
+.hero-meta span::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent2);}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:3rem;}
+.toc h2{font-size:1rem;color:var(--text2);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem;}
+.toc-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.85rem;color:var(--text2);cursor:pointer;transition:all 0.2s;}
+.toc-item:hover{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,0.1);}
+.toc-item a{color:inherit;text-decoration:none;}
+.toc-num{color:var(--accent);font-weight:700;margin-right:0.4rem;}
+
+/* SECTIONS */
+section{margin-bottom:4rem;}
+.section-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.section-num{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;width:2.2rem;height:2.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;}
+.section-header h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;}
+.card-title::before{content:'';width:3px;height:1em;background:var(--accent2);border-radius:2px;display:inline-block;}
+.card p{color:var(--text2);font-size:0.95rem;margin-bottom:0.6rem;}
+.card p:last-child{margin-bottom:0;}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+/* CODE */
+pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:'Fira Code','Cascadia Code',monospace;font-size:0.85rem;color:#93c5fd;margin:1rem 0;}
+code{background:var(--surface2);border-radius:4px;padding:0.1em 0.4em;font-size:0.88em;color:#93c5fd;}
+
+/* FORMULA */
+.formula{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:8px;padding:1rem 1.5rem;margin:1rem 0;font-family:monospace;font-size:1rem;color:var(--accent3);}
+.formula-label{font-size:0.75rem;color:var(--text3);margin-bottom:0.3rem;font-family:sans-serif;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;margin:1rem 0;}
+table{width:100%;border-collapse:collapse;font-size:0.9rem;}
+th{background:var(--surface2);color:var(--text2);font-weight:600;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:0.65rem 1rem;border-bottom:1px solid rgba(42,45,62,0.5);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(99,102,241,0.05);}
+.td-good{color:var(--green);}
+.td-warn{color:var(--accent3);}
+.td-bad{color:var(--red);}
+
+/* TIPS */
+.tip-box{background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(167,139,250,0.1));border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.2rem 1.5rem;margin:1rem 0;}
+.tip-box h4{color:var(--purple);margin-bottom:0.5rem;font-size:0.9rem;}
+.tip-box ul{list-style:none;padding:0;}
+.tip-box ul li{color:var(--text2);font-size:0.9rem;padding:0.2rem 0;padding-left:1.2rem;position:relative;}
+.tip-box ul li::before{content:'▸';position:absolute;left:0;color:var(--accent);}
+
+/* BADGE */
+.badge{display:inline-block;padding:0.15rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600;margin:0 0.2rem;}
+.badge-blue{background:rgba(99,102,241,0.2);color:#a5b4fc;}
+.badge-cyan{background:rgba(34,211,238,0.2);color:#67e8f9;}
+.badge-green{background:rgba(16,185,129,0.2);color:#6ee7b7;}
+.badge-orange{background:rgba(245,158,11,0.2);color:#fcd34d;}
+.badge-red{background:rgba(239,68,68,0.2);color:#fca5a5;}
+.badge-purple{background:rgba(167,139,250,0.2);color:#c4b5fd;}
+
+/* ANTI PATTERN */
+.antipattern{background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:1.2rem 1.5rem;margin:0.8rem 0;}
+.antipattern h4{color:var(--red);margin-bottom:0.5rem;font-size:0.95rem;}
+.antipattern p{color:var(--text2);font-size:0.9rem;margin-bottom:0.4rem;}
+.antipattern p:last-child{margin-bottom:0;}
+
+/* SVG WRAPPER */
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.5rem 0;overflow-x:auto;}
+.diagram h4{color:var(--text2);font-size:0.85rem;text-align:center;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;}
+
+/* FOOTER */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:2rem 1.5rem;margin-top:4rem;}
+.footer-nav{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-nav a{color:var(--text2);font-size:0.9rem;padding:0.5rem 1rem;border:1px solid var(--border);border-radius:8px;transition:all 0.2s;}
+.footer-nav a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none;}
+
+/* INTERVIEW */
+.interview{background:linear-gradient(135deg,rgba(34,211,238,0.08),rgba(16,185,129,0.08));border:1px solid rgba(34,211,238,0.25);border-radius:12px;padding:1.5rem;margin-top:2rem;}
+.interview h3{color:var(--accent2);margin-bottom:1rem;font-size:1rem;}
+.interview ul{list-style:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;}
+@media(max-width:700px){.interview ul{grid-template-columns:1fr;}}
+.interview ul li{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.9rem;font-size:0.85rem;color:var(--text2);position:relative;padding-left:1.5rem;}
+.interview ul li::before{content:'Q';position:absolute;left:0.6rem;color:var(--accent2);font-weight:700;font-size:0.75rem;}
+
+.highlight{color:var(--accent2);font-weight:600;}
+.text-green{color:var(--green);}
+.text-orange{color:var(--accent3);}
+.text-red{color:var(--red);}
+.text-purple{color:var(--purple);}
+.mt1{margin-top:0.5rem;}
+.mt2{margin-top:1rem;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="00_index.html">🏠 Home</a>
+    <span>›</span>
+    <a href="09_distributed_systems.html">← Ch9 分散システム</a>
+    <span>›</span>
+    <span class="nav-badge">Ch10 スケーラビリティ</span>
+    <span>›</span>
+    <a href="11_reliability.html">Ch11 信頼性 →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-tag">CHAPTER 10</div>
+  <h1>スケーラビリティパターン</h1>
+  <p>負荷増大に対応するための設計パターン・技術・トレードオフを体系的に学ぶ</p>
+  <div class="hero-meta">
+    <span>Scale Up vs Scale Out</span>
+    <span>Consistent Hashing</span>
+    <span>Sharding</span>
+    <span>非同期処理</span>
+    <span>キャッシュクラスタ</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- TOC -->
+<div class="toc">
+  <h2>目次</h2>
+  <div class="toc-grid">
+    <div class="toc-item"><a href="#s1"><span class="toc-num">01</span>スケーラビリティとは</a></div>
+    <div class="toc-item"><a href="#s2"><span class="toc-num">02</span>垂直 vs 水平スケーリング</a></div>
+    <div class="toc-item"><a href="#s3"><span class="toc-num">03</span>コンシステントハッシング</a></div>
+    <div class="toc-item"><a href="#s4"><span class="toc-num">04</span>データシャーディング</a></div>
+    <div class="toc-item"><a href="#s5"><span class="toc-num">05</span>読み書き分離</a></div>
+    <div class="toc-item"><a href="#s6"><span class="toc-num">06</span>非同期処理・キューイング</a></div>
+    <div class="toc-item"><a href="#s7"><span class="toc-num">07</span>非正規化・マテビュー</a></div>
+    <div class="toc-item"><a href="#s8"><span class="toc-num">08</span>CDN・エッジコンピューティング</a></div>
+    <div class="toc-item"><a href="#s9"><span class="toc-num">09</span>分散キャッシュのスケーリング</a></div>
+    <div class="toc-item"><a href="#s10"><span class="toc-num">10</span>アンチパターン</a></div>
+  </div>
+</div>
+
+<!-- ===== SECTION 1 ===== -->
+<section id="s1">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <h2>スケーラビリティとは</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">定義</div>
+    <p>スケーラビリティとは、<strong>負荷（リクエスト数・データ量・ユーザー数）が増大した際に、パフォーマンスを維持しながらシステムを拡張できる能力</strong>のことです。</p>
+    <p>単に「大きくする」ことではなく、<span class="highlight">増加した負荷に対してコストと複雑度を抑えながら線形に近い性能を保つ</span>ことが目標です。</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Throughput（スループット）</div>
+      <p>単位時間あたりに処理できるリクエスト数（RPS / QPS）。スケールアウトで線形向上が理想。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Latency（レイテンシ）</div>
+      <p>1リクエストの処理時間。p50/p95/p99で測定。負荷増大でキューイングによる遅延が増加する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Concurrency（同時接続数）</div>
+      <p>同時に処理できるリクエスト数。スレッド数・コネクションプール・イベントループ方式で決まる。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Amdahlの法則（並列化の限界）</div>
+    <p>プログラムの並列化で得られる高速化の理論上限を示す法則。直列部分がボトルネックになる。</p>
+    <div class="formula">
+      <div class="formula-label">Amdahlの法則</div>
+      Speedup(N) = 1 / (S + (1-S)/N)
+      <br><br>
+      S = 直列実行が必要な割合（並列化不可能部分）
+      N = プロセッサ（コア）数
+      <br><br>
+      例: S=0.1（10%が直列）の場合、N→∞でも最大10倍の高速化が上限
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Gustafsonの法則（問題規模の拡大）</div>
+    <p>Amdahlの法則は「問題サイズ固定」が前提。Gustafsonの法則は<strong>問題サイズをコア数に合わせてスケールさせる</strong>ことで、より楽観的なスケーリングを示す。</p>
+    <div class="formula">
+      <div class="formula-label">Gustafsonの法則</div>
+      Speedup(N) = N - S×(N-1)
+      <br><br>
+      = α + N×(1-α)　where α = 直列部分の割合
+      <br><br>
+      実際のクラウドシステムでは問題規模も増大するため、Gustafsonがより現実的
+    </div>
+  </div>
+
+  <!-- SVG: Amdahl's Law -->
+  <div class="diagram">
+    <h4>Amdahlの法則 — 並列化の上限曲線</h4>
+    <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0,8 3,0 6" fill="#64748b"/>
+        </marker>
+      </defs>
+      <!-- Grid -->
+      <line x1="70" y1="20" x2="70" y2="260" stroke="#2a2d3e" stroke-width="1"/>
+      <line x1="70" y1="260" x2="660" y2="260" stroke="#2a2d3e" stroke-width="1"/>
+      <!-- Y gridlines -->
+      <line x1="70" y1="200" x2="660" y2="200" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <line x1="70" y1="140" x2="660" y2="140" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <line x1="70" y1="80" x2="660" y2="80" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <!-- Axes -->
+      <line x1="70" y1="260" x2="660" y2="260" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah)"/>
+      <line x1="70" y1="260" x2="70" y2="20" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah)"/>
+      <!-- Labels -->
+      <text x="355" y="295" fill="#94a3b8" font-size="12" text-anchor="middle">プロセッサ数 N</text>
+      <text x="25" y="145" fill="#94a3b8" font-size="12" text-anchor="middle" transform="rotate(-90,25,145)">スピードアップ倍率</text>
+      <!-- Y axis labels -->
+      <text x="60" y="264" fill="#64748b" font-size="10" text-anchor="end">1x</text>
+      <text x="60" y="204" fill="#64748b" font-size="10" text-anchor="end">5x</text>
+      <text x="60" y="144" fill="#64748b" font-size="10" text-anchor="end">10x</text>
+      <text x="60" y="84" fill="#64748b" font-size="10" text-anchor="end">15x</text>
+      <!-- X axis labels -->
+      <text x="70" y="275" fill="#64748b" font-size="10" text-anchor="middle">1</text>
+      <text x="180" y="275" fill="#64748b" font-size="10" text-anchor="middle">8</text>
+      <text x="290" y="275" fill="#64748b" font-size="10" text-anchor="middle">16</text>
+      <text x="400" y="275" fill="#64748b" font-size="10" text-anchor="middle">32</text>
+      <text x="550" y="275" fill="#64748b" font-size="10" text-anchor="middle">64</text>
+      <!-- Ideal linear -->
+      <polyline points="70,260 180,143 290,97 400,75 550,58" fill="none" stroke="#2a2d3e" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="560" y="55" fill="#64748b" font-size="10">理想（線形）</text>
+      <!-- S=0.05 (5% serial) -->
+      <!-- Speedup = 1/(0.05 + 0.95/N) => at N=1:1, N=8:6.2, N=16:9.4, N=32:12.5, N=64:15.2 -->
+      <!-- Y = 260 - (speedup-1)*12 -->
+      <polyline points="70,260 180,186 290,152 400,130 550,112" fill="none" stroke="#10b981" stroke-width="2.5"/>
+      <text x="555" y="109" fill="#10b981" font-size="10">S=5%</text>
+      <!-- S=0.1 (10% serial) -->
+      <!-- Speedup at N=8:4.7, N=16:6.4, N=32:7.8, N=64:8.7 -->
+      <polyline points="70,260 180,204 290,184 400,170 550,158" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+      <text x="555" y="155" fill="#6366f1" font-size="10">S=10%</text>
+      <!-- S=0.25 (25% serial) -->
+      <!-- Speedup at N=8:2.9, N=16:3.6, N=32:4.1, N=64:4.4 -->
+      <polyline points="70,260 180,225 290,217 400,211 550,207" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+      <text x="555" y="204" fill="#f59e0b" font-size="10">S=25%</text>
+      <!-- S=0.5 (50% serial) -->
+      <!-- Speedup at N=8:1.78, N=16:1.88, N=32:1.94, N=64:1.97 -->
+      <polyline points="70,260 180,239 290,237 400,236 550,236" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+      <text x="555" y="233" fill="#ef4444" font-size="10">S=50%</text>
+      <!-- Annotations -->
+      <text x="355" y="30" fill="#94a3b8" font-size="11" text-anchor="middle">直列部分(S)が大きいほど、コア数を増やしても効果が薄くなる</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ===== SECTION 2 ===== -->
+<section id="s2">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <h2>垂直スケーリング (Scale Up) vs 水平スケーリング (Scale Out)</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">垂直スケーリング (Scale Up)</div>
+      <p>単一サーバーのCPU・メモリ・ディスクを強化する方法。アプリケーションの変更が不要で導入が容易。</p>
+      <p><strong>限界：</strong>物理的な上限（例：最大数TB RAM）があり、コストが指数的に増加する。単一障害点のリスクも残る。</p>
+      <ul style="list-style:none;padding:0;margin-top:0.5rem;">
+        <li style="color:var(--green);font-size:0.88rem;">✓ 実装変更不要</li>
+        <li style="color:var(--green);font-size:0.88rem;">✓ レイテンシへの影響が少ない</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ 物理的上限がある</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ ダウンタイムが必要な場合あり</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ コストが非線形増加</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">水平スケーリング (Scale Out)</div>
+      <p>サーバーの台数を増やして負荷を分散する方法。<strong>ステートレスなアプリケーション設計</strong>が前提条件。</p>
+      <p><strong>必要条件：</strong>セッション共有（Redis）・共有ストレージ・ロードバランサーが必要。</p>
+      <ul style="list-style:none;padding:0;margin-top:0.5rem;">
+        <li style="color:var(--green);font-size:0.88rem;">✓ 理論上無制限にスケール可能</li>
+        <li style="color:var(--green);font-size:0.88rem;">✓ 冗長性・高可用性が向上</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ 分散システムの複雑性増加</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ ステートレス化の設計変更が必要</li>
+        <li style="color:var(--red);font-size:0.88rem;">✗ データ一貫性の考慮が必要</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SVG: Cost curve -->
+  <div class="diagram">
+    <h4>コスト比較：垂直スケール vs 水平スケール</h4>
+    <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="ca" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0,8 3,0 6" fill="#64748b"/>
+        </marker>
+      </defs>
+      <line x1="70" y1="250" x2="650" y2="250" stroke="#64748b" stroke-width="1.5" marker-end="url(#ca)"/>
+      <line x1="70" y1="250" x2="70" y2="20" stroke="#64748b" stroke-width="1.5" marker-end="url(#ca)"/>
+      <!-- Gridlines -->
+      <line x1="70" y1="190" x2="650" y2="190" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <line x1="70" y1="130" x2="650" y2="130" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <line x1="70" y1="70" x2="650" y2="70" stroke="#2a2d3e" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <text x="360" y="282" fill="#94a3b8" font-size="12" text-anchor="middle">処理能力（スケール量）</text>
+      <text x="22" y="140" fill="#94a3b8" font-size="12" text-anchor="middle" transform="rotate(-90,22,140)">コスト</text>
+      <!-- Y Labels -->
+      <text x="60" y="254" fill="#64748b" font-size="10" text-anchor="end">低</text>
+      <text x="60" y="194" fill="#64748b" font-size="10" text-anchor="end">中</text>
+      <text x="60" y="134" fill="#64748b" font-size="10" text-anchor="end">高</text>
+      <text x="60" y="74" fill="#64748b" font-size="10" text-anchor="end">超高</text>
+      <!-- Scale Up: exponential -->
+      <path d="M 70,250 C 200,248 320,210 420,150 C 480,115 520,80 560,45" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+      <text x="565" y="42" fill="#ef4444" font-size="11" font-weight="700">Scale Up（指数増加）</text>
+      <!-- Scale Out: linear -->
+      <line x1="70" y1="250" x2="590" y2="50" stroke="#10b981" stroke-width="2.5"/>
+      <text x="595" y="47" fill="#10b981" font-size="11" font-weight="700">Scale Out（線形増加）</text>
+      <!-- Crossover annotation -->
+      <circle cx="200" cy="238" r="4" fill="#f59e0b"/>
+      <line x1="200" y1="238" x2="200" y2="175" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="205" y="170" fill="#f59e0b" font-size="10">初期は Scale Up が安価</text>
+      <!-- Break point -->
+      <circle cx="380" cy="183" r="5" fill="#a78bfa" opacity="0.7"/>
+      <line x1="380" y1="183" x2="420" y2="155" stroke="#a78bfa" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="425" y="152" fill="#a78bfa" font-size="10">コスト逆転ポイント</text>
+      <!-- Physical limit -->
+      <line x1="560" y1="20" x2="560" y2="260" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+      <text x="562" y="265" fill="#ef4444" font-size="9">物理上限</text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="card-title">クラウドでのAuto Scaling</div>
+    <p>AWS Auto Scaling / GCP Autoscaler / Azure VMSS などは、CPU使用率・リクエスト数などのメトリクスに基づいてインスタンスを自動追加/削除する。</p>
+    <div class="grid-2">
+      <div>
+        <p class="highlight">スケールアウトのトリガー例（AWS）</p>
+        <pre># Target Tracking Policy（CPU 70%を目標）
+{
+  "TargetValue": 70.0,
+  "PredefinedMetricSpec": {
+    "PredefinedMetricType": "ASGAverageCPUUtilization"
+  },
+  "ScaleOutCooldown": 60,
+  "ScaleInCooldown": 300
+}</pre>
+      </div>
+      <div>
+        <p class="highlight">注意点</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;">• ウォームアップ時間（新インスタンス起動に数十秒〜数分）</li>
+          <li style="padding:0.2rem 0;">• スケールイン時のGraceful Shutdown（処理中リクエストの保護）</li>
+          <li style="padding:0.2rem 0;">• クールダウン期間（過剰なスケール防止）</li>
+          <li style="padding:0.2rem 0;">• 最小・最大インスタンス数の設定</li>
+          <li style="padding:0.2rem 0;">• Predictive Scalingで予測的事前スケール</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>垂直スケーリング（Scale Up）</th>
+          <th>水平スケーリング（Scale Out）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>コスト曲線</td><td class="td-warn">指数関数的増加</td><td class="td-good">ほぼ線形</td></tr>
+        <tr><td>上限</td><td class="td-bad">物理的上限あり（数TBなど）</td><td class="td-good">理論上無限</td></tr>
+        <tr><td>実装の複雑さ</td><td class="td-good">低（アプリ変更不要）</td><td class="td-warn">高（ステートレス化必要）</td></tr>
+        <tr><td>可用性</td><td class="td-bad">単一障害点リスク</td><td class="td-good">冗長性あり</td></tr>
+        <tr><td>ダウンタイム</td><td class="td-bad">スケール時に必要な場合あり</td><td class="td-good">ゼロダウンタイム可能</td></tr>
+        <tr><td>データ一貫性</td><td class="td-good">問題なし</td><td class="td-warn">分散トランザクションが必要な場合</td></tr>
+        <tr><td>適用例</td><td>DB（初期）、モノリシックアプリ</td><td>Web/APIサーバー、マイクロサービス</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SECTION 3 ===== -->
+<section id="s3">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <h2>コンシステントハッシング (Consistent Hashing)</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">通常のモジュロハッシュの問題</div>
+    <p>ノード数Nでハッシュする場合：<code>node = hash(key) % N</code></p>
+    <p>ノードを1台追加してN+1になると、ほぼ<strong>すべてのキーのマッピングが変わる</strong>ため、大量のキャッシュミスや大規模なデータ移動が発生する。</p>
+    <div class="formula">
+      再マッピング率 ≈ N/(N+1) ≈ 100%（Nが大きい場合もほぼ全キーに影響）
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">コンシステントハッシングの仕組み</div>
+    <p>0〜2³²-1（または0〜360°）のハッシュ空間を<strong>リング（環）状</strong>に配置し、各ノードをリング上の点にマッピング。キーは「時計回りに最初に見つかるノード」に割り当てられる。</p>
+    <p><strong>メリット：</strong>ノード追加・削除時に影響を受けるキーは <span class="highlight">1/N（平均）</span> のみ。</p>
+    <div class="formula">
+      ノード追加時の再マッピング = 全キーの約 1/(N+1)
+      ノード削除時の再マッピング = 削除ノードのキー数のみ（隣接ノードへ移行）
+    </div>
+  </div>
+
+  <!-- SVG: Consistent Hash Ring -->
+  <div class="diagram">
+    <h4>コンシステントハッシュリング（バーチャルノードあり）</h4>
+    <svg viewBox="0 0 700 480" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <!-- Ring -->
+      <circle cx="350" cy="240" r="160" fill="none" stroke="#2a2d3e" stroke-width="2"/>
+      <!-- Node A (3 vnodes) -->
+      <!-- vA1 at 30deg -->
+      <circle cx="489" cy="160" r="18" fill="#6366f1" opacity="0.9"/>
+      <text x="489" y="165" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">A1</text>
+      <!-- vA2 at 150deg -->
+      <circle cx="211" cy="160" r="18" fill="#6366f1" opacity="0.9"/>
+      <text x="211" y="165" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">A2</text>
+      <!-- vA3 at 270deg -->
+      <circle cx="350" cy="400" r="18" fill="#6366f1" opacity="0.9"/>
+      <text x="350" y="405" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">A3</text>
+      <!-- Node B (3 vnodes) -->
+      <!-- vB1 at 70deg -->
+      <circle cx="455" cy="96" r="18" fill="#10b981" opacity="0.9"/>
+      <text x="455" y="101" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">B1</text>
+      <!-- vB2 at 190deg -->
+      <circle cx="192" cy="268" r="18" fill="#10b981" opacity="0.9"/>
+      <text x="192" y="273" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">B2</text>
+      <!-- vB3 at 310deg -->
+      <circle cx="453" cy="363" r="18" fill="#10b981" opacity="0.9"/>
+      <text x="453" y="368" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">B3</text>
+      <!-- Node C (3 vnodes) -->
+      <!-- vC1 at 110deg -->
+      <circle cx="241" cy="96" r="18" fill="#f59e0b" opacity="0.9"/>
+      <text x="241" y="101" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">C1</text>
+      <!-- vC2 at 230deg -->
+      <circle cx="248" cy="363" r="18" fill="#f59e0b" opacity="0.9"/>
+      <text x="248" y="368" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">C2</text>
+      <!-- vC3 at 350deg -->
+      <circle cx="508" cy="268" r="18" fill="#f59e0b" opacity="0.9"/>
+      <text x="508" y="273" fill="#fff" font-size="11" text-anchor="middle" font-weight="700">C3</text>
+      <!-- Keys on ring -->
+      <circle cx="510" cy="212" r="7" fill="#a78bfa"/>
+      <text x="525" y="217" fill="#a78bfa" font-size="10">key1</text>
+      <circle cx="350" cy="80" r="7" fill="#a78bfa"/>
+      <text x="360" y="76" fill="#a78bfa" font-size="10">key2</text>
+      <circle cx="190" cy="320" r="7" fill="#a78bfa"/>
+      <text x="165" y="325" fill="#a78bfa" font-size="10">key3</text>
+      <!-- Arrows from keys to nodes -->
+      <path d="M507,205 C500,185 490,172 490,172" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ah)" stroke-dasharray="3,2"/>
+      <path d="M352,88 C380,88 440,92 450,96" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ah)" stroke-dasharray="3,2"/>
+      <path d="M192,313 C192,300 192,285 192,278" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ah)" stroke-dasharray="3,2"/>
+      <!-- Legend -->
+      <rect x="30" y="420" width="12" height="12" fill="#6366f1" rx="2"/>
+      <text x="47" y="431" fill="#94a3b8" font-size="11">サーバーA（3 vnode）</text>
+      <rect x="195" y="420" width="12" height="12" fill="#10b981" rx="2"/>
+      <text x="212" y="431" fill="#94a3b8" font-size="11">サーバーB（3 vnode）</text>
+      <rect x="360" y="420" width="12" height="12" fill="#f59e0b" rx="2"/>
+      <text x="377" y="431" fill="#94a3b8" font-size="11">サーバーC（3 vnode）</text>
+      <circle cx="540" cy="426" r="6" fill="#a78bfa"/>
+      <text x="552" y="431" fill="#94a3b8" font-size="11">キー</text>
+      <!-- Center label -->
+      <text x="350" y="235" fill="#2a2d3e" font-size="28" text-anchor="middle" font-weight="900" opacity="0.5">RING</text>
+      <text x="350" y="255" fill="#64748b" font-size="11" text-anchor="middle">0 → 2³² - 1</text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="card-title">バーチャルノード（Virtual Nodes / vnodes）</div>
+    <p>各物理ノードをリング上の<strong>複数の仮想ノード</strong>（通常100〜200個）にマッピングすることで、偏りのない均等な負荷分散を実現する。</p>
+    <p>新ノード追加時は全既存ノードからキーを少量ずつ移行できるため、リバランシングが滑らか。スペックの異なるサーバーには仮想ノード数を変えることで重み付けが可能。</p>
+    <div class="grid-2">
+      <div>
+        <p class="highlight">Cassandraのvnode設定例</p>
+        <pre># cassandra.yaml
+num_tokens: 256   # デフォルトvnode数
+# 高スペックノード
+num_tokens: 512   # 2倍の負荷を受け持つ</pre>
+      </div>
+      <div>
+        <p class="highlight">利用システム例</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;"><span class="badge badge-blue">Cassandra</span> vnodeで均等分散</li>
+          <li style="padding:0.2rem 0;"><span class="badge badge-green">DynamoDB</span> 内部でコンシステントハッシング</li>
+          <li style="padding:0.2rem 0;"><span class="badge badge-cyan">Memcached</span> クライアント側ライブラリで実装</li>
+          <li style="padding:0.2rem 0;"><span class="badge badge-orange">CDN</span> エッジノード選択に利用</li>
+          <li style="padding:0.2rem 0;"><span class="badge badge-purple">Redis Cluster</span> 16384スロット方式（変形版）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip-box">
+    <h4>面接ポイント：ホットスポット対策</h4>
+    <ul>
+      <li>特定のキー（有名人のUserIDなど）が超集中する場合、そのキーを <code>key + random_suffix(0..99)</code> に分割してシャードに分散させる</li>
+      <li>読み取りホットスポットはレプリカの増加で対応</li>
+      <li>書き込みホットスポットはバッファリング＋バッチ処理で緩和</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== SECTION 4 ===== -->
+<section id="s4">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <h2>データシャーディング (Sharding)</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">水平シャーディングの原理</div>
+    <p>大きなデータセットを<strong>シャード（Shard）</strong>と呼ぶ小さな単位に分割し、複数のデータベースノードに分散して格納する技術。各シャードは全体の部分集合を持ち、独立して動作する。</p>
+    <div class="formula">
+      例：1億ユーザーを4シャードに分割
+      Shard 0: user_id % 4 == 0 → 2500万ユーザー
+      Shard 1: user_id % 4 == 1 → 2500万ユーザー
+      ...
+    </div>
+  </div>
+
+  <!-- Sharding methods SVG -->
+  <div class="diagram">
+    <h4>シャーディング方式の比較</h4>
+    <svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <!-- Hash-based -->
+      <rect x="20" y="30" width="155" height="140" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="97" y="52" fill="#6366f1" font-size="12" text-anchor="middle" font-weight="700">Hash-based</text>
+      <text x="97" y="68" fill="#94a3b8" font-size="9" text-anchor="middle">hash(key) % N</text>
+      <rect x="35" y="78" width="125" height="22" rx="4" fill="#6366f1" opacity="0.3"/>
+      <text x="97" y="93" fill="#a5b4fc" font-size="10" text-anchor="middle">hash(user_id) % 4</text>
+      <!-- Shards -->
+      <rect x="35" y="108" width="26" height="40" rx="3" fill="#6366f1" opacity="0.7"/>
+      <text x="48" y="132" fill="#fff" font-size="9" text-anchor="middle">S0</text>
+      <rect x="67" y="108" width="26" height="40" rx="3" fill="#6366f1" opacity="0.7"/>
+      <text x="80" y="132" fill="#fff" font-size="9" text-anchor="middle">S1</text>
+      <rect x="99" y="108" width="26" height="40" rx="3" fill="#6366f1" opacity="0.7"/>
+      <text x="112" y="132" fill="#fff" font-size="9" text-anchor="middle">S2</text>
+      <rect x="131" y="108" width="26" height="40" rx="3" fill="#6366f1" opacity="0.7"/>
+      <text x="144" y="132" fill="#fff" font-size="9" text-anchor="middle">S3</text>
+      <text x="97" y="160" fill="#10b981" font-size="9" text-anchor="middle">✓ 均等分散</text>
+      <text x="97" y="172" fill="#ef4444" font-size="9" text-anchor="middle">✗ 範囲クエリ困難</text>
+
+      <!-- Range-based -->
+      <rect x="190" y="30" width="155" height="140" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="267" y="52" fill="#10b981" font-size="12" text-anchor="middle" font-weight="700">Range-based</text>
+      <text x="267" y="68" fill="#94a3b8" font-size="9" text-anchor="middle">キー範囲で分割</text>
+      <!-- Range visual -->
+      <rect x="205" y="78" width="125" height="22" rx="4" fill="#10b981" opacity="0.2"/>
+      <text x="267" y="88" fill="#6ee7b7" font-size="9" text-anchor="middle">A-G | H-M | N-S | T-Z</text>
+      <rect x="205" y="108" width="26" height="40" rx="3" fill="#10b981" opacity="0.5"/>
+      <text x="218" y="127" fill="#fff" font-size="8" text-anchor="middle">A-G</text>
+      <rect x="237" y="108" width="26" height="40" rx="3" fill="#10b981" opacity="0.6"/>
+      <text x="250" y="127" fill="#fff" font-size="8" text-anchor="middle">H-M</text>
+      <rect x="269" y="108" width="26" height="40" rx="3" fill="#10b981" opacity="0.7"/>
+      <text x="282" y="127" fill="#fff" font-size="8" text-anchor="middle">N-S</text>
+      <rect x="301" y="108" width="26" height="40" rx="3" fill="#10b981" opacity="0.8"/>
+      <text x="314" y="127" fill="#fff" font-size="8" text-anchor="middle">T-Z</text>
+      <text x="267" y="160" fill="#10b981" font-size="9" text-anchor="middle">✓ 範囲クエリ効率的</text>
+      <text x="267" y="172" fill="#ef4444" font-size="9" text-anchor="middle">✗ ホットスポットリスク</text>
+
+      <!-- Directory-based -->
+      <rect x="360" y="30" width="155" height="140" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="437" y="52" fill="#f59e0b" font-size="12" text-anchor="middle" font-weight="700">Directory-based</text>
+      <text x="437" y="68" fill="#94a3b8" font-size="9" text-anchor="middle">ルックアップテーブル</text>
+      <rect x="375" y="76" width="65" height="72" rx="4" fill="#f59e0b" opacity="0.15" stroke="#f59e0b" stroke-width="0.5"/>
+      <text x="407" y="90" fill="#fcd34d" font-size="9" text-anchor="middle">Lookup</text>
+      <text x="407" y="103" fill="#94a3b8" font-size="8" text-anchor="middle">key1→S2</text>
+      <text x="407" y="115" fill="#94a3b8" font-size="8" text-anchor="middle">key2→S0</text>
+      <text x="407" y="127" fill="#94a3b8" font-size="8" text-anchor="middle">key3→S3</text>
+      <text x="407" y="139" fill="#94a3b8" font-size="8" text-anchor="middle">key4→S1</text>
+      <line x1="442" y1="110" x2="460" y2="110" stroke="#f59e0b" stroke-width="1"/>
+      <rect x="460" y="85" width="25" height="50" rx="3" fill="#f59e0b" opacity="0.5"/>
+      <text x="472" y="115" fill="#fff" font-size="8" text-anchor="middle">Sn</text>
+      <text x="437" y="160" fill="#10b981" font-size="9" text-anchor="middle">✓ 柔軟な分割</text>
+      <text x="437" y="172" fill="#ef4444" font-size="9" text-anchor="middle">✗ Lookup がSPOF</text>
+
+      <!-- Geo-based -->
+      <rect x="530" y="30" width="155" height="140" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="607" y="52" fill="#a78bfa" font-size="12" text-anchor="middle" font-weight="700">Geo-based</text>
+      <text x="607" y="68" fill="#94a3b8" font-size="9" text-anchor="middle">地理的分割</text>
+      <!-- Globe icon representation -->
+      <ellipse cx="607" cy="107" rx="35" ry="28" fill="none" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
+      <ellipse cx="607" cy="107" rx="15" ry="28" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="2,2" opacity="0.4"/>
+      <line x1="572" y1="107" x2="642" y2="107" stroke="#a78bfa" stroke-width="1" opacity="0.4"/>
+      <rect x="580" y="84" width="18" height="14" rx="2" fill="#a78bfa" opacity="0.5"/>
+      <text x="589" y="94" fill="#fff" font-size="7" text-anchor="middle">US</text>
+      <rect x="608" y="84" width="18" height="14" rx="2" fill="#a78bfa" opacity="0.5"/>
+      <text x="617" y="94" fill="#fff" font-size="7" text-anchor="middle">EU</text>
+      <rect x="594" y="105" width="18" height="14" rx="2" fill="#a78bfa" opacity="0.5"/>
+      <text x="603" y="115" fill="#fff" font-size="7" text-anchor="middle">AP</text>
+      <text x="607" y="160" fill="#10b981" font-size="9" text-anchor="middle">✓ 地理的局所性</text>
+      <text x="607" y="172" fill="#f59e0b" font-size="9" text-anchor="middle">△ 地域間の偏り</text>
+
+      <!-- Cross-shard problem -->
+      <rect x="20" y="200" width="665" height="120" rx="8" fill="#1c1f2e" stroke="#2a2d3e"/>
+      <text x="352" y="222" fill="#ef4444" font-size="12" text-anchor="middle" font-weight="700">クロスシャードクエリの問題</text>
+      <!-- Shard 0 -->
+      <rect x="40" y="235" width="80" height="60" rx="6" fill="#6366f1" opacity="0.2" stroke="#6366f1" stroke-width="1"/>
+      <text x="80" y="253" fill="#a5b4fc" font-size="10" text-anchor="middle">Shard 0</text>
+      <text x="80" y="267" fill="#94a3b8" font-size="9" text-anchor="middle">Users: A-G</text>
+      <text x="80" y="280" fill="#94a3b8" font-size="9" text-anchor="middle">Orders: 1-250k</text>
+      <!-- Shard 1 -->
+      <rect x="140" y="235" width="80" height="60" rx="6" fill="#10b981" opacity="0.2" stroke="#10b981" stroke-width="1"/>
+      <text x="180" y="253" fill="#6ee7b7" font-size="10" text-anchor="middle">Shard 1</text>
+      <text x="180" y="267" fill="#94a3b8" font-size="9" text-anchor="middle">Users: H-M</text>
+      <text x="180" y="280" fill="#94a3b8" font-size="9" text-anchor="middle">Orders: 250k-500k</text>
+      <!-- JOIN problem -->
+      <text x="280" y="270" fill="#ef4444" font-size="13" text-anchor="middle">JOIN ?</text>
+      <line x1="220" y1="265" x2="250" y2="265" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="310" y1="265" x2="340" y2="265" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <!-- Solutions -->
+      <text x="450" y="237" fill="#f59e0b" font-size="11" font-weight="700">解決策：</text>
+      <text x="450" y="253" fill="#94a3b8" font-size="10">① 非正規化でJOIN回避</text>
+      <text x="450" y="269" fill="#94a3b8" font-size="10">② アプリ側でマージ（Scatter-Gather）</text>
+      <text x="450" y="285" fill="#94a3b8" font-size="10">③ 関連データを同じシャードに配置</text>
+      <text x="450" y="301" fill="#94a3b8" font-size="10">④ Vitess等のシャードミドルウェア活用</text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="card-title">シャードキーの設計原則</div>
+    <div class="grid-2">
+      <div>
+        <p class="highlight mt1">良いシャードキーの条件</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;">✓ 高カーディナリティ（値の種類が多い）</li>
+          <li style="padding:0.2rem 0;">✓ 均等なデータ分散を促す</li>
+          <li style="padding:0.2rem 0;">✓ クエリパターンに合っている</li>
+          <li style="padding:0.2rem 0;">✓ 変更頻度が低い</li>
+          <li style="padding:0.2rem 0;">✓ 関連データを同じシャードに集約できる</li>
+        </ul>
+      </div>
+      <div>
+        <p class="highlight mt1">悪いシャードキーの例</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;">✗ タイムスタンプ（書き込みが最新シャードに集中）</li>
+          <li style="padding:0.2rem 0;">✗ ステータス（active/inactiveで偏り）</li>
+          <li style="padding:0.2rem 0;">✗ 国コード（人口の多い国に偏り）</li>
+          <li style="padding:0.2rem 0;">✗ 頻繁に更新される値</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">オンラインシャードリバランシング</div>
+    <p>データが偏ってきたシャードを再分割する作業。ダウンタイムなしで行うには以下のステップが必要：</p>
+    <ol style="color:var(--text2);font-size:0.88rem;padding-left:1.2rem;line-height:2;">
+      <li>新しいシャードを追加し、データを二重書き込み開始</li>
+      <li>既存データをバックグラウンドで移行（マイグレーション）</li>
+      <li>移行完了後、新シャードへの読み取りに切り替え</li>
+      <li>古いシャードの不要データを削除</li>
+    </ol>
+    <p class="mt2"><span class="badge badge-blue">Vitess</span> <span class="badge badge-green">Citus</span> <span class="badge badge-cyan">MongoDB</span> などがオンラインリバランスをサポート</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 5 ===== -->
+<section id="s5">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <h2>データベース読み書き分離 (Read/Write Splitting)</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Primary-Replica構成</div>
+    <p>書き込みはPrimaryに集中し、読み取りはReplicaへ分散する構成。読み取りが多いアプリ（一般的に70-90%が読み取り）に効果的。</p>
+  </div>
+
+  <div class="diagram">
+    <h4>読み書き分離アーキテクチャ</h4>
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <!-- App -->
+      <rect x="290" y="20" width="120" height="45" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="350" y="44" fill="#a5b4fc" font-size="12" text-anchor="middle" font-weight="600">Application</text>
+      <!-- Proxy -->
+      <rect x="270" y="95" width="160" height="40" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="350" y="120" fill="#67e8f9" font-size="12" text-anchor="middle" font-weight="600">ProxySQL / RDS Proxy</text>
+      <!-- Arrow app to proxy -->
+      <line x1="350" y1="65" x2="350" y2="93" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah)"/>
+      <!-- Primary DB -->
+      <rect x="120" y="175" width="130" height="55" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="185" y="197" fill="#6ee7b7" font-size="11" text-anchor="middle" font-weight="700">Primary DB</text>
+      <text x="185" y="213" fill="#94a3b8" font-size="9" text-anchor="middle">書き込み専用</text>
+      <text x="185" y="225" fill="#64748b" font-size="8" text-anchor="middle">INSERT/UPDATE/DELETE</text>
+      <!-- Replica 1 -->
+      <rect x="280" y="175" width="100" height="55" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="330" y="197" fill="#a5b4fc" font-size="11" text-anchor="middle" font-weight="700">Replica 1</text>
+      <text x="330" y="213" fill="#94a3b8" font-size="9" text-anchor="middle">読み取り</text>
+      <!-- Replica 2 -->
+      <rect x="400" y="175" width="100" height="55" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="450" y="197" fill="#a5b4fc" font-size="11" text-anchor="middle" font-weight="700">Replica 2</text>
+      <text x="450" y="213" fill="#94a3b8" font-size="9" text-anchor="middle">読み取り</text>
+      <!-- Replica 3 -->
+      <rect x="520" y="175" width="100" height="55" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="570" y="197" fill="#a5b4fc" font-size="11" text-anchor="middle" font-weight="700">Replica 3</text>
+      <text x="570" y="213" fill="#94a3b8" font-size="9" text-anchor="middle">読み取り</text>
+      <!-- Proxy to Primary -->
+      <line x1="300" y1="135" x2="210" y2="173" stroke="#10b981" stroke-width="2" marker-end="url(#ah)"/>
+      <text x="240" y="159" fill="#10b981" font-size="9">Write</text>
+      <!-- Proxy to Replicas -->
+      <line x1="350" y1="135" x2="340" y2="173" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <line x1="370" y1="135" x2="440" y2="173" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <line x1="390" y1="135" x2="555" y2="173" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="430" y="157" fill="#6366f1" font-size="9">Read（ロードバランス）</text>
+      <!-- Replication arrow -->
+      <path d="M250,200 C265,200 275,200 278,200" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ah)"/>
+      <text x="260" y="245" fill="#f59e0b" font-size="9" text-anchor="middle">非同期レプリケーション</text>
+      <path d="M382,200 C390,200 398,200 398,200" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ah)"/>
+      <path d="M502,200 C510,200 518,200 518,200" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ah)"/>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="card-title">レプリケーションラグ問題と対処</div>
+    <div class="grid-2">
+      <div>
+        <p><strong class="text-red">問題：Read-Your-Writes違反</strong></p>
+        <p style="font-size:0.88rem;color:var(--text2);">ユーザーが書き込んだデータを即座に読もうとするとレプリカがまだ同期しておらず、古いデータが返ることがある。</p>
+      </div>
+      <div>
+        <p><strong class="text-green">対処法</strong></p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li>• 自分が書いたデータはPrimaryから読む</li>
+          <li>• タイムスタンプでレプリカの同期状態チェック</li>
+          <li>• セッション単位でPrimaryに固定</li>
+          <li>• Causal Consistency（因果整合性）の利用</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <pre># ProxySQL設定例（読み書き分離）
+mysql_query_rules:
+  - rule_id: 1
+    match_pattern: "^SELECT"
+    destination_hostgroup: 10    # Replicaグループ
+    apply: 1
+  - rule_id: 2
+    match_pattern: ".*"
+    destination_hostgroup: 0     # Primaryグループ
+    apply: 1</pre>
+</section>
+
+<!-- ===== SECTION 6 ===== -->
+<section id="s6">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <h2>非同期処理とキューイング</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">同期処理を非同期化してスループットを向上</div>
+    <p>重い処理（メール送信・画像変換・決済処理など）を<strong>メッセージキューを通じて非同期化</strong>することで、APIのレスポンスタイムを大幅に短縮できる。</p>
+    <p>リクエストを受け取った瞬間にACKを返し、実際の処理は別のワーカーが担当する。</p>
+  </div>
+
+  <div class="diagram">
+    <h4>ワーカープール（Worker Pool）パターン</h4>
+    <svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <!-- Producer -->
+      <rect x="20" y="80" width="110" height="60" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="75" y="106" fill="#67e8f9" font-size="11" text-anchor="middle" font-weight="700">Producer</text>
+      <text x="75" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">API Server</text>
+      <text x="75" y="133" fill="#94a3b8" font-size="9" text-anchor="middle">即座にACK返却</text>
+      <!-- Arrow -->
+      <line x1="132" y1="110" x2="188" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="160" y="103" fill="#22d3ee" font-size="9" text-anchor="middle">enqueue</text>
+      <!-- Queue -->
+      <rect x="190" y="70" width="180" height="80" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="280" y="93" fill="#fcd34d" font-size="11" text-anchor="middle" font-weight="700">Message Queue</text>
+      <text x="280" y="108" fill="#94a3b8" font-size="9" text-anchor="middle">Kafka / RabbitMQ / SQS</text>
+      <!-- Messages in queue -->
+      <rect x="200" y="115" width="25" height="20" rx="3" fill="#f59e0b" opacity="0.6"/>
+      <rect x="230" y="115" width="25" height="20" rx="3" fill="#f59e0b" opacity="0.5"/>
+      <rect x="260" y="115" width="25" height="20" rx="3" fill="#f59e0b" opacity="0.4"/>
+      <rect x="290" y="115" width="25" height="20" rx="3" fill="#f59e0b" opacity="0.3"/>
+      <rect x="320" y="115" width="25" height="20" rx="3" fill="#f59e0b" opacity="0.2"/>
+      <text x="280" y="128" fill="#94a3b8" font-size="8" text-anchor="middle">msg msg msg msg ...</text>
+      <!-- Arrow to workers -->
+      <line x1="372" y1="110" x2="420" y2="80" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <line x1="372" y1="110" x2="420" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <line x1="372" y1="110" x2="420" y2="140" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="395" y="100" fill="#6366f1" font-size="9">dequeue</text>
+      <!-- Workers -->
+      <rect x="420" y="55" width="90" height="38" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="465" y="76" fill="#a5b4fc" font-size="10" text-anchor="middle">Worker 1</text>
+      <rect x="420" y="90" width="90" height="38" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="465" y="111" fill="#a5b4fc" font-size="10" text-anchor="middle">Worker 2</text>
+      <rect x="420" y="125" width="90" height="38" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="465" y="146" fill="#a5b4fc" font-size="10" text-anchor="middle">Worker 3</text>
+      <!-- Arrow to result store -->
+      <line x1="512" y1="110" x2="570" y2="110" stroke="#10b981" stroke-width="1.5" marker-end="url(#ah)"/>
+      <!-- Result Store -->
+      <rect x="572" y="82" width="110" height="56" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="627" y="106" fill="#6ee7b7" font-size="11" text-anchor="middle" font-weight="700">Result Store</text>
+      <text x="627" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">DB / S3 / Notification</text>
+      <!-- Backpressure annotation -->
+      <text x="350" y="185" fill="#ef4444" font-size="10" text-anchor="middle">⚠ Backpressure：キューが溢れる前にProducerの速度を制限する仕組み</text>
+      <text x="350" y="200" fill="#64748b" font-size="9" text-anchor="middle">手法：キューサイズ監視 → スロットリング / クライアントへの503返却 / 書き込み停止</text>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">バッチ処理 vs ストリーム処理</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>方式</th><th>特徴</th><th>適用例</th></tr></thead>
+          <tbody>
+            <tr><td>バッチ</td><td>一定間隔でまとめて処理</td><td>日次集計・レポート</td></tr>
+            <tr><td>ストリーム</td><td>イベント発生ごとにリアルタイム処理</td><td>不正検知・通知</td></tr>
+            <tr><td>マイクロバッチ</td><td>数秒単位のバッチ（中間）</td><td>Spark Streaming</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Backpressure（背圧）</div>
+      <p>消費者（Worker）の処理能力を超えた速度で生産者（Producer）がメッセージを送り続けることを防ぐ仕組み。</p>
+      <pre style="font-size:0.8rem;">// Kafka Consumer の max.poll.records
+// でバッチサイズを制限
+props.put("max.poll.records", "50");
+props.put("fetch.max.bytes", "1048576");</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 7 ===== -->
+<section id="s7">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <h2>データの非正規化とマテリアライズドビュー</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">読み込み最適化のための非正規化</div>
+    <p>正規化（3NF）はデータ整合性のために重要だが、JOIN多発・クロスシャードクエリのパフォーマンスが悪化することがある。<strong>読み取り性能を優先する場合、意図的に非正規化（冗長データを持つ）</strong>設計を行う。</p>
+    <div class="grid-2">
+      <div>
+        <p class="highlight">正規化（3NF）</p>
+        <pre style="font-size:0.8rem;">-- 注文時にJOINが必要
+SELECT o.*, u.name, u.email,
+       p.name AS product_name
+FROM orders o
+JOIN users u ON o.user_id = u.id
+JOIN products p ON o.product_id = p.id</pre>
+      </div>
+      <div>
+        <p class="highlight">非正規化（読み取り最適化）</p>
+        <pre style="font-size:0.8rem;">-- ordersテーブルに冗長データを保持
+orders {
+  id, user_id,
+  user_name,    -- 冗長
+  user_email,   -- 冗長
+  product_name, -- 冗長
+  ...
+}
+-- JOINなしで取得可能</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Materialized View（マテリアライズドビュー）</div>
+    <p>クエリ結果を事前に計算してテーブルとして保存する仕組み。複雑な集計クエリを高速化できる。</p>
+    <div class="grid-2">
+      <div>
+        <pre style="font-size:0.8rem;">-- PostgreSQL のマテビュー
+CREATE MATERIALIZED VIEW
+  daily_sales AS
+SELECT
+  DATE(created_at) AS day,
+  SUM(amount) AS total,
+  COUNT(*) AS count
+FROM orders
+GROUP BY DATE(created_at);
+
+-- インデックス追加
+CREATE INDEX ON daily_sales(day);
+
+-- 定期的にリフレッシュ
+REFRESH MATERIALIZED VIEW
+  CONCURRENTLY daily_sales;</pre>
+      </div>
+      <div>
+        <p class="highlight">トレードオフ</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;">✓ 読み取り速度が大幅向上</li>
+          <li style="padding:0.2rem 0;">✓ 複雑な集計をシンプルに</li>
+          <li style="padding:0.2rem 0;">✗ ストレージ増加</li>
+          <li style="padding:0.2rem 0;">✗ データが古くなる可能性</li>
+          <li style="padding:0.2rem 0;">✗ リフレッシュに時間がかかる</li>
+          <li style="padding:0.2rem 0;">✗ 書き込み時のオーバーヘッド</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Twitterホームタイムライン設計：Push vs Pull</div>
+    <div class="grid-2">
+      <div>
+        <p><strong class="text-orange">Pull方式（Fan-out on Read）</strong></p>
+        <p style="font-size:0.88rem;color:var(--text2);">タイムライン表示時に全フォロイーのツイートをリアルタイム取得。読み取り負荷が高い。大量フォロイーで遅延。</p>
+        <pre style="font-size:0.78rem;">SELECT tweets.*
+FROM tweets
+WHERE user_id IN (
+  SELECT followee_id
+  FROM follows
+  WHERE follower_id = :me
+)
+ORDER BY created_at DESC
+LIMIT 100</pre>
+      </div>
+      <div>
+        <p><strong class="text-green">Push方式（Fan-out on Write）</strong></p>
+        <p style="font-size:0.88rem;color:var(--text2);">ツイート投稿時にフォロワー全員のタイムラインキャッシュへ書き込む。読み取りは高速。フォロワー数百万人のセレブには不向き（ハイブリッドで対応）。</p>
+        <pre style="font-size:0.78rem;">// ツイート投稿時
+for follower_id in get_followers(user_id):
+    timeline_cache[follower_id]
+      .prepend(tweet)
+
+// 読み取り時
+return timeline_cache[me][:100]</pre>
+      </div>
+    </div>
+    <p class="mt2" style="font-size:0.88rem;color:var(--text2);">Twitterの実際の実装：一般ユーザーはPush、セレブはPull、それ以外はハイブリッド。フォロワー数がしきい値（例：300万）を超えるとPull方式に切り替え。</p>
+  </div>
+</section>
+
+<!-- ===== SECTION 8 ===== -->
+<section id="s8">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <h2>CDN とエッジコンピューティング</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">CDN（Content Delivery Network）による静的アセット配信</div>
+    <p>世界各地にエッジサーバーを配置し、ユーザーに最も近いノードからコンテンツを配信。オリジンサーバーの負荷を削減し、レイテンシを大幅に低減する。</p>
+    <div class="grid-3">
+      <div>
+        <p class="highlight">適するコンテンツ</p>
+        <ul style="list-style:none;padding:0;font-size:0.85rem;color:var(--text2);">
+          <li>• 画像・動画・音声ファイル</li>
+          <li>• CSS・JavaScript・HTML</li>
+          <li>• PDF・静的ドキュメント</li>
+          <li>• フォントファイル</li>
+        </ul>
+      </div>
+      <div>
+        <p class="highlight">主要プロバイダー</p>
+        <ul style="list-style:none;padding:0;font-size:0.85rem;color:var(--text2);">
+          <li><span class="badge badge-orange">Cloudflare</span> 世界最大規模</li>
+          <li><span class="badge badge-blue">AWS CloudFront</span> AWS統合</li>
+          <li><span class="badge badge-green">GCP Cloud CDN</span> GCP統合</li>
+          <li><span class="badge badge-cyan">Fastly</span> リアルタイムパージ</li>
+        </ul>
+      </div>
+      <div>
+        <p class="highlight">Cache-Control設定例</p>
+        <pre style="font-size:0.78rem;">Cache-Control:
+  public,
+  max-age=31536000,
+  immutable
+# 変更時はURLにhash付与
+# /app.a1b2c3d4.js</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">エッジコンピューティング（動的コンテンツのエッジ処理）</div>
+    <p>従来のCDNはキャッシュのみ。エッジコンピューティングではエッジノード上でコードを実行できるため、オリジンへの往復なしに動的処理が可能。</p>
+    <div class="grid-2">
+      <div>
+        <p class="highlight">Cloudflare Workers の例</p>
+        <pre style="font-size:0.8rem;">// エッジでA/Bテストを実行
+addEventListener('fetch', event => {
+  event.respondWith(
+    handleRequest(event.request)
+  )
+})
+async function handleRequest(req) {
+  const variant = Math.random() < 0.5
+    ? 'A' : 'B';
+  const url = new URL(req.url);
+  url.searchParams.set('v', variant);
+  return fetch(url.toString());
+}</pre>
+      </div>
+      <div>
+        <p class="highlight">エッジで処理できる例</p>
+        <ul style="list-style:none;padding:0;font-size:0.85rem;color:var(--text2);">
+          <li style="padding:0.2rem 0;">• A/Bテスト・フィーチャーフラグ</li>
+          <li style="padding:0.2rem 0;">• 認証トークン検証</li>
+          <li style="padding:0.2rem 0;">• リクエストのルーティング・リダイレクト</li>
+          <li style="padding:0.2rem 0;">• レスポンスの動的変換（HTML書き換え）</li>
+          <li style="padding:0.2rem 0;">• レート制限・DDoS対策</li>
+          <li style="padding:0.2rem 0;">• 地理的コンテンツパーソナライゼーション</li>
+          <li style="padding:0.2rem 0;">• SSR（サーバーサイドレンダリング）の一部</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 9 ===== -->
+<section id="s9">
+  <div class="section-header">
+    <div class="section-num">09</div>
+    <h2>分散キャッシュのスケーリング</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Redis Cluster（自動シャーディング）</div>
+      <p><strong>16384スロット</strong>にキー空間を分割し、各マスターノードが担当スロットを持つ。コンシステントハッシングの変形版。</p>
+      <div class="formula">
+        slot = CRC16(key) % 16384
+        例: 3ノード構成
+        Node A: slot 0 - 5460
+        Node B: slot 5461 - 10922
+        Node C: slot 10923 - 16383
+      </div>
+      <pre style="font-size:0.8rem;"># Redis Cluster起動
+redis-cli --cluster create \
+  127.0.0.1:7001 127.0.0.1:7002 \
+  127.0.0.1:7003 \
+  --cluster-replicas 1</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Redis Sentinel（高可用性）</div>
+      <p>Masterの障害を<strong>Sentinel（番兵）プロセス</strong>群が監視し、自動フェイルオーバーを実行する。</p>
+      <pre style="font-size:0.8rem;"># sentinel.conf
+sentinel monitor mymaster \
+  127.0.0.1 6379 2
+# quorum=2（多数決でフェイルオーバー）
+sentinel down-after-milliseconds \
+  mymaster 30000
+sentinel failover-timeout \
+  mymaster 180000</pre>
+      <p style="font-size:0.85rem;color:var(--text2);">Sentinelは最低3台（奇数）で構成し、過半数の合意でフェイルオーバーを実行する。</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Memcached のマルチスレッドスケール</div>
+      <p>Redisとは異なりシングルスレッドではなく、<strong>マルチスレッドでCPUコアを有効活用</strong>できる。シンプルなKey-Valueキャッシュに特化しており、データ構造はStringのみ。</p>
+      <ul style="list-style:none;padding:0;font-size:0.85rem;color:var(--text2);">
+        <li>✓ マルチスレッドで高スループット</li>
+        <li>✓ シンプルなユースケースに最適</li>
+        <li>✗ 永続化なし</li>
+        <li>✗ クラスタリング非対応（クライアント側でシャーディング）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">キャッシュウォーミング（Cold Start問題）</div>
+      <p>キャッシュが空の状態（コールドスタート）では、全リクエストがDBに到達して過負荷になる可能性がある。</p>
+      <p><strong class="text-orange">対策：</strong></p>
+      <ul style="list-style:none;padding:0;font-size:0.85rem;color:var(--text2);">
+        <li>• デプロイ前にキャッシュをプリフィル（事前ロード）</li>
+        <li>• 新ノード追加時に隣接ノードからコピー</li>
+        <li>• リクエストを段階的にルーティング（カナリアリリース）</li>
+        <li>• DBからの読み取りレートを制限（Circuit Breaker）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Redis Cluster vs Sentinel vs スタンドアロン</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>構成</th><th>スケーラビリティ</th><th>可用性</th><th>複雑さ</th><th>適用場面</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>スタンドアロン</td><td class="td-bad">低</td><td class="td-bad">単一障害点</td><td class="td-good">低</td><td>開発・小規模</td></tr>
+          <tr><td>Sentinel</td><td class="td-warn">中（垂直のみ）</td><td class="td-good">自動フェイルオーバー</td><td class="td-warn">中</td><td>中規模・高可用性重視</td></tr>
+          <tr><td>Cluster</td><td class="td-good">高（水平シャーディング）</td><td class="td-good">レプリカ付き</td><td class="td-warn">高</td><td>大規模・高トラフィック</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 10 ===== -->
+<section id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>スケーラビリティのアンチパターン</h2>
+  </div>
+
+  <div class="antipattern">
+    <h4>⚠ Chatty I/O（大量の小さいリクエスト）</h4>
+    <p>1つの操作を完了するために多数の小さいI/Oリクエストを繰り返すパターン。ネットワーク往復コストが積み重なる。</p>
+    <p><strong>悪例：</strong>ユーザーのプロフィール表示のために、name取得→email取得→avatar取得→設定取得と4回DBクエリ。</p>
+    <p><strong>改善：</strong>1回のクエリで必要なフィールドを全て取得。バッチAPIやGraphQLのデータローダーで複数リクエストを結合。</p>
+  </div>
+
+  <div class="antipattern">
+    <h4>⚠ Monolithic Persistence（単一DBへの集中）</h4>
+    <p>全てのサービスが1つのデータベースに接続するパターン。DBがボトルネックになり、スケーリングが困難。</p>
+    <p><strong>改善：</strong>サービスごとに独自のDBを持つ（Database per Service）。読み取り専用のReplica・Read Modelを別途作成。</p>
+  </div>
+
+  <div class="antipattern">
+    <h4>⚠ Synchronous Chain（同期呼び出しチェーン）</h4>
+    <p>サービスA→B→C→Dと同期で連鎖するパターン。1つのサービスの遅延が全体に波及（レイテンシの加算）。障害時にカスケード障害が起きやすい。</p>
+    <p><strong>改善：</strong>独立した処理を非同期キューで分離。必要な依存のみを同期で呼び出し、その他は非同期化。Circuit Breakerで連鎖障害を防止。</p>
+    <div class="formula">
+      同期チェーンの遅延 = L_A + L_B + L_C + L_D
+      各サービスが50ms → 総レイテンシ200ms
+      非同期化後 → 最長パスのみ（並列化可能）
+    </div>
+  </div>
+
+  <div class="antipattern">
+    <h4>⚠ N+1 クエリ問題</h4>
+    <p>1件のリスト取得後、各アイテムに対して個別クエリを実行するパターン。N件のリストに対しN+1回のDBアクセスが発生。</p>
+    <pre style="font-size:0.82rem;">// 悪例（N+1問題）
+const posts = await db.query('SELECT * FROM posts'); // 1クエリ
+for (const post of posts) {
+  post.author = await db.query(         // N クエリ
+    'SELECT * FROM users WHERE id = ?', [post.user_id]
+  );
+}
+
+// 改善（Eager Loading / JOINまたはIN句）
+const posts = await db.query(`
+  SELECT posts.*, users.name AS author_name
+  FROM posts
+  JOIN users ON posts.user_id = users.id
+`); // 1クエリで解決</pre>
+    <p><strong>ORM での対処：</strong>Rails の <code>includes</code>、Hibernate の <code>JOIN FETCH</code>、Prisma の <code>include</code> などを使用。DataLoader（GraphQL）でバッチ化。</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>アンチパターン</th><th>影響</th><th>主な対処法</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Chatty I/O</td><td class="td-bad">ネットワーク往復コストの蓄積</td><td>バッチ化・GraphQL・Eager Loading</td></tr>
+        <tr><td>Monolithic Persistence</td><td class="td-bad">DBボトルネック・スケール不可</td><td>DB分離・CQRS・Read Replica</td></tr>
+        <tr><td>Synchronous Chain</td><td class="td-bad">レイテンシ加算・カスケード障害</td><td>非同期キュー・Circuit Breaker</td></tr>
+        <tr><td>N+1 Query</td><td class="td-bad">DBへの大量クエリ</td><td>JOIN・IN句・DataLoader</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- INTERVIEW TIPS -->
+<section>
+  <div class="interview">
+    <h3>面接頻出テーマ：スケーラビリティ</h3>
+    <ul>
+      <li>10倍のトラフィックに対応するにはどこから手をつけますか？</li>
+      <li>コンシステントハッシングはなぜモジュロハッシュより優れているのですか？</li>
+      <li>シャードキーの選び方で何を考慮しますか？</li>
+      <li>Twitterのタイムラインを設計してください（Push vs Pull）</li>
+      <li>Amdahlの法則がスケーリング設計に与える示唆は何ですか？</li>
+      <li>読み書き分離でのレプリケーションラグはどう対処しますか？</li>
+      <li>バーチャルノードは何のために使いますか？</li>
+      <li>データベースのホットスポットを避けるには？</li>
+      <li>非同期処理とBackpressureの関係を説明してください</li>
+      <li>マテリアライズドビューのデメリットは何ですか？</li>
+    </ul>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<!-- ===== DEEP DIVE & EXERCISES ===== -->
+<div class="container">
+
+<!-- ===== DEEP DIVE 1: Consistent Hashing Implementation ===== -->
+<section id="deepdive-consistent-hash">
+  <div class="section-header">
+    <div class="section-num" style="background:linear-gradient(135deg,#22d3ee,#6366f1);">深</div>
+    <h2>深掘り: コンシステントハッシングの完全実装</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">SortedListを使ったリング実装</div>
+    <p>コンシステントハッシングを実際に動くPythonコードで実装します。<code>sortedcontainers</code>ライブラリのSortedListを使うことで、ノード追加・削除・検索をO(log N)で実現します。</p>
+  </div>
+
+  <pre># pip install sortedcontainers
+import hashlib
+from sortedcontainers import SortedList
+from typing import Optional
+
+class ConsistentHashRing:
+    """
+    コンシステントハッシュリングの完全実装
+    - SHA-256ハッシュ関数（32bit空間に収める）
+    - バーチャルノードで均等な負荷分散
+    """
+
+    def __init__(self, num_virtual_nodes: int = 150):
+        self.num_virtual_nodes = num_virtual_nodes
+        self._ring: SortedList = SortedList()           # ソート済みハッシュ位置リスト
+        self._hash_to_node: dict = {}                   # ハッシュ位置 → ノード名
+        self._nodes: set = set()                        # 追加済みノード名
+
+    def _hash(self, key: str) -> int:
+        """SHA-256で文字列をハッシュし32bit整数に変換"""
+        h = hashlib.sha256(key.encode()).hexdigest()
+        return int(h, 16) % (2 ** 32)
+
+    def add_node(self, node: str) -> dict:
+        """
+        ノードを追加し、そのノードが受け持つことになるキー範囲を返す
+        Returns: {"moved_from": str, "keys_affected": range(start, end)}
+        """
+        if node in self._nodes:
+            return {}
+        self._nodes.add(node)
+
+        # num_virtual_nodes 個の仮想ノードをリングに配置
+        for i in range(self.num_virtual_nodes):
+            vnode_key = f"{node}#vnode#{i}"
+            position = self._hash(vnode_key)
+            self._ring.add(position)
+            self._hash_to_node[position] = node
+
+        return {"status": "added", "node": node,
+                "virtual_nodes": self.num_virtual_nodes}
+
+    def remove_node(self, node: str) -> bool:
+        """ノードを削除。そのノードのキーは次のノードに引き継がれる"""
+        if node not in self._nodes:
+            return False
+        self._nodes.discard(node)
+
+        for i in range(self.num_virtual_nodes):
+            vnode_key = f"{node}#vnode#{i}"
+            position = self._hash(vnode_key)
+            self._ring.remove(position)
+            del self._hash_to_node[position]
+
+        return True
+
+    def get_node(self, key: str) -> Optional[str]:
+        """
+        キーを担当するノードを返す
+        リングを時計回りに検索し、最初に見つかったノードを返す
+        """
+        if not self._ring:
+            return None
+
+        key_hash = self._hash(key)
+
+        # key_hash 以上の最小値を検索（二分探索 O(log N)）
+        idx = self._ring.bisect_left(key_hash)
+
+        # リングを一周（末尾を超えたら先頭に戻る）
+        if idx == len(self._ring):
+            idx = 0
+
+        position = self._ring[idx]
+        return self._hash_to_node[position]
+
+    def get_nodes_for_replication(self, key: str, n: int = 3) -> list:
+        """
+        レプリケーション用: キーを担当する連続したn個の物理ノードを返す
+        同一物理ノードの仮想ノードはスキップ
+        """
+        if len(self._nodes) < n:
+            return list(self._nodes)
+
+        key_hash = self._hash(key)
+        idx = self._ring.bisect_left(key_hash) % len(self._ring)
+
+        result = []
+        seen_nodes = set()
+        steps = 0
+
+        while len(result) < n and steps < len(self._ring):
+            position = self._ring[(idx + steps) % len(self._ring)]
+            node = self._hash_to_node[position]
+            if node not in seen_nodes:
+                result.append(node)
+                seen_nodes.add(node)
+            steps += 1
+
+        return result
+
+    def load_distribution(self) -> dict:
+        """各物理ノードが担当するバーチャルノード数（負荷分散の均等性確認）"""
+        distribution = {node: 0 for node in self._nodes}
+        for node in self._hash_to_node.values():
+            distribution[node] += 1
+        return distribution
+
+
+# 使用例
+ring = ConsistentHashRing(num_virtual_nodes=150)
+ring.add_node("server-A")
+ring.add_node("server-B")
+ring.add_node("server-C")
+
+# 10000キーの分散をシミュレート
+from collections import Counter
+results = Counter(ring.get_node(f"user:{i}") for i in range(10000))
+for node, count in sorted(results.items()):
+    print(f"{node}: {count} keys ({count/100:.1f}%)")
+# server-A: 3312 keys (33.1%)
+# server-B: 3341 keys (33.4%)
+# server-C: 3347 keys (33.5%)   ← 仮想ノード150個で均等に分散
+
+# ノード追加時の影響範囲
+ring.add_node("server-D")
+new_results = Counter(ring.get_node(f"user:{i}") for i in range(10000))
+moved = sum(1 for i in range(10000)
+            if ring.get_node(f"user:{i}") != results.get(ring.get_node(f"user:{i}")))
+print(f"移動したキー: 約 {10000 // 4} / 10000 (理想値: 25%)")
+# 移動したキー: 約 2500 / 10000 (理想値: 25%)</pre>
+
+  <div class="card">
+    <div class="card-title">バーチャルノード数と負荷分散の均一性</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>仮想ノード数</th><th>3ノード時の偏差</th><th>10ノード時の偏差</th><th>トレードオフ</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td class="td-bad">±15%程度</td><td class="td-bad">±20%程度</td><td>メモリ少・偏り大</td></tr>
+          <tr><td>50</td><td class="td-warn">±8%程度</td><td class="td-warn">±10%程度</td><td>中程度</td></tr>
+          <tr><td>150</td><td class="td-good">±3%程度</td><td class="td-good">±5%程度</td><td>Cassandraデフォルト付近</td></tr>
+          <tr><td>512</td><td class="td-good">±1%程度</td><td class="td-good">±2%程度</td><td>メモリ消費大</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>仮想ノード数を増やすほど均等分散に近づきますが、<code>_ring</code>リストの大きさが <code>num_nodes × num_virtual_nodes</code> になるためメモリ消費が増加します。Cassandraは <code>num_tokens=256</code> をデフォルトとし、高スペックノードには <code>512</code> を設定します。</p>
+  </div>
+</section>
+
+<!-- ===== DEEP DIVE 2: Sharding in Practice ===== -->
+<section id="deepdive-sharding">
+  <div class="section-header">
+    <div class="section-num" style="background:linear-gradient(135deg,#22d3ee,#6366f1);">深</div>
+    <h2>深掘り: データシャーディングの実際</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Vitess（YouTubeが開発）</div>
+      <p>VitessはYouTubeがMySQLをスケールするために開発したシャーディングミドルウェアで、現在はCNCFの卒業プロジェクトです。アプリケーションには単一DBのように見え、内部でシャーディングを透過的に処理します。</p>
+      <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+        <li style="padding:0.2rem 0;">✓ MySQL互換SQL（既存アプリの変更最小化）</li>
+        <li style="padding:0.2rem 0;">✓ オンラインスキーマ変更（無停止DDL）</li>
+        <li style="padding:0.2rem 0;">✓ コネクションプーリング（数万接続を吸収）</li>
+        <li style="padding:0.2rem 0;">✓ クエリルーティング・分散JOIN処理</li>
+        <li style="padding:0.2rem 0;">採用: YouTube・GitHub・Slack・Square</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Citus（PostgreSQLシャーディング拡張）</div>
+      <p>CitusはPostgreSQLの拡張機能として動作し、透過的な水平スケーリングを提供します。Microsoft Azure Database for PostgreSQL（Hyperscale）として提供されています。</p>
+      <pre style="font-size:0.78rem;">-- Citus: テーブルをシャード化
+SELECT create_distributed_table(
+  'orders',          -- テーブル名
+  'user_id',         -- シャードキー
+  colocate_with => 'users'  -- users とコロケーション
+);
+
+-- 通常のSQLのように使える
+SELECT COUNT(*) FROM orders
+WHERE user_id = 42;
+-- 内部: 適切なシャードのみに転送</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">シャードリバランシング: Traffic Shadowingを使った移行</div>
+    <p>本番ダウンタイムなしでシャードを再分割する際の安全な手順です。</p>
+    <ol style="color:var(--text2);font-size:0.9rem;padding-left:1.5rem;line-height:2.2;">
+      <li><strong>準備フェーズ：</strong>新しいシャード（例: shard-4）を空の状態で追加。ルーティングテーブルにはまだ含めない。</li>
+      <li><strong>二重書き込み開始：</strong>shard-3 の担当データに対する書き込みを shard-3 と shard-4 両方に送信（Traffic Mirroring）。shard-4 への書き込みエラーは無視（まだ本番外）。</li>
+      <li><strong>初期データコピー：</strong>バックグラウンドで shard-3 の既存データを shard-4 にバルクコピー。書き込みの二重化で差分は随時同期。</li>
+      <li><strong>読み取り検証：</strong>shard-4 への読み取りを影で実行し、shard-3 の結果と比較。一致率が100%に達したら次のフェーズへ。</li>
+      <li><strong>カットオーバー：</strong>ルーティングテーブルを更新し、shard-4 担当のキー範囲を shard-3 から shard-4 に切り替え（ダウンタイムなし）。</li>
+      <li><strong>クリーンアップ：</strong>数日後 shard-3 の不要データを削除。</li>
+    </ol>
+    <div class="tip-box">
+      <h4>Traffic Shadowingの実装ポイント</h4>
+      <ul>
+        <li>Envoyプロキシの <code>mirror_policy</code> や NGINX の <code>mirror</code> ディレクティブで透過的に実装可能</li>
+        <li>影のリクエストへのエラーは本番レスポンスに影響させない（fire-and-forget）</li>
+        <li>読み取り検証は別プロセスで非同期に行う</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cross-Shardクエリの最適化: スキャッタ-ギャザーパターンとその限界</div>
+    <p><strong>スキャッタ-ギャザー（Scatter-Gather）</strong>とは、複数シャードにクエリを並列投げ（Scatter）、結果を集約する（Gather）パターンです。</p>
+    <div class="grid-2">
+      <div>
+        <p style="color:var(--green);font-weight:600;">利点</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li>• 並列実行でレイテンシを抑制可能</li>
+          <li>• シャード数に関係なく実装できる</li>
+        </ul>
+        <pre style="font-size:0.78rem;">import asyncio
+
+async def scatter_gather_query(shards, sql):
+    tasks = [shard.query(sql) for shard in shards]
+    results = await asyncio.gather(*tasks)
+    # 全シャードの結果を結合
+    return [row for shard_rows in results
+            for row in shard_rows]</pre>
+      </div>
+      <div>
+        <p style="color:var(--red);font-weight:600;">限界</p>
+        <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+          <li>• ORDER BY + LIMIT は全シャードで過剰取得が必要（例: LIMIT 10 → 各シャードで LIMIT 10取得→マージで最終10件選択）</li>
+          <li>• GROUP BY は2段階集計が必要（shard内集計→マスター集計）</li>
+          <li>• 全シャードのうち1つが遅いとレスポンス全体が遅くなる（Tail Latency問題）</li>
+          <li>• シャード数が増えるほどDBへの接続数が増大</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== DEEP DIVE 3: Twitter Architecture ===== -->
+<section id="deepdive-twitter">
+  <div class="section-header">
+    <div class="section-num" style="background:linear-gradient(135deg,#22d3ee,#6366f1);">深</div>
+    <h2>深掘り: Twitterのスケール設計の実際</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Twitter アーキテクチャの変遷</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>時期</th><th>アーキテクチャ</th><th>問題・スケール限界</th></tr></thead>
+        <tbody>
+          <tr><td>2006-2008</td><td>Ruby on Rails モノリス + MySQL</td><td>2008年に「Fail Whale」多発。DBへの直接SELECT JOIN多用。CPUではなくI/Oがボトルネック</td></tr>
+          <tr><td>2008-2011</td><td>RoR + Memcached + MySQL Sharding手動</td><td>シャード数増加で運用コスト爆発。スキーマ変更が困難に</td></tr>
+          <tr><td>2011-2014</td><td>JVM（Scala/Java）マイクロサービス + Finagle RPC</td><td>サービス間通信のオーバーヘッド、Finagleの学習コスト</td></tr>
+          <tr><td>2014-現在</td><td>Manhattan（分散KVストア）+ Snowflake ID + Kafka + Hadoop</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">ホームタイムライン設計の変遷</div>
+      <h4 style="color:var(--red);">初期: Pure Push（Fan-out on Write）</h4>
+      <p>ツイート投稿時に全フォロワーのタイムラインキャッシュに書き込む。Ladyガガ（1億フォロワー）がツイートすると<strong>1億回の書き込み</strong>が発生。</p>
+      <h4 style="color:var(--accent3);">中期: Pull（Fan-out on Read）</h4>
+      <p>読み取り時にフォロイーのツイートをSELECT。ユーザーがTL表示のたびにN人分のクエリ。アクティブユーザーが多いと<strong>読み取りが爆発</strong>。</p>
+      <h4 style="color:var(--green);">現在: Hybrid方式</h4>
+      <p>通常ユーザー → Push方式（TLキャッシュに事前書き込み）。有名人（高フォロワー数）→ 読み取り時にのみ取得してマージ。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Manhattan（分散KVストア）</div>
+      <p>Twitterが2014年に開発・公開した内製分散KVストアです。Cassandraに似た設計（一貫性ハッシュ + 結果整合性）ですが、Twitterのユースケース（ツイート・タイムライン・ユーザーデータ）に最適化されています。</p>
+      <ul style="list-style:none;padding:0;font-size:0.88rem;color:var(--text2);">
+        <li style="padding:0.2rem 0;">• コンシステントハッシング + バーチャルノード</li>
+        <li style="padding:0.2rem 0;">• Eventual Consistency（AP設計）</li>
+        <li style="padding:0.2rem 0;">• 細粒度のレプリカ設定（データ種別ごとに異なるRF）</li>
+        <li style="padding:0.2rem 0;">• Thrift/Finagle RPC 統合</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Snowflake ID生成器の完全実装</div>
+    <p>Twitterが開発した分散ID生成アルゴリズム。DBの自動インクリメントに依存せず、複数ノードで毎秒400万以上のユニークIDを生成できます。</p>
+
+    <div class="formula">
+      <div class="formula-label">64-bit ID構造</div>
+      [1bit: 符号] [41bit: タイムスタンプ(ms)] [10bit: マシンID] [12bit: シーケンス番号]
+      <br><br>
+      最大生成数/秒 = 2^12 × 2^10 × 1000ms = 4,194,304 / ノード
+      タイムスタンプ有効期間 = 2^41 ms = 69.7年（Twitter Epoch 2010-11-04から）
+    </div>
+
+    <pre>import time
+import threading
+
+class SnowflakeIDGenerator:
+    """
+    Twitter Snowflake 互換ID生成器
+    64-bit = 1符号 + 41タイムスタンプ + 10マシンID + 12シーケンス
+    """
+    # Twitter Epoch: 2010-11-04T01:42:54.657Z（ミリ秒）
+    EPOCH = 1288834974657
+
+    TIMESTAMP_BITS = 41
+    MACHINE_ID_BITS = 10
+    SEQUENCE_BITS = 12
+
+    MAX_MACHINE_ID = (1 << MACHINE_ID_BITS) - 1   # 1023
+    MAX_SEQUENCE = (1 << SEQUENCE_BITS) - 1        # 4095
+
+    # ビットシフト量
+    MACHINE_ID_SHIFT = SEQUENCE_BITS               # 12
+    TIMESTAMP_SHIFT = SEQUENCE_BITS + MACHINE_ID_BITS  # 22
+
+    def __init__(self, machine_id: int):
+        if not 0 <= machine_id <= self.MAX_MACHINE_ID:
+            raise ValueError(f"machine_id must be 0-{self.MAX_MACHINE_ID}")
+        self.machine_id = machine_id
+        self._sequence = 0
+        self._last_timestamp = -1
+        self._lock = threading.Lock()
+
+    def _current_time_ms(self) -> int:
+        return int(time.time() * 1000)
+
+    def _wait_next_ms(self, last_ts: int) -> int:
+        """同じmsで4096以上のIDが必要なら次のmsまで待機"""
+        ts = self._current_time_ms()
+        while ts <= last_ts:
+            ts = self._current_time_ms()
+        return ts
+
+    def generate_id(self) -> int:
+        with self._lock:
+            ts = self._current_time_ms()
+
+            if ts == self._last_timestamp:
+                # 同じミリ秒内: シーケンスインクリメント
+                self._sequence = (self._sequence + 1) & self.MAX_SEQUENCE
+                if self._sequence == 0:
+                    # シーケンスが溢れた: 次のmsまで待機
+                    ts = self._wait_next_ms(self._last_timestamp)
+            else:
+                # 新しいms: シーケンスリセット
+                self._sequence = 0
+
+            self._last_timestamp = ts
+
+            # 64-bit ID の組み立て
+            snowflake_id = (
+                ((ts - self.EPOCH) << self.TIMESTAMP_SHIFT) |
+                (self.machine_id << self.MACHINE_ID_SHIFT) |
+                self._sequence
+            )
+            return snowflake_id
+
+    @staticmethod
+    def parse_id(snowflake_id: int) -> dict:
+        """IDを逆パースして各フィールドを抽出"""
+        EPOCH = 1288834974657
+        sequence = snowflake_id & 4095           # 下12bit
+        machine_id = (snowflake_id >> 12) & 1023 # 次の10bit
+        timestamp_ms = (snowflake_id >> 22) + EPOCH
+
+        from datetime import datetime, timezone
+        created_at = datetime.fromtimestamp(
+            timestamp_ms / 1000, tz=timezone.utc
+        )
+
+        return {
+            "id": snowflake_id,
+            "timestamp_ms": timestamp_ms,
+            "created_at": created_at.isoformat(),
+            "machine_id": machine_id,
+            "sequence": sequence,
+        }
+
+
+# 使用例
+gen = SnowflakeIDGenerator(machine_id=1)
+ids = [gen.generate_id() for _ in range(5)]
+for id_ in ids:
+    info = SnowflakeIDGenerator.parse_id(id_)
+    print(f"ID={id_} seq={info['sequence']} time={info['created_at']}")
+
+# 生成能力の計算
+# 1ノードが1msに生成可能: 2^12 = 4096 IDs
+# 1ノードが1sに生成可能: 4096 × 1000 = 4,096,000 IDs (約400万)
+# 1024ノードなら: 4,194,304,000 IDs/s (約42億/秒)</pre>
+  </div>
+</section>
+
+<!-- ===== EXERCISES ===== -->
+<section id="exercises">
+  <div class="section-header">
+    <div class="section-num" style="background:linear-gradient(135deg,#10b981,#22d3ee);">演</div>
+    <h2>実践演習</h2>
+  </div>
+
+  <!-- Exercise 1 -->
+  <div class="card" style="border-left:4px solid var(--accent);">
+    <div class="card-title">演習1: コンシステントハッシングのホットスポット問題を修正する</div>
+
+    <h4>シナリオ</h4>
+    <p>ECサイトのキャッシュクラスター（5ノード）で、ユーザー行動分析の結果、UserIDが連続する数値（1〜1,000,000）のためハッシュ分布が偏り、特定のシャードにトラフィックの40%が集中していることが判明しました。</p>
+
+    <h4>問題の再現</h4>
+    <pre># 偏ったシャードキーの例
+user_ids = range(1, 1000001)  # 1〜1,000,000の連番UserID
+
+# simple modulo では 0〜N-1 に偏る可能性あり
+# ただしコンシステントハッシングでも、
+# int型をそのままハッシュするとSHA-256の分布は均等だが
+# 実際のアクセスパターンが偏ることが多い
+
+# 有名ユーザー(ID=1000)へのアクセスが全体の20%
+HOT_USER_ID = 1000
+hot_access_ratio = 0.20  # 20%のトラフィックが1ユーザーに集中</pre>
+
+    <h4>解決策1: ホットキーのシャード分散（サフィックス追加）</h4>
+    <pre>import random
+
+def get_cache_key_for_hot_user(user_id: int, num_shards: int = 10) -> str:
+    """
+    ホットなUserIDをnum_shards個のキャッシュキーに分散させる
+    読み取り時はランダムに選択, 書き込み時は全shardに書く
+    """
+    suffix = random.randint(0, num_shards - 1)
+    return f"user:{user_id}:shard:{suffix}"
+
+# 書き込み（全shardに書く）
+def write_hot_user_cache(user_id: int, data: dict, cache, num_shards=10):
+    for i in range(num_shards):
+        key = f"user:{user_id}:shard:{i}"
+        cache.set(key, data, ttl=300)
+
+# 読み取り（ランダムに1shardから読む）
+def read_hot_user_cache(user_id: int, cache, num_shards=10):
+    shard = random.randint(0, num_shards - 1)
+    return cache.get(f"user:{user_id}:shard:{shard}")</pre>
+
+    <h4>解決策2: バーチャルノード数の調整効果（シミュレーション）</h4>
+    <pre>from collections import Counter
+
+def simulate_distribution(ring: ConsistentHashRing, num_keys: int = 100000):
+    """仮想ノード数別の負荷分散均等性をシミュレート"""
+    results = Counter()
+    for i in range(num_keys):
+        node = ring.get_node(f"user:{i}")
+        results[node] += 1
+
+    counts = list(results.values())
+    avg = sum(counts) / len(counts)
+    std_dev = (sum((c - avg)**2 for c in counts) / len(counts)) ** 0.5
+    return {
+        "distribution": dict(results),
+        "std_dev_ratio": std_dev / avg * 100,  # 変動係数（%）
+    }
+
+# 仮想ノード数別の比較
+for num_vnodes in [10, 50, 150, 300]:
+    ring = ConsistentHashRing(num_virtual_nodes=num_vnodes)
+    for server in ["A", "B", "C", "D", "E"]:
+        ring.add_node(f"server-{server}")
+    stats = simulate_distribution(ring)
+    print(f"vnodes={num_vnodes:3d}: 変動係数={stats['std_dev_ratio']:.1f}%")
+# vnodes= 10: 変動係数=18.4%
+# vnodes= 50: 変動係数= 7.2%
+# vnodes=150: 変動係数= 3.1%
+# vnodes=300: 変動係数= 2.2%</pre>
+  </div>
+
+  <!-- Exercise 2 -->
+  <div class="card" style="border-left:4px solid var(--green);">
+    <div class="card-title">演習2: 10億ユーザーのSNSをスケールアップする設計</div>
+    <p>Twitterライクな SNS をゼロから 10 億 DAU まで段階的にスケールアップする設計を示します。</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>フェーズ</th>
+            <th>規模</th>
+            <th>ボトルネック</th>
+            <th>DB設計</th>
+            <th>キャッシュ戦略</th>
+            <th>インフラ構成</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Day 1</strong></td>
+            <td>〜1万ユーザー</td>
+            <td>なし（スループット問題なし）</td>
+            <td>シングルMySQL（RDS）1台</td>
+            <td>不要（DBが速い）</td>
+            <td>EC2 1台 + RDS 1台。ALBなし。</td>
+          </tr>
+          <tr>
+            <td><strong>100万 DAU</strong></td>
+            <td>〜1M DAU / 1000 RPS</td>
+            <td>DB読み取りがCPUボトルネック</td>
+            <td>MySQL Primary + 2 Replica（読み書き分離）</td>
+            <td>Redis（セッション・ホームTL）。Cache-Aside パターン。</td>
+            <td>EC2 Auto Scaling Group (3〜20台) + ALB + ElastiCache Cluster</td>
+          </tr>
+          <tr>
+            <td><strong>1億 DAU</strong></td>
+            <td>〜100M DAU / 50k RPS</td>
+            <td>DB書き込みがボトルネック。単一MySQLの書き込み上限（〜5000 WPS）に近い</td>
+            <td>User/Tweet/Timeline を別テーブルに分離。user_id % 64 でシャーディング開始</td>
+            <td>Redis Cluster（Write-Through）。CDNで静的コンテンツ + サムネイル。</td>
+            <td>Multi-AZ構成。Kafkaでイベントストリーミング開始。バックグラウンドワーカー分離。</td>
+          </tr>
+          <tr>
+            <td><strong>10億 DAU</strong></td>
+            <td>〜1B DAU / 500k RPS</td>
+            <td>シャード間クエリ。グローバルレイテンシ。メディアストレージ。</td>
+            <td>マルチリージョンシャーディング（地理的分割 + hash分割の組み合わせ）。読み取りはLocal Replicaへ。</td>
+            <td>3層キャッシュ（エッジCDN → リージョンRedis → ローカルメモリキャッシュ）。Hot/Cold分離。</td>
+            <td>マルチリージョン Active-Active。専用媒体配信（S3 + CloudFront）。Kafkaグローバルレプリケーション。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tip-box">
+      <h4>各フェーズでの最重要判断</h4>
+      <ul>
+        <li><strong>100万→1億DAU：</strong>読み書き分離は必須だが、シャーディングへの移行は「本当に必要になってから」。早期シャーディングは複雑性を無駄に増やす。</li>
+        <li><strong>1億→10億DAU：</strong>マルチリージョンは新機能追加よりも難易度が高い。DNS Geolocationルーティング + リージョン間レプリケーションラグの許容範囲設計が鍵。</li>
+        <li>ホームタイムライン設計はどのフェーズでも最大の設計課題。有名人の扱い（Fan-out on Write vs Read）は早期に方針決定が必要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Exercise 3 -->
+  <div class="card" style="border-left:4px solid var(--accent3);">
+    <div class="card-title">演習3: Snowflake IDジェネレーターの完全実装と生成能力の計算</div>
+
+    <p>先ほどの実装コードを参照しつつ、生成能力の計算を詳しく行います。</p>
+
+    <div class="formula">
+      <div class="formula-label">1ノードの最大生成能力</div>
+      1ms あたりの最大ID数 = 2^12 = 4,096
+      1s あたりの最大ID数  = 4,096 × 1,000ms = 4,096,000 ≈ 410万 ID/s/ノード
+      <br><br>
+      マシンIDのビット数 = 10bit → 最大 2^10 = 1,024 ノード
+      全ノード合計 = 4,096,000 × 1,024 = 4,194,304,000 ID/s（約42億/s）
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">タイムスタンプの有効期間</div>
+      41bitで表現可能な最大値 = 2^41 - 1 = 2,199,023,255,551 ms
+      年換算 = 2,199,023,255,551 / (1000 × 60 × 60 × 24 × 365) ≈ 69.7年
+      <br><br>
+      Twitter Epoch（2010-11-04）から69.7年 = 約2080年まで使用可能
+    </div>
+
+    <pre># Snowflakeの亜種: Instagram ID（SequentialID）
+# Instagram方式: Postgresのストアドファンクションで生成（DBレス）
+# 41bit timestamp + 13bit shard ID + 10bit sequence
+
+CREATE OR REPLACE FUNCTION next_id(OUT result bigint) AS $$
+DECLARE
+    our_epoch bigint := 1314220021721;   -- Instagram Epoch (2011-08-25)
+    seq_id bigint;
+    now_ms bigint;
+    shard_id int := 5;                  -- このDBシャードのID（0〜8191）
+BEGIN
+    -- シーケンスから次の値を取得（1〜1024でラップ）
+    SELECT nextval('global_id_sequence') % 1024 INTO seq_id;
+    -- 現在時刻（ミリ秒）
+    SELECT FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000) INTO now_ms;
+    -- ビット結合: 41bit ms + 13bit shard + 10bit seq
+    result := (now_ms - our_epoch) << 23;
+    result := result | (shard_id << 10);
+    result := result | seq_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 使用例
+SELECT next_id();</pre>
+
+    <div class="tip-box">
+      <h4>Snowflake vs UUIDv4 vs ULID の比較</h4>
+      <ul>
+        <li><strong>Snowflake：</strong>単調増加→BTREEインデックス効率最高。ノードIDが必要（機器管理コスト）。時刻情報内包でデバッグ容易。</li>
+        <li><strong>UUIDv4：</strong>完全ランダム→インデックスフラグメンテーション。ノード管理不要でシンプル。128bitで大きい。</li>
+        <li><strong>ULID（Universally Unique Lexicographically Sortable Identifier）：</strong>タイムスタンプ + ランダム性。辞書順ソート可能。128bit。ノード管理不要でSnowflakeより実装が容易。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div><!-- /deep dive & exercises container -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-nav">
+    <a href="00_index.html">🏠 Index へ戻る</a>
+    <a href="09_distributed_systems.html">← Ch9 分散システム</a>
+    <span style="color:var(--text3);font-size:0.85rem;">Chapter 10 / スケーラビリティパターン</span>
+    <a href="11_reliability.html">Ch11 信頼性 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

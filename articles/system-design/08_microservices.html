@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイクロサービスアーキテクチャ | システムデザイン</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100;}
+nav .logo{font-weight:700;color:var(--accent);font-size:.95rem;margin-right:auto;}
+nav a{color:var(--text2);font-size:.85rem;padding:4px 12px;border-radius:6px;border:1px solid transparent;}
+nav a:hover{border-color:var(--border);color:var(--text);text-decoration:none;}
+nav a.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.hero{background:linear-gradient(135deg,#0f1a1a 0%,#112020 50%,#0d1f1f 100%);border-bottom:1px solid var(--border);padding:60px 24px 48px;text-align:center;}
+.hero .badge{display:inline-block;background:rgba(20,184,166,.15);color:#14b8a6;border:1px solid rgba(20,184,166,.3);padding:4px 14px;border-radius:20px;font-size:.8rem;font-weight:600;letter-spacing:.05em;margin-bottom:16px;}
+.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--text) 0%,#14b8a6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{color:var(--text2);max-width:660px;margin:0 auto;font-size:1.05rem;}
+.container{max-width:1100px;margin:0 auto;padding:0 24px;}
+main{padding:48px 0;}
+section{margin-bottom:64px;}
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.section-num{background:#14b8a6;color:#fff;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;}
+h2{font-size:1.5rem;font-weight:700;color:var(--text);}
+h3{font-size:1.15rem;font-weight:600;color:var(--text);margin:24px 0 12px;}
+p{color:var(--text2);margin-bottom:12px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
+.card h4{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:8px;}
+.card p{font-size:.9rem;color:var(--text2);margin-bottom:0;}
+.card ul{padding-left:18px;margin-top:8px;}
+.card ul li{font-size:.88rem;color:var(--text2);margin-bottom:4px;}
+.pro-con{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.pros{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:16px;}
+.cons{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:16px;}
+.pros h4{color:var(--green);margin-bottom:8px;}
+.cons h4{color:var(--red);margin-bottom:8px;}
+ul.check-list{list-style:none;padding-left:0;}
+ul.check-list li{padding:4px 0;font-size:.9rem;color:var(--text2);}
+ul.check-list.good li::before{content:"✓ ";color:var(--green);}
+ul.check-list.bad li::before{content:"✗ ";color:var(--red);}
+pre{background:#090b12;border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto;font-size:.82rem;line-height:1.6;margin:16px 0;}
+code{font-family:'JetBrains Mono','Fira Code',monospace;}
+.kw{color:#c084fc;} .fn{color:#60a5fa;} .st{color:#86efac;} .cm{color:#4b5563;font-style:italic;} .nm{color:#fbbf24;} .op{color:#94a3b8;}
+.callout{border-radius:10px;padding:16px 20px;margin:16px 0;border-left:4px solid;}
+.callout.info{background:rgba(99,102,241,.08);border-color:var(--accent);}
+.callout.warn{background:rgba(245,158,11,.08);border-color:var(--accent3);}
+.callout.danger{background:rgba(239,68,68,.08);border-color:var(--red);}
+.callout.success{background:rgba(16,185,129,.08);border-color:var(--green);}
+.callout.teal{background:rgba(20,184,166,.08);border-color:#14b8a6;}
+.callout p{margin:0;font-size:.9rem;}
+.callout strong{color:var(--text);}
+.table-wrap{overflow-x:auto;margin:16px 0;}
+table{width:100%;border-collapse:collapse;font-size:.88rem;}
+th{background:var(--surface2);color:var(--text);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;}
+.tag.green{background:rgba(16,185,129,.15);color:var(--green);}
+.tag.red{background:rgba(239,68,68,.15);color:var(--red);}
+.tag.blue{background:rgba(99,102,241,.15);color:var(--accent);}
+.tag.amber{background:rgba(245,158,11,.15);color:var(--accent3);}
+.tag.teal{background:rgba(20,184,166,.15);color:#14b8a6;}
+.tag.purple{background:rgba(167,139,250,.15);color:var(--purple);}
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;overflow-x:auto;}
+.diagram svg{display:block;margin:0 auto;}
+footer{background:var(--surface);border-top:1px solid var(--border);padding:32px 24px;text-align:center;color:var(--text3);font-size:.85rem;}
+footer .nav-links{display:flex;justify-content:center;gap:24px;margin-bottom:16px;flex-wrap:wrap;}
+footer .nav-links a{color:var(--text2);}
+.interview-box{background:linear-gradient(135deg,rgba(20,184,166,.08),rgba(99,102,241,.08));border:1px solid rgba(20,184,166,.25);border-radius:12px;padding:24px;margin:24px 0;}
+.interview-box h3{color:#14b8a6;margin-top:0;margin-bottom:12px;}
+.interview-box ul{padding-left:20px;}
+.interview-box ul li{color:var(--text2);font-size:.9rem;margin-bottom:8px;}
+.step-flow{display:flex;gap:0;margin:16px 0;flex-wrap:wrap;}
+.step{background:var(--surface2);border:1px solid var(--border);padding:12px 16px;flex:1;min-width:120px;text-align:center;position:relative;}
+.step:not(:last-child)::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--accent2);font-weight:700;z-index:1;}
+.step h5{font-size:.8rem;color:var(--text);margin-bottom:4px;}
+.step p{font-size:.75rem;color:var(--text2);margin:0;}
+.step:first-child{border-radius:8px 0 0 8px;}
+.step:last-child{border-radius:0 8px 8px 0;}
+.phase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0;}
+.phase{border-radius:10px;padding:16px;border:1px solid;}
+.phase h5{font-size:.9rem;font-weight:700;margin-bottom:8px;}
+.phase ul{padding-left:16px;}
+.phase ul li{font-size:.82rem;margin-bottom:4px;}
+@media(max-width:640px){
+  .pro-con{grid-template-columns:1fr;}
+  .card-grid{grid-template-columns:1fr;}
+  .step-flow{flex-direction:column;}
+  .step:not(:last-child)::after{content:"↓";right:50%;top:auto;bottom:-14px;transform:translateX(50%);}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">システムデザイン</span>
+  <a href="00_index.html">🏠 ホーム</a>
+  <a href="07_message_queues.html">← メッセージキュー</a>
+  <a class="active" href="08_microservices.html">Ch08 マイクロサービス</a>
+  <a href="09_distributed_systems.html">分散システム →</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Chapter 08</div>
+  <h1>マイクロサービス<br>アーキテクチャ</h1>
+  <p>モノリスからの移行・DDD・サービスメッシュ・Kubernetes まで。現代の大規模システム設計の核心を体系的に学ぶ</p>
+</div>
+
+<main>
+<div class="container">
+
+<!-- ===================== SECTION 1 ===================== -->
+<section id="s1">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2>モノリス vs マイクロサービス vs SOA</h2>
+  </div>
+
+  <p>アーキテクチャスタイルを選択するとき、最初に理解すべきは「なぜその選択をするか」というコンテキストだ。モノリス・SOA・マイクロサービスはそれぞれ異なるトレードオフを持つ。</p>
+
+  <h3>モノリシックアーキテクチャ</h3>
+  <p>すべての機能が単一のデプロイ単位にまとまったアーキテクチャ。小チームの初期フェーズでは最も生産性が高い。</p>
+
+  <div class="pro-con">
+    <div class="pros">
+      <h4>モノリスの利点</h4>
+      <ul class="check-list good">
+        <li>開発・デバッグが簡単</li>
+        <li>ネットワーク遅延なし（関数呼び出し）</li>
+        <li>トランザクション管理が容易</li>
+        <li>IDE のサポートが充実</li>
+        <li>チームの認知負荷が低い</li>
+        <li>インフラが単純（1プロセス）</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>モノリスの限界</h4>
+      <ul class="check-list bad">
+        <li>コードベースが大きくなると把握困難</li>
+        <li>1機能の変更でも全体を再デプロイ</li>
+        <li>特定モジュールだけスケールできない</li>
+        <li>技術スタックの刷新が困難</li>
+        <li>チームが大きくなると変更衝突が増加</li>
+        <li>障害が全体に波及しやすい</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>SOA（Service-Oriented Architecture）との違い</h3>
+  <div class="card">
+    <p>SOA は 2000 年代に流行した「サービスを ESB（Enterprise Service Bus）で統合する」スタイル。マイクロサービスとよく混同されるが本質的に異なる。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>観点</th><th>SOA</th><th>マイクロサービス</th></tr>
+        <tr><td>通信基盤</td><td>ESB（集中型・重厚）</td><td>軽量プロトコル（REST/gRPC/MQ）</td></tr>
+        <tr><td>サービス粒度</td><td>大きい（エンタープライズ機能単位）</td><td>小さい（ビジネス能力単位）</td></tr>
+        <tr><td>データ管理</td><td>共有データベースが一般的</td><td>サービスごとに独立したDB</td></tr>
+        <tr><td>デプロイ</td><td>一括またはスロット切替</td><td>独立した CI/CD パイプライン</td></tr>
+        <tr><td>チーム</td><td>中央組織が統制</td><td>自律した小チームが所有</td></tr>
+        <tr><td>標準化</td><td>WSDL・SOAP・WS-*</td><td>実用的な慣習ベース</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>マイクロサービスの基本原則</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>🔀 独立デプロイ</h4>
+      <p>各サービスは他のサービスに影響を与えずデプロイできる。これが最大の価値。API の後方互換性を維持することで実現する。</p>
+    </div>
+    <div class="card">
+      <h4>📦 ビジネスドメイン境界</h4>
+      <p>サービス境界はビジネスの能力（capability）に沿って引く。技術層（DB層・UI層）ではなくドメイン（注文・在庫・決済）で分割する。</p>
+    </div>
+    <div class="card">
+      <h4>💾 分散データ管理</h4>
+      <p>各サービスが自分のデータを所有する。他サービスのDBに直接アクセスしない。データの整合性は最終的整合性（Eventual Consistency）で担保する。</p>
+    </div>
+    <div class="card">
+      <h4>🔧 障害に備えた設計</h4>
+      <p>ネットワーク越しの呼び出しは必ず失敗しうる前提で設計する。サーキットブレーカー・タイムアウト・リトライを標準実装する。</p>
+    </div>
+    <div class="card">
+      <h4>🤖 自動化インフラ</h4>
+      <p>多数のサービスを手動管理するのは不可能。CI/CD・コンテナ・オーケストレーション（K8s）・監視の自動化が前提条件。</p>
+    </div>
+    <div class="card">
+      <h4>👥 チームの自律性</h4>
+      <p>各サービスチームが技術選択・デプロイ判断・運用責任を持つ。Conway の法則を意識した組織設計が重要。</p>
+    </div>
+  </div>
+
+  <h3>三種アーキテクチャの比較表</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>観点</th><th>モノリス</th><th>SOA</th><th>マイクロサービス</th></tr>
+      <tr><td>開発速度（初期）</td><td><span class="tag green">速い</span></td><td><span class="tag amber">中</span></td><td><span class="tag amber">中（基盤整備必要）</span></td></tr>
+      <tr><td>開発速度（成熟後）</td><td><span class="tag red">低下</span></td><td><span class="tag amber">中</span></td><td><span class="tag green">高い</span></td></tr>
+      <tr><td>運用複雑度</td><td><span class="tag green">低い</span></td><td><span class="tag red">高い（ESB）</span></td><td><span class="tag red">高い（多数サービス）</span></td></tr>
+      <tr><td>障害分離</td><td><span class="tag red">低い</span></td><td><span class="tag amber">中</span></td><td><span class="tag green">高い</span></td></tr>
+      <tr><td>スケーラビリティ</td><td><span class="tag red">全体のみ</span></td><td><span class="tag amber">サービス単位</span></td><td><span class="tag green">サービス単位</span></td></tr>
+      <tr><td>データ管理</td><td><span class="tag green">ACID容易</span></td><td><span class="tag amber">共有DB多い</span></td><td><span class="tag red">分散トランザクション複雑</span></td></tr>
+      <tr><td>技術多様性</td><td><span class="tag red">制限あり</span></td><td><span class="tag amber">標準規格縛り</span></td><td><span class="tag green">自由（Polyglot）</span></td></tr>
+      <tr><td>チームスケール</td><td><span class="tag amber">〜20人</span></td><td><span class="tag amber">中規模</span></td><td><span class="tag green">大規模対応</span></td></tr>
+    </table>
+  </div>
+
+  <h3>SVG図：モノリス vs マイクロサービスの構造</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg" width="860" height="360">
+      <!-- Monolith side -->
+      <text x="200" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="system-ui">モノリス</text>
+      <rect x="60" y="40" width="280" height="260" rx="12" fill="#13151f" stroke="#2a2d3e" stroke-width="1.5"/>
+      <text x="200" y="68" text-anchor="middle" fill="#e2e8f0" font-size="11" font-family="system-ui" font-weight="600">単一デプロイ単位</text>
+      <!-- modules inside monolith -->
+      <rect x="80" y="78" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="135" y="104" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">注文モジュール</text>
+      <rect x="210" y="78" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="265" y="104" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">商品モジュール</text>
+      <rect x="80" y="136" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="135" y="162" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">ユーザーモジュール</text>
+      <rect x="210" y="136" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="265" y="162" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">決済モジュール</text>
+      <rect x="80" y="194" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="135" y="220" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">配送モジュール</text>
+      <rect x="210" y="194" width="110" height="44" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1"/>
+      <text x="265" y="220" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">通知モジュール</text>
+      <!-- shared DB -->
+      <rect x="120" y="250" width="160" height="36" rx="8" fill="#0f1825" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="200" y="272" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="system-ui">共有データベース</text>
+
+      <!-- Microservices side -->
+      <text x="660" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="system-ui">マイクロサービス</text>
+      <!-- Services -->
+      <rect x="440" y="40" width="100" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="490" y="62" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">注文サービス</text>
+      <rect x="444" y="72" width="92" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="490" y="83" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">orders_db</text>
+
+      <rect x="560" y="40" width="100" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="610" y="62" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">商品サービス</text>
+      <rect x="564" y="72" width="92" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="610" y="83" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">products_db</text>
+
+      <rect x="680" y="40" width="100" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="730" y="62" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">ユーザーサービス</text>
+      <rect x="684" y="72" width="92" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="730" y="83" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">users_db</text>
+
+      <rect x="800" y="40" width="80" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="840" y="62" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">決済サービス</text>
+      <rect x="804" y="72" width="72" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="840" y="83" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">pay_db</text>
+
+      <rect x="500" y="140" width="100" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="550" y="162" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">配送サービス</text>
+      <rect x="504" y="172" width="92" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="550" y="183" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">ship_db</text>
+
+      <rect x="630" y="140" width="100" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="680" y="162" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="600">通知サービス</text>
+      <rect x="634" y="172" width="92" height="14" rx="3" fill="#0f2020" stroke="#14b8a6" stroke-width=".5"/>
+      <text x="680" y="183" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="system-ui">notif_db</text>
+
+      <!-- API Gateway -->
+      <rect x="570" y="230" width="160" height="36" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="650" y="252" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">API Gateway</text>
+
+      <!-- arrows to gateway -->
+      <line x1="490" y1="92" x2="600" y2="230" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="610" y1="92" x2="630" y2="230" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="730" y1="92" x2="690" y2="230" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="550" y1="192" x2="610" y2="230" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="680" y1="192" x2="670" y2="230" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Message Bus -->
+      <rect x="440" y="290" width="440" height="30" rx="6" fill="#0f1825" stroke="#6366f1" stroke-width="1"/>
+      <text x="660" y="309" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">メッセージバス（非同期通信）</text>
+
+      <!-- divider -->
+      <line x1="420" y1="30" x2="420" y2="330" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="6,4"/>
+    </svg>
+  </div>
+</section>
+
+
+<!-- ===================== SECTION 2 ===================== -->
+<section id="s2">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2>いつモノリスを選び、いつマイクロサービスを選ぶか</h2>
+  </div>
+
+  <p>マイクロサービスは「常に正解」ではない。適切なアーキテクチャはチームサイズ・ドメインの複雑さ・組織の成熟度によって変わる。</p>
+
+  <h3>Amazon の「Two-Pizza Team」ルール</h3>
+  <div class="callout teal">
+    <p><strong>Two-Pizza Team：</strong> ピザ2枚で全員お腹いっぱいになれる人数（6〜8人）が1チームの上限。それを超えたらチームを分割し、各チームが独立したサービスを担当する。Amazon はこの哲学を組織とシステム設計の両方に適用した。</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>モノリスを選ぶべきケース</h4>
+      <ul>
+        <li>チームが10人未満</li>
+        <li>ドメインが未成熟（境界が不明確）</li>
+        <li>プロダクト初期・PMFを探している段階</li>
+        <li>インフラ運用のリソースが少ない</li>
+        <li>開発スピードが最優先</li>
+        <li>バックオフィス・社内ツール系</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>マイクロサービスを選ぶべきケース</h4>
+      <ul>
+        <li>複数チーム（各6〜8人）が並行開発</li>
+        <li>ドメインが明確に分離可能</li>
+        <li>スケール要件がサービスごとに大きく異なる</li>
+        <li>高い開発頻度（1日複数回デプロイ）</li>
+        <li>技術スタックの多様性が必要</li>
+        <li>障害分離・高可用性が必須</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>「Majestic Monolith」という選択肢</h3>
+  <div class="card">
+    <p>DHH（Rails 作者）が提唱した概念。きちんと設計されたモジュール化モノリスは、多くのスタートアップ・中規模サービスに最適解である。</p>
+    <p><strong>条件：</strong> 内部モジュールが明確なAPI境界を持ち、循環依存がなく、将来的にサービス分割が可能な設計になっていること。Shopify・Stack Overflow はこのアプローチで大規模成長を遂げた。</p>
+  </div>
+
+  <h3>アンチパターン：Distributed Monolith（分散モノリス）</h3>
+  <div class="callout danger">
+    <p><strong>最悪の組み合わせ：</strong> マイクロサービスに分割したのに、サービス間が密結合のまま。独立デプロイができず（A をデプロイすると B が壊れる）、分散システムの複雑さだけを抱えた状態。サービス間で DB を共有したり、同期呼び出しチェーンが長い場合に発生する。</p>
+  </div>
+
+  <h3>判断フローチャート</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" width="660" height="420">
+      <!-- Start -->
+      <rect x="270" y="10" width="160" height="40" rx="20" fill="#14b8a6" />
+      <text x="350" y="35" text-anchor="middle" fill="#fff" font-size="12" font-family="system-ui" font-weight="700">スタート</text>
+      <line x1="350" y1="50" x2="350" y2="75" stroke="#64748b" stroke-width="1.5"/>
+
+      <!-- Q1 -->
+      <polygon points="350,75 490,115 350,155 210,115" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="350" y="110" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="system-ui">チーム10人未満？</text>
+      <text x="350" y="126" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="system-ui">ドメインが不明確？</text>
+
+      <!-- Q1 Yes → Monolith -->
+      <line x1="210" y1="115" x2="80" y2="115" stroke="#64748b" stroke-width="1.5"/>
+      <text x="145" y="108" text-anchor="middle" fill="#10b981" font-size="10" font-family="system-ui">Yes</text>
+      <rect x="10" y="95" width="70" height="40" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+      <text x="45" y="119" text-anchor="middle" fill="#10b981" font-size="10" font-family="system-ui" font-weight="700">モノリス</text>
+
+      <!-- Q1 No → Q2 -->
+      <line x1="350" y1="155" x2="350" y2="185" stroke="#64748b" stroke-width="1.5"/>
+      <text x="360" y="174" fill="#ef4444" font-size="10" font-family="system-ui">No</text>
+
+      <!-- Q2 -->
+      <polygon points="350,185 490,225 350,265 210,225" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="350" y="220" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="system-ui">ドメイン境界が</text>
+      <text x="350" y="236" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="system-ui">明確に引けるか？</text>
+
+      <!-- Q2 No → Majestic Monolith -->
+      <line x1="210" y1="225" x2="80" y2="225" stroke="#64748b" stroke-width="1.5"/>
+      <text x="145" y="218" text-anchor="middle" fill="#ef4444" font-size="10" font-family="system-ui">No</text>
+      <rect x="5" y="200" width="75" height="50" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="42" y="222" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui" font-weight="700">Majestic</text>
+      <text x="42" y="238" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui" font-weight="700">Monolith</text>
+
+      <!-- Q2 Yes → Q3 -->
+      <line x1="350" y1="265" x2="350" y2="295" stroke="#64748b" stroke-width="1.5"/>
+      <text x="360" y="284" fill="#10b981" font-size="10" font-family="system-ui">Yes</text>
+
+      <!-- Q3 -->
+      <polygon points="350,295 490,335 350,375 210,335" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="350" y="330" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="system-ui">インフラ自動化</text>
+      <text x="350" y="346" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="system-ui">（CI/CD・K8s）準備OK？</text>
+
+      <!-- Q3 No -->
+      <line x1="210" y1="335" x2="80" y2="335" stroke="#64748b" stroke-width="1.5"/>
+      <text x="145" y="328" text-anchor="middle" fill="#ef4444" font-size="10" font-family="system-ui">No</text>
+      <rect x="5" y="310" width="75" height="50" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="42" y="332" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui" font-weight="700">先に基盤</text>
+      <text x="42" y="348" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui" font-weight="700">を整備</text>
+
+      <!-- Q3 Yes → Microservices -->
+      <line x1="490" y1="335" x2="600" y2="335" stroke="#64748b" stroke-width="1.5"/>
+      <text x="540" y="328" text-anchor="middle" fill="#10b981" font-size="10" font-family="system-ui">Yes</text>
+      <rect x="600" y="310" width="90" height="50" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="645" y="332" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="700">マイクロ</text>
+      <text x="645" y="348" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="700">サービス</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ===================== SECTION 3 ===================== -->
+<section id="s3">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2>ドメイン駆動設計 (DDD) の基礎</h2>
+  </div>
+
+  <p>マイクロサービスの境界設計に最も有効なアプローチが DDD（Domain-Driven Design）。Eric Evans が 2003 年に提唱した設計哲学で、複雑なドメインをソフトウェアに正確に反映させる手法を体系化している。</p>
+
+  <h3>Bounded Context（境界づけられたコンテキスト）</h3>
+  <div class="card">
+    <p>DDDの中核概念。同じ言葉でも文脈（コンテキスト）によって意味が異なる。たとえば「顧客（Customer）」はマーケティング部門では「リード」、配送部門では「受取人住所」、請求部門では「支払い情報」を意味する。</p>
+    <p>Bounded Context はその「言葉の意味が一意に決まる範囲」。マイクロサービスの境界は原則として Bounded Context と一致させる。</p>
+  </div>
+
+  <h3>主要な DDD 戦術パターン</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>Entity（エンティティ）</h4>
+      <p>一意のIDで識別されるオブジェクト。属性が変化しても同じエンティティとして扱われる。例：注文（Order ID で識別）、ユーザー（User ID で識別）。</p>
+    </div>
+    <div class="card">
+      <h4>Value Object（値オブジェクト）</h4>
+      <p>IDを持たず、属性の値で等価性を判断するオブジェクト。不変（Immutable）。例：金額（¥1,000）、住所、メールアドレス。</p>
+    </div>
+    <div class="card">
+      <h4>Aggregate（集約）</h4>
+      <p>整合性を保つ必要があるエンティティと値オブジェクトのクラスター。Aggregate Root を通じてのみ外部からアクセス可能。例：Order Aggregate（Order + OrderItems + ShippingAddress）。</p>
+    </div>
+    <div class="card">
+      <h4>Domain Event（ドメインイベント）</h4>
+      <p>ドメイン内で起きた過去の出来事。「OrderPlaced」「PaymentProcessed」など。イベント駆動アーキテクチャとの親和性が高く、Bounded Context 間の通信に使う。</p>
+    </div>
+  </div>
+
+  <h3>Context Map（コンテキストマップ）</h3>
+  <p>複数の Bounded Context の関係を可視化したもの。上流（Upstream）が下流（Downstream）に影響を与える方向を矢印で示す。</p>
+  <div class="table-wrap">
+    <table>
+      <tr><th>関係パターン</th><th>説明</th><th>例</th></tr>
+      <tr><td>Upstream / Downstream</td><td>変更の影響が流れる方向。上流の変更が下流に影響する</td><td>商品サービス→注文サービス</td></tr>
+      <tr><td>Shared Kernel</td><td>2チームが共有するドメインモデルの一部</td><td>共通のユーザーID型定義</td></tr>
+      <tr><td>Customer / Supplier</td><td>下流（顧客）が上流（供給者）に要件を交渉できる</td><td>SLAの合意</td></tr>
+      <tr><td>Anti-Corruption Layer</td><td>外部システムの概念が自ドメインに侵入しないよう変換レイヤーを設ける</td><td>外部決済APIの吸収</td></tr>
+      <tr><td>Conformist</td><td>下流が上流のモデルをそのまま採用する</td><td>外部SaaSに合わせる</td></tr>
+    </table>
+  </div>
+
+  <h3>Ubiquitous Language（ユビキタス言語）</h3>
+  <div class="callout info">
+    <p><strong>エンジニアとビジネス側が同じ言語を使う：</strong> コード・会議・ドキュメントで同じ用語を使う。「User」でなく「Customer」「Seller」「Rider」と区別する。用語の曖昧さがバグの原因になる。</p>
+  </div>
+
+  <h3>実践例：ECサイトのドメイン分割</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" width="820" height="300">
+      <!-- Order Context -->
+      <rect x="20" y="20" width="150" height="130" rx="10" fill="#13151f" stroke="#14b8a6" stroke-width="2"/>
+      <text x="95" y="42" text-anchor="middle" fill="#14b8a6" font-size="11" font-family="system-ui" font-weight="700">注文コンテキスト</text>
+      <text x="35" y="62" fill="#94a3b8" font-size="9" font-family="system-ui">● Order（Aggregate Root）</text>
+      <text x="35" y="78" fill="#94a3b8" font-size="9" font-family="system-ui">● OrderItem（Entity）</text>
+      <text x="35" y="94" fill="#94a3b8" font-size="9" font-family="system-ui">● OrderStatus（VO）</text>
+      <text x="35" y="110" fill="#94a3b8" font-size="9" font-family="system-ui">● Price（VO）</text>
+      <text x="35" y="130" fill="#64748b" font-size="8" font-family="system-ui" font-style="italic">DB: orders_db (PostgreSQL)</text>
+
+      <!-- Product Context -->
+      <rect x="200" y="20" width="150" height="130" rx="10" fill="#13151f" stroke="#6366f1" stroke-width="2"/>
+      <text x="275" y="42" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="system-ui" font-weight="700">商品コンテキスト</text>
+      <text x="215" y="62" fill="#94a3b8" font-size="9" font-family="system-ui">● Product（Aggregate Root）</text>
+      <text x="215" y="78" fill="#94a3b8" font-size="9" font-family="system-ui">● Category（Entity）</text>
+      <text x="215" y="94" fill="#94a3b8" font-size="9" font-family="system-ui">● SKU（VO）</text>
+      <text x="215" y="110" fill="#94a3b8" font-size="9" font-family="system-ui">● Inventory（Entity）</text>
+      <text x="215" y="130" fill="#64748b" font-size="8" font-family="system-ui" font-style="italic">DB: products_db (MongoDB)</text>
+
+      <!-- User Context -->
+      <rect x="380" y="20" width="150" height="130" rx="10" fill="#13151f" stroke="#22d3ee" stroke-width="2"/>
+      <text x="455" y="42" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="system-ui" font-weight="700">ユーザーコンテキスト</text>
+      <text x="395" y="62" fill="#94a3b8" font-size="9" font-family="system-ui">● Customer（Aggregate Root）</text>
+      <text x="395" y="78" fill="#94a3b8" font-size="9" font-family="system-ui">● Address（VO）</text>
+      <text x="395" y="94" fill="#94a3b8" font-size="9" font-family="system-ui">● Email（VO）</text>
+      <text x="395" y="110" fill="#94a3b8" font-size="9" font-family="system-ui">● AuthCredential（VO）</text>
+      <text x="395" y="130" fill="#64748b" font-size="8" font-family="system-ui" font-style="italic">DB: users_db (PostgreSQL)</text>
+
+      <!-- Payment Context -->
+      <rect x="560" y="20" width="150" height="130" rx="10" fill="#13151f" stroke="#f59e0b" stroke-width="2"/>
+      <text x="635" y="42" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="system-ui" font-weight="700">決済コンテキスト</text>
+      <text x="575" y="62" fill="#94a3b8" font-size="9" font-family="system-ui">● Payment（Aggregate Root）</text>
+      <text x="575" y="78" fill="#94a3b8" font-size="9" font-family="system-ui">● PaymentMethod（Entity）</text>
+      <text x="575" y="94" fill="#94a3b8" font-size="9" font-family="system-ui">● Amount（VO）</text>
+      <text x="575" y="110" fill="#94a3b8" font-size="9" font-family="system-ui">● TransactionId（VO）</text>
+      <text x="575" y="130" fill="#64748b" font-size="8" font-family="system-ui" font-style="italic">DB: payments_db (PostgreSQL)</text>
+
+      <!-- Shipping Context -->
+      <rect x="700" y="20" width="140" height="130" rx="10" fill="#13151f" stroke="#ef4444" stroke-width="2"/>
+      <text x="770" y="42" text-anchor="middle" fill="#ef4444" font-size="11" font-family="system-ui" font-weight="700">配送コンテキスト</text>
+      <text x="715" y="62" fill="#94a3b8" font-size="9" font-family="system-ui">● Shipment（Aggregate）</text>
+      <text x="715" y="78" fill="#94a3b8" font-size="9" font-family="system-ui">● TrackingNumber（VO）</text>
+      <text x="715" y="94" fill="#94a3b8" font-size="9" font-family="system-ui">● Destination（VO）</text>
+      <text x="715" y="110" fill="#94a3b8" font-size="9" font-family="system-ui">● DeliveryStatus（VO）</text>
+      <text x="715" y="130" fill="#64748b" font-size="8" font-family="system-ui" font-style="italic">DB: shipping_db (DynamoDB)</text>
+
+      <!-- Domain Events -->
+      <rect x="20" y="190" width="820" height="50" rx="10" fill="#0f1825" stroke="#2a2d3e" stroke-width="1"/>
+      <text x="430" y="210" text-anchor="middle" fill="#6366f1" font-size="10" font-family="system-ui" font-weight="700">Domain Events（Kafka トピック）</text>
+      <text x="100" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">OrderPlaced</text>
+      <text x="230" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">InventoryReserved</text>
+      <text x="360" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">PaymentProcessed</text>
+      <text x="500" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">ShipmentDispatched</text>
+      <text x="650" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">OrderDelivered</text>
+      <text x="770" y="230" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">CustomerNotified</text>
+
+      <!-- arrows to event bus -->
+      <line x1="95" y1="150" x2="95" y2="190" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="275" y1="150" x2="275" y2="190" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="455" y1="150" x2="455" y2="190" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="635" y1="150" x2="635" y2="190" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="770" y1="150" x2="770" y2="190" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <text x="430" y="280" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">各コンテキストは独自の言語・データモデル・DB技術を持つ。イベントで疎結合に連携</text>
+    </svg>
+  </div>
+</section>
+
+
+<!-- ===================== SECTION 4 ===================== -->
+<section id="s4">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2>サービス間通信</h2>
+  </div>
+
+  <p>マイクロサービス間の通信は「同期」と「非同期」の2種類に大別される。それぞれの特性を理解して適切に使い分けることが重要。</p>
+
+  <h3>同期通信：REST vs gRPC</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>観点</th><th>REST（HTTP/JSON）</th><th>gRPC（HTTP/2 + Protobuf）</th></tr>
+      <tr><td>プロトコル</td><td>HTTP/1.1 または HTTP/2</td><td>HTTP/2 必須</td></tr>
+      <tr><td>シリアライズ</td><td>JSON（人間可読・大きい）</td><td>Protocol Buffers（バイナリ・小さい）</td></tr>
+      <tr><td>パフォーマンス</td><td><span class="tag amber">普通</span></td><td><span class="tag green">高速（5〜10倍）</span></td></tr>
+      <tr><td>ストリーミング</td><td>制限あり（WebSocket別途）</td><td>双方向ストリーミング対応</td></tr>
+      <tr><td>型安全性</td><td>弱い（JSONスキーマ別途）</td><td>強い（.proto定義）</td></tr>
+      <tr><td>ブラウザ対応</td><td><span class="tag green">ネイティブ対応</span></td><td><span class="tag red">grpc-web が必要</span></td></tr>
+      <tr><td>デバッグ容易性</td><td><span class="tag green">curl で確認できる</span></td><td><span class="tag amber">専用ツール必要</span></td></tr>
+      <tr><td>採用場面</td><td>外部API・ブラウザ対応・読みやすさ重視</td><td>内部サービス間・低レイテンシ・高スループット</td></tr>
+    </table>
+  </div>
+
+  <h3>gRPC の .proto 定義例</h3>
+  <pre><code><span class="cm">// order_service.proto</span>
+<span class="kw">syntax</span> = <span class="st">"proto3"</span>;
+<span class="kw">package</span> <span class="nm">order</span>;
+
+<span class="kw">service</span> <span class="fn">OrderService</span> {
+  <span class="kw">rpc</span> <span class="fn">CreateOrder</span>(<span class="nm">CreateOrderRequest</span>) <span class="kw">returns</span> (<span class="nm">OrderResponse</span>);
+  <span class="kw">rpc</span> <span class="fn">GetOrder</span>(<span class="nm">GetOrderRequest</span>) <span class="kw">returns</span> (<span class="nm">OrderResponse</span>);
+  <span class="cm">// サーバーストリーミング：注文ステータスをリアルタイム通知</span>
+  <span class="kw">rpc</span> <span class="fn">WatchOrderStatus</span>(<span class="nm">GetOrderRequest</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="nm">OrderStatusUpdate</span>);
+}
+
+<span class="kw">message</span> <span class="fn">CreateOrderRequest</span> {
+  <span class="kw">string</span> customer_id = <span class="nm">1</span>;
+  <span class="kw">repeated</span> <span class="nm">OrderItem</span> items = <span class="nm">2</span>;
+  <span class="kw">string</span> shipping_address = <span class="nm">3</span>;
+}
+
+<span class="kw">message</span> <span class="fn">OrderItem</span> {
+  <span class="kw">string</span> product_id = <span class="nm">1</span>;
+  <span class="kw">int32</span> quantity = <span class="nm">2</span>;
+  <span class="kw">int64</span> unit_price_cents = <span class="nm">3</span>;
+}
+
+<span class="kw">message</span> <span class="fn">OrderResponse</span> {
+  <span class="kw">string</span> order_id = <span class="nm">1</span>;
+  <span class="nm">OrderStatus</span> status = <span class="nm">2</span>;
+  <span class="kw">int64</span> total_amount_cents = <span class="nm">3</span>;
+  <span class="nm">google.protobuf.Timestamp</span> created_at = <span class="nm">4</span>;
+}
+
+<span class="kw">enum</span> <span class="fn">OrderStatus</span> {
+  PENDING = <span class="nm">0</span>;
+  CONFIRMED = <span class="nm">1</span>;
+  SHIPPED = <span class="nm">2</span>;
+  DELIVERED = <span class="nm">3</span>;
+  CANCELLED = <span class="nm">4</span>;
+}</code></pre>
+
+  <h3>同期 vs 非同期 通信の使い分け</h3>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg" width="780" height="320">
+      <!-- Sync section -->
+      <text x="200" y="22" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="system-ui" font-weight="600">同期通信（REST / gRPC）</text>
+
+      <!-- Client -->
+      <rect x="20" y="40" width="100" height="40" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="70" y="64" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">クライアント</text>
+
+      <!-- request arrow -->
+      <line x1="120" y1="60" x2="240" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="180" y="52" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="system-ui">Request</text>
+
+      <!-- Service A -->
+      <rect x="240" y="40" width="100" height="40" rx="8" fill="#1c1f2e" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="290" y="64" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui">サービスA</text>
+
+      <!-- request to B -->
+      <line x1="340" y1="60" x2="460" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="400" y="52" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="system-ui">同期呼び出し</text>
+
+      <!-- Service B -->
+      <rect x="460" y="40" width="100" height="40" rx="8" fill="#1c1f2e" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="510" y="64" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui">サービスB</text>
+
+      <!-- response from B -->
+      <line x1="460" y1="100" x2="340" y2="100" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="400" y="115" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui">Response（待機）</text>
+
+      <!-- response to client -->
+      <line x1="240" y1="100" x2="120" y2="100" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <text x="70" y="140" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">クライアントはレスポンスを待つ</text>
+      <text x="200" y="155" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">例：ユーザー認証・在庫確認・即時の結果が必要な処理</text>
+
+      <!-- Divider -->
+      <line x1="410" y1="30" x2="410" y2="310" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="5,4"/>
+
+      <!-- Async section -->
+      <text x="620" y="22" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="system-ui" font-weight="600">非同期通信（メッセージキュー）</text>
+
+      <!-- Publisher -->
+      <rect x="430" y="40" width="90" height="40" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="475" y="64" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">注文サービス</text>
+
+      <!-- publish event -->
+      <line x1="520" y1="60" x2="610" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="565" y="50" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="system-ui">publish</text>
+
+      <!-- Message Queue -->
+      <rect x="610" y="34" width="110" height="52" rx="8" fill="#0f1825" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="665" y="56" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">Kafka Topic</text>
+      <text x="665" y="72" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">order.placed</text>
+
+      <!-- consume arrows -->
+      <line x1="720" y1="50" x2="800" y2="90" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <line x1="720" y1="70" x2="800" y2="140" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <line x1="720" y1="80" x2="800" y2="190" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+
+      <!-- Consumers -->
+      <rect x="800" y="72" width="90" height="32" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="845" y="92" text-anchor="middle" fill="#10b981" font-size="9" font-family="system-ui">在庫サービス</text>
+
+      <rect x="800" y="122" width="90" height="32" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="845" y="142" text-anchor="middle" fill="#10b981" font-size="9" font-family="system-ui">決済サービス</text>
+
+      <rect x="800" y="172" width="90" height="32" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="845" y="192" text-anchor="middle" fill="#10b981" font-size="9" font-family="system-ui">通知サービス</text>
+
+      <text x="475" y="140" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">注文サービスは送信後すぐ返す</text>
+      <text x="620" y="240" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">例：注文確定後の在庫引当・決済・メール通知</text>
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+        </marker>
+        <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="callout info">
+    <p><strong>判断基準：</strong> 即時レスポンスが必要（認証・在庫確認）→ 同期。処理に時間がかかる・複数サービスへのファンアウト（注文後の通知・在庫引当）→ 非同期。サービス間の依存を切りたい場合も非同期を選ぶ。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 5 ===================== -->
+<section id="s5">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2>データ管理パターン</h2>
+  </div>
+
+  <p>マイクロサービスで最も難しいのがデータ管理。「各サービスが自分のDBを持つ」原則を守りながら、複数サービスにまたがる整合性をどう担保するかが設計の核心。</p>
+
+  <h3>Database per Service パターン</h3>
+  <div class="card">
+    <p>各サービスが専用のデータストアを持つ。他サービスのDBへの直接アクセス（JOIN・外部キー）は禁止。</p>
+    <div class="pro-con">
+      <div class="pros">
+        <h4>メリット</h4>
+        <ul class="check-list good">
+          <li>サービスが独立してデプロイ・スケール可能</li>
+          <li>最適な DB 技術を選択できる（Polyglot）</li>
+          <li>他サービスの障害が波及しない</li>
+          <li>スキーマ変更が他サービスに影響しない</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <h4>デメリット</h4>
+        <ul class="check-list bad">
+          <li>複数サービスにまたがるクエリが困難</li>
+          <li>分散トランザクションが必要になる</li>
+          <li>データの冗長性が発生する</li>
+          <li>最終的整合性の受け入れが必要</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>Saga パターン（分散トランザクション）</h3>
+  <p>複数サービスにまたがるトランザクションを、各サービスのローカルトランザクションの連鎖で実現。失敗時は補償トランザクション（Compensating Transaction）でロールバックする。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Choreography（コレオグラフィー）</h4>
+      <p>中央のオーケストレーターを持たず、各サービスがイベントを受け取って次のアクションを実行する。疎結合だが全体のフローが把握しにくい。</p>
+    </div>
+    <div class="card">
+      <h4>Orchestration（オーケストレーション）</h4>
+      <p>中央のオーケストレーター（Saga Coordinator）が各サービスを呼び出して制御する。フローが明確だが中央サービスへの依存が生まれる。</p>
+    </div>
+  </div>
+
+  <h3>Saga Choreography の流れ（注文処理）</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg" width="780" height="280">
+      <!-- Services -->
+      <rect x="20" y="20" width="110" height="36" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="75" y="42" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="600">注文サービス</text>
+
+      <rect x="170" y="20" width="110" height="36" rx="8" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="225" y="42" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui" font-weight="600">在庫サービス</text>
+
+      <rect x="320" y="20" width="110" height="36" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="375" y="42" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">決済サービス</text>
+
+      <rect x="470" y="20" width="110" height="36" rx="8" fill="#13151f" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="525" y="42" text-anchor="middle" fill="#ef4444" font-size="10" font-family="system-ui" font-weight="600">配送サービス</text>
+
+      <rect x="620" y="20" width="110" height="36" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+      <text x="675" y="42" text-anchor="middle" fill="#10b981" font-size="10" font-family="system-ui" font-weight="600">通知サービス</text>
+
+      <!-- lifelines -->
+      <line x1="75" y1="56" x2="75" y2="260" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="225" y1="56" x2="225" y2="260" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="375" y1="56" x2="375" y2="260" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="525" y1="56" x2="525" y2="260" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="675" y1="56" x2="675" y2="260" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Step 1 -->
+      <line x1="75" y1="85" x2="225" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrc)"/>
+      <text x="150" y="78" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="system-ui">OrderPlaced</text>
+
+      <!-- Step 2 -->
+      <line x1="225" y1="115" x2="375" y2="115" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrc)"/>
+      <text x="300" y="108" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="system-ui">InventoryReserved</text>
+
+      <!-- Step 3 -->
+      <line x1="375" y1="145" x2="525" y2="145" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrc)"/>
+      <text x="450" y="138" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="system-ui">PaymentProcessed</text>
+
+      <!-- Step 4 -->
+      <line x1="525" y1="175" x2="675" y2="175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrc)"/>
+      <text x="600" y="168" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="system-ui">ShipmentCreated</text>
+
+      <!-- Failure path -->
+      <line x1="375" y1="210" x2="225" y2="210" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrfail)"/>
+      <text x="300" y="203" text-anchor="middle" fill="#ef4444" font-size="8" font-family="system-ui">PaymentFailed → ReleaseInventory（補償）</text>
+
+      <line x1="225" y1="235" x2="75" y2="235" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrfail)"/>
+      <text x="150" y="228" text-anchor="middle" fill="#ef4444" font-size="8" font-family="system-ui">InventoryReleased → CancelOrder（補償）</text>
+
+      <defs>
+        <marker id="arrc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrfail" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>CQRS（Command Query Responsibility Segregation）</h3>
+  <div class="card">
+    <p>コマンド（書き込み）とクエリ（読み込み）の責務を分離するパターン。</p>
+    <ul style="padding-left:20px;color:var(--text2);font-size:.9rem;">
+      <li style="margin-bottom:6px;"><strong>Command Side：</strong> 書き込み最適化。正規化されたデータモデル。イベントを発行。</li>
+      <li style="margin-bottom:6px;"><strong>Query Side：</strong> 読み込み最適化。非正規化されたリードモデル。高速クエリ用に別途ストア（Elasticsearch・Redis）を持つ。</li>
+    </ul>
+    <p>Event Sourcing（イベントを正とし、状態を都度再構築）と組み合わせることが多い。</p>
+  </div>
+
+  <h3>API Composition（複数サービスのデータ集約）</h3>
+  <pre><code><span class="cm">// API Gateway での Composition 例（Node.js）</span>
+<span class="kw">async function</span> <span class="fn">getOrderDetail</span>(orderId) {
+  <span class="cm">// 並行リクエストで複数サービスからデータ取得</span>
+  <span class="kw">const</span> [order, payment, shipment] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    orderService.<span class="fn">getOrder</span>(orderId),
+    paymentService.<span class="fn">getPaymentByOrder</span>(orderId),
+    shippingService.<span class="fn">getShipmentByOrder</span>(orderId),
+  ]);
+
+  <span class="cm">// 商品詳細を取得（order.itemsの数だけ）</span>
+  <span class="kw">const</span> productIds = order.items.<span class="fn">map</span>(i => i.productId);
+  <span class="kw">const</span> products = <span class="kw">await</span> productService.<span class="fn">getProductsByIds</span>(productIds);
+  <span class="kw">const</span> productMap = <span class="kw">new</span> <span class="fn">Map</span>(products.<span class="fn">map</span>(p => [p.id, p]));
+
+  <span class="kw">return</span> {
+    order,
+    items: order.items.<span class="fn">map</span>(item => ({
+      ...item,
+      product: productMap.<span class="fn">get</span>(item.productId),
+    })),
+    payment,
+    shipment,
+  };
+}</code></pre>
+</section>
+
+
+<!-- ===================== SECTION 6 ===================== -->
+<section id="s6">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2>ストラングラーフィグパターン（Strangler Fig）</h2>
+  </div>
+
+  <p>既存のモノリスを段階的にマイクロサービスへ移行するための戦略。マーティン・ファウラーが命名。モノリスをいきなり全部作り替える「Big Bang 移行」は失敗リスクが極めて高い。</p>
+
+  <div class="callout teal">
+    <p><strong>名前の由来：</strong> 熱帯雨林のストラングラーフィグ（絞め殺しの木）は、宿主の木に巻き付きながら成長し、最終的に宿主の木に取って代わる。ソフトウェア移行も同様に、新システムが旧システムを徐々に置き換えていく。</p>
+  </div>
+
+  <h3>移行フェーズ</h3>
+  <div class="phase-grid">
+    <div class="phase" style="background:rgba(99,102,241,.07);border-color:rgba(99,102,241,.3);">
+      <h5 style="color:var(--accent);">Phase 1：ファサード設置</h5>
+      <ul style="color:var(--text2);">
+        <li>APIゲートウェイ／リバースプロキシを前段に置く</li>
+        <li>全リクエストを既存モノリスへルーティング</li>
+        <li>モノリスには一切手を加えない</li>
+      </ul>
+    </div>
+    <div class="phase" style="background:rgba(20,184,166,.07);border-color:rgba(20,184,166,.3);">
+      <h5 style="color:#14b8a6;">Phase 2：機能の抽出</h5>
+      <ul style="color:var(--text2);">
+        <li>移行しやすい機能から新サービスを作成</li>
+        <li>プロキシが新サービスへルーティング</li>
+        <li>モノリスの該当機能は無効化</li>
+        <li>データ同期を一時的に行う</li>
+      </ul>
+    </div>
+    <div class="phase" style="background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.3);">
+      <h5 style="color:var(--accent3);">Phase 3：繰り返し</h5>
+      <ul style="color:var(--text2);">
+        <li>機能ごとに Phase 2 を繰り返す</li>
+        <li>モノリスがどんどん縮小する</li>
+        <li>各サービスが独立DBを持つ</li>
+        <li>リスクを小さく保ちながら進める</li>
+      </ul>
+    </div>
+    <div class="phase" style="background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.3);">
+      <h5 style="color:var(--green);">Phase 4：完了</h5>
+      <ul style="color:var(--text2);">
+        <li>モノリスが廃止または最小化</li>
+        <li>全機能がマイクロサービスへ移行</li>
+        <li>APIゲートウェイが唯一のエントリポイント</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>SVG図：移行フェーズ</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" width="780" height="220">
+      <!-- Phase labels -->
+      <text x="80" y="16" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="system-ui">Phase 1</text>
+      <text x="270" y="16" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="system-ui">Phase 2</text>
+      <text x="510" y="16" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="system-ui">Phase 3</text>
+      <text x="730" y="16" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="system-ui">Phase 4（完了）</text>
+
+      <!-- Phase 1 -->
+      <rect x="20" y="30" width="120" height="160" rx="8" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="80" y="52" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="system-ui" font-weight="700">Proxy</text>
+      <rect x="35" y="62" width="90" height="100" rx="6" fill="#1c1f2e" stroke="#2a2d3e" stroke-width="1"/>
+      <text x="80" y="90" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="system-ui" font-weight="600">モノリス</text>
+      <text x="80" y="108" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">全機能</text>
+      <text x="80" y="124" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">注文・商品</text>
+      <text x="80" y="140" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">ユーザー・決済</text>
+
+      <!-- Arrow -->
+      <line x1="140" y1="110" x2="170" y2="110" stroke="#2a2d3e" stroke-width="2" marker-end="url(#arrmig)"/>
+
+      <!-- Phase 2 -->
+      <rect x="170" y="30" width="190" height="160" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="265" y="52" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui" font-weight="700">Proxy（ルーティング更新）</text>
+      <rect x="180" y="62" width="75" height="100" rx="6" fill="#1c1f2e" stroke="#2a2d3e" stroke-width="1"/>
+      <text x="217" y="90" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="system-ui">モノリス</text>
+      <text x="217" y="108" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">商品・ユーザー</text>
+      <text x="217" y="124" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">決済</text>
+      <rect x="265" y="62" width="85" height="44" rx="6" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="307" y="86" text-anchor="middle" fill="#14b8a6" font-size="9" font-family="system-ui">注文サービス</text>
+      <text x="307" y="99" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">（新）</text>
+
+      <!-- Arrow -->
+      <line x1="360" y1="110" x2="390" y2="110" stroke="#2a2d3e" stroke-width="2" marker-end="url(#arrmig)"/>
+
+      <!-- Phase 3 -->
+      <rect x="390" y="30" width="230" height="160" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="505" y="52" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="system-ui" font-weight="700">Proxy</text>
+      <rect x="400" y="62" width="60" height="100" rx="6" fill="#1c1f2e" stroke="#2a2d3e" stroke-width="1"/>
+      <text x="430" y="90" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="system-ui">モノリス</text>
+      <text x="430" y="108" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">（縮小）</text>
+      <text x="430" y="122" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">決済のみ</text>
+      <rect x="470" y="62" width="70" height="40" rx="6" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="505" y="86" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">注文サービス</text>
+      <rect x="470" y="108" width="70" height="40" rx="6" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="505" y="132" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">商品サービス</text>
+      <rect x="548" y="62" width="62" height="40" rx="6" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="579" y="86" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">ユーザー</text>
+      <rect x="548" y="108" width="62" height="40" rx="6" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="579" y="130" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">通知</text>
+
+      <!-- Arrow -->
+      <line x1="620" y1="110" x2="650" y2="110" stroke="#2a2d3e" stroke-width="2" marker-end="url(#arrmig)"/>
+
+      <!-- Phase 4 -->
+      <rect x="650" y="30" width="160" height="160" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+      <text x="730" y="52" text-anchor="middle" fill="#10b981" font-size="9" font-family="system-ui" font-weight="700">API Gateway</text>
+      <rect x="660" y="62" width="65" height="36" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="692" y="84" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">注文</text>
+      <rect x="735" y="62" width="65" height="36" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="767" y="84" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">商品</text>
+      <rect x="660" y="106" width="65" height="36" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="692" y="128" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">ユーザー</text>
+      <rect x="735" y="106" width="65" height="36" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="767" y="128" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">決済</text>
+      <rect x="660" y="150" width="65" height="34" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="692" y="171" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">配送</text>
+      <rect x="735" y="150" width="65" height="34" rx="5" fill="#0f2020" stroke="#14b8a6" stroke-width="1"/>
+      <text x="767" y="171" text-anchor="middle" fill="#14b8a6" font-size="8" font-family="system-ui">通知</text>
+
+      <defs>
+        <marker id="arrmig" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="callout danger">
+    <p><strong>アンチパターン — Big Bang 移行：</strong> モノリスをすべて停止して新マイクロサービスに一気に切り替える方法。開発期間中に本番が止まる、バグが大量発生、ロールバックが困難、という三重苦を招く。Amazon・Netflix はいずれも段階的移行でマイクロサービスへ移行した。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 7 ===================== -->
+<section id="s7">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2>サービスディスカバリ</h2>
+  </div>
+
+  <p>コンテナ・オートスケール環境ではサービスのIPアドレスが動的に変わる。ハードコードされたエンドポイントは使えない。サービスディスカバリはこの問題を解決する仕組み。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Client-side Discovery</h4>
+      <p>クライアントがService Registryに問い合わせ、利用可能なインスタンスを取得して自分でロードバランシングする。</p>
+      <p><strong>例：</strong> Netflix Eureka + Ribbon</p>
+      <p style="color:var(--green);font-size:.85rem;">✓ シンプル・クライアントが柔軟なLBポリシーを持てる</p>
+      <p style="color:var(--red);font-size:.85rem;">✗ 各クライアントが Discovery ロジックを実装する必要あり</p>
+    </div>
+    <div class="card">
+      <h4>Server-side Discovery</h4>
+      <p>ロードバランサーやAPIゲートウェイがService Registryに問い合わせ、適切なインスタンスへルーティングする。クライアントは意識しない。</p>
+      <p><strong>例：</strong> AWS ALB + ECS Service Discovery / Kubernetes Service</p>
+      <p style="color:var(--green);font-size:.85rem;">✓ クライアントが単純・言語非依存</p>
+      <p style="color:var(--red);font-size:.85rem;">✗ ロードバランサーが単一障害点になりうる</p>
+    </div>
+  </div>
+
+  <h3>Service Registry の選択肢</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>ツール</th><th>特徴</th><th>採用場面</th></tr>
+      <tr><td>Consul（HashiCorp）</td><td>ヘルスチェック・KV ストア・mTLS 内蔵。サービスメッシュとしても使える</td><td>オンプレ・マルチクラウド</td></tr>
+      <tr><td>Eureka（Netflix OSS）</td><td>Spring Cloud との親和性高い。AP系（高可用性を優先）</td><td>Spring Boot マイクロサービス</td></tr>
+      <tr><td>etcd</td><td>Kubernetes の内部データストア。強整合性。シンプルなKVストア</td><td>Kubernetes 内部・設定管理</td></tr>
+      <tr><td>Kubernetes Service</td><td>Kubernetes ネイティブ。DNS ベースのディスカバリ。kube-proxy がルーティング</td><td>Kubernetes 環境では事実上の標準</td></tr>
+      <tr><td>AWS Cloud Map</td><td>ECS・Lambda・EC2 対応。Route 53 と統合</td><td>AWS マネージド環境</td></tr>
+    </table>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" width="660" height="260">
+      <!-- Service Registry -->
+      <rect x="270" y="10" width="160" height="60" rx="10" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2"/>
+      <text x="350" y="36" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="system-ui" font-weight="700">Service Registry</text>
+      <text x="350" y="54" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">（Consul / etcd / K8s）</text>
+
+      <!-- Service instances registering -->
+      <rect x="40" y="120" width="120" height="40" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="100" y="144" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui">注文サービス:8080</text>
+
+      <rect x="40" y="180" width="120" height="40" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="100" y="204" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui">注文サービス:8081</text>
+
+      <rect x="200" y="150" width="120" height="40" rx="8" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="260" y="174" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui">商品サービス:9090</text>
+
+      <!-- Register arrows -->
+      <line x1="100" y1="120" x2="290" y2="70" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrreg)"/>
+      <line x1="100" y1="180" x2="290" y2="70" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrreg)"/>
+      <line x1="260" y1="150" x2="320" y2="70" stroke="#2a2d3e" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrreg)"/>
+      <text x="170" y="95" fill="#64748b" font-size="8" font-family="system-ui">register (heartbeat)</text>
+
+      <!-- API Gateway querying -->
+      <rect x="520" y="120" width="130" height="50" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="585" y="143" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="system-ui" font-weight="600">API Gateway</text>
+      <text x="585" y="160" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">（Server-side LB）</text>
+
+      <line x1="520" y1="140" x2="430" y2="60" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrq)"/>
+      <text x="510" y="88" fill="#22d3ee" font-size="8" font-family="system-ui">lookup</text>
+
+      <line x1="430" y1="60" x2="520" y2="145" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="510" y="106" fill="#f59e0b" font-size="8" font-family="system-ui">→ :8080,:8081</text>
+
+      <defs>
+        <marker id="arrreg" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#2a2d3e"/>
+        </marker>
+        <marker id="arrq" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#22d3ee"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+
+<!-- ===================== SECTION 8 ===================== -->
+<section id="s8">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <h2>サービスメッシュ（Service Mesh）</h2>
+  </div>
+
+  <p>多数のサービス間通信の横断的関心事（mTLS・リトライ・サーキットブレーカー・観測性）をアプリケーションコードから切り離し、インフラレイヤーで統一管理する仕組み。</p>
+
+  <h3>サイドカーパターン</h3>
+  <div class="card">
+    <p>各サービスのPodにサイドカーコンテナ（代表的なのは <strong>Envoy Proxy</strong>）を注入する。すべてのネットワークトラフィックはサイドカーを経由するため、アプリケーションコードを変更せずに高度な機能を追加できる。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" width="720" height="280">
+      <!-- Control Plane -->
+      <rect x="200" y="10" width="360" height="50" rx="10" fill="#1c1f2e" stroke="#f59e0b" stroke-width="2"/>
+      <text x="380" y="32" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="system-ui" font-weight="700">コントロールプレーン（Istio: istiod / Linkerd: control-plane）</text>
+      <text x="380" y="50" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">ポリシー管理・証明書発行・テレメトリ収集・トラフィック設定の配布</text>
+
+      <!-- Service A Pod -->
+      <rect x="30" y="100" width="310" height="130" rx="10" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="185" y="120" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui" font-weight="700">Pod（サービスA）</text>
+
+      <rect x="45" y="130" width="120" height="80" rx="8" fill="#1c1f2e" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="105" y="155" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="600">App Container</text>
+      <text x="105" y="172" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">注文サービス</text>
+      <text x="105" y="188" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">:8080</text>
+
+      <rect x="185" y="130" width="140" height="80" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="255" y="155" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">Sidecar Proxy</text>
+      <text x="255" y="172" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">Envoy Proxy</text>
+      <text x="255" y="188" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">mTLS / retry / CB</text>
+
+      <line x1="165" y1="170" x2="185" y2="170" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrm)"/>
+
+      <!-- Service B Pod -->
+      <rect x="420" y="100" width="310" height="130" rx="10" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="575" y="120" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui" font-weight="700">Pod（サービスB）</text>
+
+      <rect x="435" y="130" width="140" height="80" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="505" y="155" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">Sidecar Proxy</text>
+      <text x="505" y="172" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">Envoy Proxy</text>
+      <text x="505" y="188" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">mTLS / metrics</text>
+
+      <rect x="585" y="130" width="130" height="80" rx="8" fill="#1c1f2e" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="650" y="155" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="600">App Container</text>
+      <text x="650" y="172" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">決済サービス</text>
+      <text x="650" y="188" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">:9090</text>
+
+      <line x1="575" y1="170" x2="585" y2="170" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrm)"/>
+
+      <!-- mTLS between sidecars -->
+      <line x1="325" y1="170" x2="435" y2="170" stroke="#10b981" stroke-width="2" stroke-dasharray="none"/>
+      <text x="380" y="163" text-anchor="middle" fill="#10b981" font-size="9" font-family="system-ui" font-weight="600">mTLS（暗号化・認証）</text>
+      <text x="380" y="182" text-anchor="middle" fill="#64748b" font-size="8" font-family="system-ui">メトリクス・トレース・ログも取得</text>
+
+      <!-- Control to sidecars -->
+      <line x1="280" y1="60" x2="255" y2="130" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrm)"/>
+      <line x1="460" y1="60" x2="500" y2="130" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrm)"/>
+      <text x="360" y="100" fill="#f59e0b" font-size="8" font-family="system-ui">設定配布（xDS API）</text>
+
+      <defs>
+        <marker id="arrm" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#22d3ee"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Istio が提供する主要機能</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>mTLS（相互TLS）</h4>
+      <p>すべてのサービス間通信を自動的に暗号化・認証。サービスIDを証明書で管理。Zero-Trust ネットワークの実現。</p>
+    </div>
+    <div class="card">
+      <h4>トラフィック管理</h4>
+      <p>Canary デプロイ（5%→10%→100%）、A/Bテスト、ヘッダーベースルーティング、フォールト注入（Fault Injection）。</p>
+    </div>
+    <div class="card">
+      <h4>観測性（Observability）</h4>
+      <p>分散トレーシング（Jaeger/Zipkin）・メトリクス（Prometheus/Grafana）・アクセスログを自動収集。アプリコード変更なし。</p>
+    </div>
+    <div class="card">
+      <h4>サーキットブレーカー</h4>
+      <p>Envoy の outlier_detection で失敗率の高いインスタンスを自動的にプールから除外。Hystrix のような実装を各サービスに書く必要がない。</p>
+    </div>
+  </div>
+
+  <h3>導入判断基準</h3>
+  <div class="callout warn">
+    <p><strong>サービスメッシュは銀の弾丸ではない。</strong> サービスが 5〜10 個以下なら導入コストの方が大きい。サービス数が多く、mTLS の一括適用・分散トレーシングの必要性・精緻なトラフィック制御が求められる場合に導入を検討する。Istio は強力だが学習コストも高い。Linkerd はシンプルで軽量な代替案。</p>
+  </div>
+</section>
+
+<!-- ===================== SECTION 9 ===================== -->
+<section id="s9">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2>コンテナと Kubernetes</h2>
+  </div>
+
+  <p>マイクロサービスの運用基盤として Kubernetes（K8s）は事実上の標準になっている。コンテナ技術と K8s の主要概念を理解することはマイクロサービス設計に不可欠。</p>
+
+  <h3>Docker コンテナのメリット</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>環境統一（Build Once Run Anywhere）</h4>
+      <p>「自分のマシンでは動く」問題を解消。開発・ステージング・本番で同じイメージを使う。OS依存ライブラリの差異が消える。</p>
+    </div>
+    <div class="card">
+      <h4>軽量・高速起動</h4>
+      <p>VMより軽量（MBオーダー）。秒単位で起動・停止。オートスケールに最適。</p>
+    </div>
+    <div class="card">
+      <h4>イミュータブルインフラ</h4>
+      <p>コンテナイメージは不変。デプロイ = 古いコンテナを新しいイメージで置き換える。ロールバックも一瞬で完了。</p>
+    </div>
+  </div>
+
+  <h3>Kubernetes の主要概念</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>リソース</th><th>役割</th><th>ポイント</th></tr>
+      <tr><td><strong>Pod</strong></td><td>K8sのデプロイ最小単位。1つ以上のコンテナをまとめたもの</td><td>通常1Podに1メインコンテナ＋サイドカー</td></tr>
+      <tr><td><strong>Deployment</strong></td><td>PodのReplicaSetを管理。ローリングアップデートを実行</td><td>replicas: 3 でPodを3つ維持</td></tr>
+      <tr><td><strong>Service</strong></td><td>Podへの安定したエンドポイント（ClusterIP/NodePort/LoadBalancer）</td><td>Podが入れ替わってもDNS名が変わらない</td></tr>
+      <tr><td><strong>Ingress</strong></td><td>外部HTTPトラフィックをServiceへルーティング。L7のルール定義</td><td>パスベース・ホストベースのルーティング</td></tr>
+      <tr><td><strong>ConfigMap</strong></td><td>設定値をPodへ注入（環境変数やファイルとして）</td><td>機密情報はSecret（Base64エンコード）</td></tr>
+      <tr><td><strong>HPA</strong></td><td>CPU/メモリ使用率に基づいてPod数を自動増減</td><td>HorizontalPodAutoscaler</td></tr>
+      <tr><td><strong>Namespace</strong></td><td>クラスタ内の論理的な分離区画</td><td>dev/staging/prod を分ける</td></tr>
+    </table>
+  </div>
+
+  <h3>K8s Deployment マニフェスト例</h3>
+  <pre><code><span class="cm"># order-service deployment.yaml</span>
+<span class="kw">apiVersion</span>: apps/v1
+<span class="kw">kind</span>: Deployment
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: order-service
+  <span class="fn">namespace</span>: production
+<span class="kw">spec</span>:
+  <span class="fn">replicas</span>: <span class="nm">3</span>
+  <span class="fn">selector</span>:
+    <span class="fn">matchLabels</span>:
+      <span class="fn">app</span>: order-service
+  <span class="fn">strategy</span>:
+    <span class="fn">type</span>: RollingUpdate
+    <span class="fn">rollingUpdate</span>:
+      <span class="fn">maxUnavailable</span>: <span class="nm">1</span>   <span class="cm"># 同時に停止できるPodの最大数</span>
+      <span class="fn">maxSurge</span>: <span class="nm">1</span>           <span class="cm"># 超過して作れるPodの最大数</span>
+  <span class="fn">template</span>:
+    <span class="fn">metadata</span>:
+      <span class="fn">labels</span>:
+        <span class="fn">app</span>: order-service
+    <span class="fn">spec</span>:
+      <span class="fn">containers</span>:
+      - <span class="fn">name</span>: order-service
+        <span class="fn">image</span>: my-registry/order-service:<span class="nm">v1.4.2</span>
+        <span class="fn">ports</span>:
+        - <span class="fn">containerPort</span>: <span class="nm">8080</span>
+        <span class="fn">resources</span>:
+          <span class="fn">requests</span>:
+            <span class="fn">memory</span>: <span class="st">"128Mi"</span>
+            <span class="fn">cpu</span>: <span class="st">"100m"</span>
+          <span class="fn">limits</span>:
+            <span class="fn">memory</span>: <span class="st">"512Mi"</span>
+            <span class="fn">cpu</span>: <span class="st">"500m"</span>
+        <span class="fn">env</span>:
+        - <span class="fn">name</span>: DB_URL
+          <span class="fn">valueFrom</span>:
+            <span class="fn">secretKeyRef</span>:
+              <span class="fn">name</span>: order-secrets
+              <span class="fn">key</span>: database-url
+        <span class="cm"># ヘルスチェック</span>
+        <span class="fn">livenessProbe</span>:
+          <span class="fn">httpGet</span>:
+            <span class="fn">path</span>: /healthz
+            <span class="fn">port</span>: <span class="nm">8080</span>
+          <span class="fn">initialDelaySeconds</span>: <span class="nm">15</span>
+          <span class="fn">periodSeconds</span>: <span class="nm">20</span>
+        <span class="fn">readinessProbe</span>:
+          <span class="fn">httpGet</span>:
+            <span class="fn">path</span>: /ready
+            <span class="fn">port</span>: <span class="nm">8080</span>
+          <span class="fn">initialDelaySeconds</span>: <span class="nm">5</span>
+          <span class="fn">periodSeconds</span>: <span class="nm">10</span>
+        <span class="fn">startupProbe</span>:
+          <span class="fn">httpGet</span>:
+            <span class="fn">path</span>: /healthz
+            <span class="fn">port</span>: <span class="nm">8080</span>
+          <span class="fn">failureThreshold</span>: <span class="nm">30</span>  <span class="cm"># 起動に最大5分を許容</span>
+          <span class="fn">periodSeconds</span>: <span class="nm">10</span></code></pre>
+
+  <h3>3種のデプロイ戦略</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>Rolling Update（ローリング）</h4>
+      <p>古いPodを少しずつ新しいPodに置き換える。ダウンタイムなし。Kubernetes のデフォルト。切り戻し（rollout undo）が容易。</p>
+      <p style="color:var(--green);font-size:.85rem;">✓ シンプル・リソース効率が良い</p>
+    </div>
+    <div class="card">
+      <h4>Blue-Green デプロイ</h4>
+      <p>Blue（現行）と Green（新版）の2環境を用意し、LBのルーティングを切り替える。問題があれば即座にBlueに戻せる。</p>
+      <p style="color:var(--red);font-size:.85rem;">✗ リソースが2倍必要</p>
+    </div>
+    <div class="card">
+      <h4>Canary デプロイ</h4>
+      <p>新バージョンを全体の5%などの少量トラフィックで試験し、問題がなければ段階的に100%へ拡大。サービスメッシュ（Istio）との組み合わせが強力。</p>
+      <p style="color:var(--green);font-size:.85rem;">✓ リスクを最小化した本番テスト</p>
+    </div>
+  </div>
+
+  <h3>ヘルスチェック3種</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Probe</th><th>役割</th><th>失敗時の挙動</th></tr>
+      <tr><td><strong>Liveness Probe</strong></td><td>コンテナが「生きているか」（デッドロック・クラッシュ検出）</td><td>コンテナを再起動する</td></tr>
+      <tr><td><strong>Readiness Probe</strong></td><td>コンテナが「リクエストを受け付けられるか」（DB接続完了後など）</td><td>ServiceのEndpointから除外（トラフィックを送らない）</td></tr>
+      <tr><td><strong>Startup Probe</strong></td><td>起動が遅いアプリの初回起動を待つ（起動後はLivenessに委譲）</td><td>起動タイムアウト → コンテナ再起動</td></tr>
+    </table>
+  </div>
+</section>
+
+
+<!-- ===================== SECTION 10 ===================== -->
+<section id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>マイクロサービスの落とし穴</h2>
+  </div>
+
+  <p>マイクロサービスは強力だが、適切に設計・運用しないと深刻な問題を引き起こす。よくある失敗パターンを知ることが成功の前提条件。</p>
+
+  <h3>1. 分散システムの8つの誤謬（Fallacies of Distributed Computing）</h3>
+  <div class="callout danger">
+    <p><strong>Peter Deutsch（Sun Microsystems）が提唱した、分散システム設計者がしがちな誤った前提：</strong></p>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <h4>① ネットワークは信頼できる</h4>
+      <p>実際はパケットロス・タイムアウト・ネットワーク分断が常に起きる。タイムアウト・リトライ・サーキットブレーカーは必須。</p>
+    </div>
+    <div class="card">
+      <h4>② レイテンシはゼロ</h4>
+      <p>同一データセンター内でも数ms。別リージョンなら100ms以上。ネットワーク呼び出しは関数呼び出しと桁が違う。</p>
+    </div>
+    <div class="card">
+      <h4>③ 帯域幅は無限</h4>
+      <p>大量の細かいサービス呼び出しは帯域を消費する。バッチリクエスト・GraphQL の利用を検討する。</p>
+    </div>
+    <div class="card">
+      <h4>④ ネットワークはセキュア</h4>
+      <p>内部通信でも暗号化（mTLS）・認証が必要。サービスメッシュや Zero-Trust 設計を採用する。</p>
+    </div>
+  </div>
+
+  <h3>2. 「分散モノリス」を避ける</h3>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <tr><th>症状</th><th>根本原因</th><th>解決策</th></tr>
+        <tr><td>サービスAをデプロイするとBが壊れる</td><td>APIの後方互換性がない</td><td>Consumer-Driven Contract Testing（Pact）</td></tr>
+        <tr><td>複数サービスの同時デプロイが必要</td><td>共有ライブラリの密結合</td><td>ライブラリをAPIに変換する</td></tr>
+        <tr><td>サービスBのDBに直接アクセス</td><td>Database per Service 原則違反</td><td>サービスAのAPIを呼ぶ or イベント購読</td></tr>
+        <tr><td>同期呼び出しチェーンが10段以上</td><td>過度な機能分割</td><td>サービスを統合する・非同期化する</td></tr>
+        <tr><td>全サービスが同じDB技術を使う</td><td>共有DBから逃げられない</td><td>段階的なデータ分離（ Strangler Fig）</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>3. Conway の法則とチームトポロジー</h3>
+  <div class="callout teal">
+    <p><strong>Conway の法則（1968年）：</strong>「システムを設計する組織は、その組織のコミュニケーション構造を模倣した設計を産み出す。」マイクロサービスの境界は、チームの組織構造と一致させる必要がある。逆コンウェイ戦略として、「作りたいアーキテクチャに合わせてチームを組織する」アプローチもある。</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Stream-aligned Team</h4>
+      <p>特定のビジネスドメイン（注文・商品）に専念するチーム。E2Eの責任を持つ。マイクロサービスチームの理想型。</p>
+    </div>
+    <div class="card">
+      <h4>Platform Team</h4>
+      <p>他チームが使う共通インフラ（K8s基盤・CI/CD・監視）を提供するチーム。開発者体験（DevEx）の向上が責務。</p>
+    </div>
+    <div class="card">
+      <h4>Enabling Team</h4>
+      <p>特定技術の専門知識（セキュリティ・パフォーマンス）を他チームへ移転する一時的なコーチングチーム。</p>
+    </div>
+  </div>
+
+  <h3>4. 適切な粒度のサービス分割</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>分割が細かすぎる（Nanoservices）</th><th>分割が大きすぎる</th></tr>
+      <tr><td>ネットワーク呼び出しのオーバーヘッドが支配的になる</td><td>チームが再び大きくなりCognitive Load増加</td></tr>
+      <tr><td>単純な操作に多数のサービス協調が必要になる</td><td>独立デプロイの効果が薄れる</td></tr>
+      <tr><td>分散トレーシングが複雑極まりない</td><td>スケール粒度が荒くなる</td></tr>
+      <tr><td>対策：関連する機能を一つのサービスに統合する</td><td>対策：Bounded Context に沿って再分割する</td></tr>
+    </table>
+  </div>
+
+  <h3>5. 分散トレーシングの必要性</h3>
+  <div class="card">
+    <p>モノリスではスタックトレースで問題を追えたが、マイクロサービスでは1リクエストが10以上のサービスをまたぐ。どこで遅延が起きているか・どこでエラーが発生しているかを追跡するには分散トレーシングが必須。</p>
+    <p><strong>標準：</strong> OpenTelemetry（ベンダー非依存の計装API）</p>
+    <p><strong>実装：</strong> Jaeger・Zipkin・AWS X-Ray・Datadog APM</p>
+    <p>各サービスが Trace ID を伝播することで、マイクロサービス群全体でのリクエストフローを可視化できる。</p>
+  </div>
+</section>
+
+<!-- ===================== INTERVIEW TIPS ===================== -->
+<section id="interview">
+  <div class="interview-box">
+    <h3>面接頻出：マイクロサービスQ&A</h3>
+    <ul>
+      <li><strong>Q: モノリスとマイクロサービスをどう使い分けますか？</strong><br>
+      → チームサイズ・ドメインの明確さ・スケール要件・インフラ成熟度の4軸で判断。初期は Majestic Monolith から始め、Two-Pizza Team を超えたら分割を検討する。</li>
+      <li><strong>Q: マイクロサービス間の分散トランザクションをどう扱いますか？</strong><br>
+      → 2PC（Two-Phase Commit）は分散環境では使わない。Saga パターン（Choreography または Orchestration）で補償トランザクションを実装する。最終的整合性を受け入れる設計にする。</li>
+      <li><strong>Q: サービス間の循環依存をどう防ぎますか？</strong><br>
+      → DDD の Bounded Context と Context Map で上流・下流の関係を明確にする。循環が生まれる場合はサービスの境界引き直しのサインと捉える。</li>
+      <li><strong>Q: ECサイトの注文処理をマイクロサービスで設計してください。</strong><br>
+      → 注文・商品・ユーザー・決済・配送・通知の6サービスを設計。OrderPlaced イベントを Kafka に発行 → 在庫サービス・決済サービスが購読。Saga で整合性を担保。API Gateway でクライアントに公開。</li>
+      <li><strong>Q: マイクロサービスの監視で重要なのは何ですか？</strong><br>
+      → Metrics（Prometheus/Grafana）・Distributed Tracing（Jaeger）・Logs（ELK Stack）の「観測性の3本柱」。さらに Availability・Latency・Error Rate・Saturation の「ALES指標」を各サービスに定義する。</li>
+      <li><strong>Q: サービスメッシュは何のために必要ですか？</strong><br>
+      → サービス間の mTLS・リトライ・サーキットブレーカー・分散トレーシングをアプリケーションコードから分離してインフラレイヤーで統一管理するため。ただし10サービス以下なら導入コスト過多。</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="nav-links">
+    <a href="00_index.html">🏠 ホーム</a>
+    <a href="07_message_queues.html">← Ch07 メッセージキュー</a>
+    <a href="09_distributed_systems.html">Ch09 分散システム →</a>
+  </div>
+  <p>システムデザイン学習シリーズ · Chapter 08 · マイクロサービスアーキテクチャ</p>
+  <p style="margin-top:6px;font-size:.78rem;">モノリス → Majestic Monolith → マイクロサービス。選択は文脈次第。</p>
+</footer>
+
+
+<!-- ============================================================ -->
+<!-- 深掘り & 実践演習セクション -->
+<!-- ============================================================ -->
+
+<section id="deep-k8s">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2>深掘り: Kubernetes本番運用</h2>
+  </div>
+  <p>Kubernetesは強力だが、正しく設定しないと本番環境で重大な問題が発生する。各設定の意味と落とし穴を理解する。</p>
+
+  <h3>Resource Requests vs Limits — CPU throttlingとOOMKiller</h3>
+  <div class="card">
+    <div class="card-grid">
+      <div class="card" style="border-color:rgba(34,211,238,0.4);">
+        <h4>Requests（保証リソース）</h4>
+        <p>Podをスケジュールする際に<strong>保証するリソース量</strong>。Nodeにこれだけの空きがなければスケジュールされない。</p>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,0.4);">
+        <h4>Limits（上限）</h4>
+        <p>Podが使用できる<strong>最大リソース量</strong>。CPU: Limitを超えるとthrottle（速度制限）。メモリ: Limitを超えるとOOMKillerに強制終了される。</p>
+      </div>
+    </div>
+    <pre><code><span class="cm"># deployment.yaml — Resource設定の例</span>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: order-service
+        image: order-service:v1.2.3
+        resources:
+          requests:
+            memory: "256Mi"   <span class="cm"># スケジュール保証</span>
+            cpu: "100m"       <span class="cm"># 0.1 CPU core</span>
+          limits:
+            memory: "512Mi"   <span class="cm"># これを超えるとOOMKill</span>
+            cpu: "500m"       <span class="cm"># 0.5 CPU core (超えるとthrottle)</span>
+
+<span class="cm">---</span>
+<span class="cm"># CPU Throttling の問題</span>
+<span class="cm"># CPUはcgroups v1のCFS (Completely Fair Scheduler)で管理</span>
+<span class="cm"># 100ms周期で使用量をチェック。Limitを超えると残り時間はthrottleされる</span>
+<span class="cm"># 短期的スパイク(P99レイテンシ増加)の原因になりやすい</span>
+<span class="cm"># 対策: Requests/Limitsの比率を小さくする(1:2以内推奨)</span>
+<span class="cm"># または Burstable ではなく Guaranteed QoS (req=limits)にする</span></code></pre>
+  </div>
+
+  <h3>HPA — Horizontal Pod Autoscaler</h3>
+  <div class="card">
+    <pre><code><span class="cm"># hpa.yaml — CPU + カスタムメトリクスでのHPA</span>
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  <span class="cm"># CPU使用率 70% を維持</span>
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  <span class="cm"># メモリ使用率 80% を維持</span>
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  <span class="cm"># カスタムメトリクス: Kafkaのコンシューマーラグ</span>
+  - type: External
+    external:
+      metric:
+        name: kafka_consumer_group_lag
+        selector:
+          matchLabels:
+            topic: orders
+            group: order-processor
+      target:
+        type: AverageValue
+        averageValue: "1000"     <span class="cm"># ラグが1000を超えたらスケールアウト</span>
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60   <span class="cm"># スケールアップを60秒安定化</span>
+      policies:
+      - type: Pods
+        value: 5
+        periodSeconds: 60        <span class="cm"># 60秒に最大5Pod追加</span>
+    scaleDown:
+      stabilizationWindowSeconds: 300  <span class="cm"># スケールダウンは5分待つ</span></code></pre>
+  </div>
+
+  <h3>PodDisruptionBudget — ローリングアップデート中のSLA維持</h3>
+  <div class="card">
+    <pre><code><span class="cm"># pdb.yaml — デプロイ中も最低2Podを維持</span>
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-pdb
+spec:
+  minAvailable: 2       <span class="cm"># 最低2Pod確保（または maxUnavailable: 1 とも書ける）</span>
+  selector:
+    matchLabels:
+      app: order-service
+
+<span class="cm"># 効果:</span>
+<span class="cm"># - kubectl drain（ノードメンテナンス）時に同時に落とすPod数を制限</span>
+<span class="cm"># - ローリングアップデート中も指定数以上のPodが稼働し続ける</span>
+<span class="cm"># - replicas=3 かつ minAvailable=2 の場合: 最大1Pod同時停止</span></code></pre>
+  </div>
+
+  <h3>Topology Spread Constraints と NetworkPolicy</h3>
+  <div class="card">
+    <pre><code><span class="cm"># topology-spread.yaml — ゾーン分散でHA確保</span>
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1                          <span class="cm"># ゾーン間の最大Pod数差</span>
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: order-service
+      <span class="cm"># 結果: 3ゾーンに均等分散（1Podずつ）</span>
+      <span class="cm"># ゾーン障害時も他ゾーンで継続稼働</span>
+
+<span class="cm">---</span>
+<span class="cm"># networkpolicy.yaml — East-West Traffic制御</span>
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: order-service-netpol
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  <span class="cm"># API GatewayからのIngressのみ許可</span>
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  <span class="cm"># PostgreSQLへのEgressのみ許可</span>
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  <span class="cm"># Kafkaへのアクセス許可</span>
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    ports:
+    - protocol: TCP
+      port: 9092</code></pre>
+  </div>
+</section>
+
+<section id="deep-istio">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>深掘り: サービスメッシュ Istio の実践</h2>
+  </div>
+
+  <h3>VirtualService / DestinationRule — カナリアリリース</h3>
+  <div class="card">
+    <pre><code><span class="cm"># カナリアリリース: v1に90%, v2に10%のトラフィックを振り分け</span>
+
+<span class="cm"># destination-rule.yaml</span>
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: order-service-dr
+spec:
+  host: order-service
+  subsets:
+  - name: v1
+    labels:
+      version: "v1"
+  - name: v2
+    labels:
+      version: "v2"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+    outlierDetection:            <span class="cm"># Circuit Breaker</span>
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+
+<span class="cm">---</span>
+<span class="cm"># virtual-service.yaml</span>
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: order-service-vs
+spec:
+  hosts:
+  - order-service
+  http:
+  <span class="cm"># ヘッダーに基づくルーティング（内部テスト用）</span>
+  - match:
+    - headers:
+        x-canary:
+          exact: "true"
+    route:
+    - destination:
+        host: order-service
+        subset: v2
+  <span class="cm"># 重み付きルーティング（90% v1, 10% v2）</span>
+  - route:
+    - destination:
+        host: order-service
+        subset: v1
+      weight: 90
+    - destination:
+        host: order-service
+        subset: v2
+      weight: 10
+    retries:
+      attempts: 3
+      perTryTimeout: 5s
+    timeout: 30s</code></pre>
+  </div>
+
+  <h3>mTLS Strict Mode と Istio のオーバーヘッド</h3>
+  <div class="card">
+    <pre><code><span class="cm"># peer-authentication.yaml — 全サービス間通信をmTLSで暗号化</span>
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: production
+spec:
+  mtls:
+    mode: STRICT    <span class="cm"># 平文通信を拒否。mTLSのみ許可</span>
+
+<span class="cm">---</span>
+<span class="cm"># Envoyサイドカーのリソースオーバーヘッド（実測値目安）</span>
+<span class="cm"># CPU:    50m〜100m 追加（アプリのCPUに加えて）</span>
+<span class="cm"># Memory: 50Mi〜150Mi 追加</span>
+<span class="cm"># Latency: +2〜5ms（mTLSハンドシェイク込み）</span>
+<span class="cm">#</span>
+<span class="cm"># 100Podのクラスターでの総コスト:</span>
+<span class="cm"># CPU: 100 × 0.1 core = 10 core 追加</span>
+<span class="cm"># Memory: 100 × 100Mi = 10GB 追加</span>
+<span class="cm">#</span>
+<span class="cm"># Istio Ambient Mesh（2023〜）:</span>
+<span class="cm"># サイドカーなしのモード。ztunnelが代替</span>
+<span class="cm"># CPU/Memory オーバーヘッドを大幅削減</span></code></pre>
+    <div class="callout warn">
+      <p><strong>Istio導入の判断基準:</strong> サービス数が10以上・セキュリティ要件が厳しい・カナリアデプロイを頻繁に行う場合にROIが出やすい。小規模サービスではオーバーヘッドがメリットを上回る可能性がある。まずはKubernetesの基本的な機能で解決できないかを確認する。</p>
+    </div>
+  </div>
+</section>
+
+<section id="practice-ms">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <h2>実践演習</h2>
+  </div>
+
+  <h3>演習1: ECサイトのドメイン分割設計</h3>
+  <div class="card">
+    <p>商品・注文・ユーザー・決済・配送・通知の6ドメインの境界を定義し、通信方式を決定する。</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>サービス</th><th>責務</th><th>DB</th><th>他サービスとの通信</th><th>公開API</th></tr>
+        <tr>
+          <td><strong>商品サービス</strong></td>
+          <td>商品カタログ・在庫管理</td>
+          <td>MongoDB（柔軟スキーマ）</td>
+          <td>在庫更新をKafkaで通知（非同期）</td>
+          <td>GET /products, GET /products/{id}</td>
+        </tr>
+        <tr>
+          <td><strong>注文サービス</strong></td>
+          <td>注文ライフサイクル管理</td>
+          <td>PostgreSQL（ACID保証）</td>
+          <td>商品確認（gRPC同期）、在庫確保・決済・配送（Kafka非同期）</td>
+          <td>POST /orders, GET /orders/{id}</td>
+        </tr>
+        <tr>
+          <td><strong>ユーザーサービス</strong></td>
+          <td>認証・プロフィール管理</td>
+          <td>PostgreSQL + Redis（セッション）</td>
+          <td>JWT発行のみ（自律）</td>
+          <td>POST /auth/login, GET /users/{id}</td>
+        </tr>
+        <tr>
+          <td><strong>決済サービス</strong></td>
+          <td>決済処理・返金管理</td>
+          <td>PostgreSQL（監査ログ必須）</td>
+          <td>注文Kafkaイベント購読（非同期）</td>
+          <td>内部のみ（外部公開なし）</td>
+        </tr>
+        <tr>
+          <td><strong>配送サービス</strong></td>
+          <td>配送手配・追跡</td>
+          <td>DynamoDB（Key-Valueアクセス）</td>
+          <td>決済完了イベント購読（非同期）</td>
+          <td>GET /shipments/{orderId}</td>
+        </tr>
+        <tr>
+          <td><strong>通知サービス</strong></td>
+          <td>メール・SMS・Push送信</td>
+          <td>なし（ステートレス）</td>
+          <td>全サービスのイベント購読（非同期）</td>
+          <td>内部のみ</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Bounded Context Map（通信方向の可視化）</h4>
+    <div class="diagram">
+      <svg viewBox="0 0 860 320" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:860px;">
+        <defs>
+          <marker id="ms-sync" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/></marker>
+          <marker id="ms-async" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker>
+        </defs>
+        <!-- API Gateway -->
+        <rect x="340" y="10" width="180" height="36" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="430" y="32" text-anchor="middle" fill="#f59e0b" font-size="11" font-family="system-ui" font-weight="700">API Gateway</text>
+        <!-- Services -->
+        <rect x="20" y="100" width="130" height="52" rx="8" fill="#13151f" stroke="#14b8a6" stroke-width="1.5"/>
+        <text x="85" y="121" text-anchor="middle" fill="#14b8a6" font-size="10" font-family="system-ui" font-weight="600">ユーザーサービス</text>
+        <text x="85" y="139" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">PostgreSQL+Redis</text>
+
+        <rect x="180" y="100" width="130" height="52" rx="8" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="245" y="121" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="system-ui" font-weight="600">商品サービス</text>
+        <text x="245" y="139" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">MongoDB</text>
+
+        <rect x="340" y="100" width="180" height="52" rx="8" fill="#13151f" stroke="#22d3ee" stroke-width="2"/>
+        <text x="430" y="121" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="system-ui" font-weight="700">注文サービス</text>
+        <text x="430" y="139" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">PostgreSQL（Saga起点）</text>
+
+        <rect x="550" y="100" width="130" height="52" rx="8" fill="#13151f" stroke="#ef4444" stroke-width="1.5"/>
+        <text x="615" y="121" text-anchor="middle" fill="#ef4444" font-size="10" font-family="system-ui" font-weight="600">決済サービス</text>
+        <text x="615" y="139" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">PostgreSQL</text>
+
+        <rect x="700" y="100" width="140" height="52" rx="8" fill="#13151f" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="770" y="121" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">配送サービス</text>
+        <text x="770" y="139" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">DynamoDB</text>
+
+        <rect x="300" y="230" width="260" height="40" rx="8" fill="#0f1825" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="430" y="248" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="system-ui" font-weight="600">Kafka Event Bus</text>
+        <text x="430" y="262" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">OrderPlaced / PaymentProcessed / ShipmentCreated</text>
+
+        <rect x="600" y="230" width="130" height="40" rx="8" fill="#13151f" stroke="#10b981" stroke-width="1.5"/>
+        <text x="665" y="248" text-anchor="middle" fill="#10b981" font-size="10" font-family="system-ui" font-weight="600">通知サービス</text>
+        <text x="665" y="262" text-anchor="middle" fill="#64748b" font-size="9" font-family="system-ui">ステートレス</text>
+
+        <!-- API Gateway → Services（同期 gRPC/REST）-->
+        <line x1="430" y1="46" x2="85" y2="100" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ms-sync)"/>
+        <line x1="430" y1="46" x2="245" y2="100" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ms-sync)"/>
+        <line x1="430" y1="46" x2="430" y2="100" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ms-sync)"/>
+
+        <!-- 注文→商品（同期）-->
+        <line x1="340" y1="130" x2="310" y2="130" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ms-sync)"/>
+        <text x="325" y="123" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="system-ui">gRPC</text>
+
+        <!-- 注文→Kafka（非同期）-->
+        <line x1="430" y1="152" x2="430" y2="230" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ms-async)"/>
+
+        <!-- Kafka→決済・配送（非同期）-->
+        <line x1="480" y1="250" x2="615" y2="152" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ms-async)"/>
+        <line x1="520" y1="250" x2="770" y2="152" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ms-async)"/>
+        <line x1="560" y1="250" x2="665" y2="270" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ms-async)"/>
+
+        <!-- 凡例 -->
+        <line x1="20" y1="295" x2="50" y2="295" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ms-sync)"/>
+        <text x="55" y="299" fill="#22d3ee" font-size="9" font-family="system-ui">同期（gRPC/REST）</text>
+        <line x1="160" y1="295" x2="190" y2="295" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ms-async)"/>
+        <text x="195" y="299" fill="#f59e0b" font-size="9" font-family="system-ui">非同期（Kafka）</text>
+      </svg>
+    </div>
+  </div>
+
+  <h3>演習2: モノリスをマイクロサービスに段階的移行する</h3>
+  <div class="card">
+    <h4>フェーズ1: DBのスキーマ分割</h4>
+    <pre><code><span class="cm">-- Before: 単一スキーマ</span>
+CREATE TABLE users    (...);
+CREATE TABLE products (...);
+CREATE TABLE orders   (...);
+CREATE TABLE payments (...);
+
+<span class="cm">-- Step1: 論理分割（同一DBで別スキーマ）</span>
+CREATE SCHEMA user_svc;
+CREATE SCHEMA product_svc;
+CREATE SCHEMA order_svc;
+
+<span class="cm">-- 外部キーをアプリ層で解決（スキーマ間FK禁止）</span>
+CREATE TABLE order_svc.orders (
+    id UUID PRIMARY KEY,
+    customer_id UUID NOT NULL, <span class="cm">-- user_svc.users.id への論理参照</span>
+    <span class="cm">-- FK制約なし！アプリがデータ整合性を保証</span>
+);
+
+<span class="cm">-- Step2: 物理分割（別DBサーバーへ移行）</span>
+<span class="cm">-- シャドウコピーで新DBにデータを複製</span>
+<span class="cm">-- アプリを切り替えて移行完了</span></code></pre>
+
+    <h4>フェーズ2: Strangler Figパターン</h4>
+    <pre><code><span class="cm"># モノリスを徐々に置き換える</span>
+<span class="cm"># 1. 新サービスをデプロイ（モノリスは稼働継続）</span>
+<span class="cm"># 2. API GatewayでURLパスごとにルーティングを切り替え</span>
+
+<span class="cm"># nginx.conf の段階的移行</span>
+upstream monolith { server monolith:8080; }
+upstream user_service { server user-svc:8080; }
+upstream product_service { server product-svc:8080; }
+
+server {
+    <span class="cm"># Phase1: ユーザーサービスを切り出し</span>
+    location /api/users/ {
+        proxy_pass http://user_service;   <span class="cm"># 新サービスへ</span>
+    }
+    <span class="cm"># Phase2: 商品サービスを切り出し</span>
+    location /api/products/ {
+        proxy_pass http://product_service;
+    }
+    <span class="cm"># 残りはモノリスへ</span>
+    location / {
+        proxy_pass http://monolith;
+    }
+}</code></pre>
+
+    <h4>フェーズ3: 分散トレーシングの導入</h4>
+    <pre><code><span class="cm"># OpenTelemetry による分散トレーシング</span>
+<span class="cm"># 各サービスのmain.pyに追加</span>
+<span class="kw">from</span> opentelemetry <span class="kw">import</span> trace
+<span class="kw">from</span> opentelemetry.sdk.trace <span class="kw">import</span> TracerProvider
+<span class="kw">from</span> opentelemetry.exporter.otlp.proto.grpc.trace_exporter <span class="kw">import</span> OTLPSpanExporter
+
+provider = TracerProvider()
+exporter = OTLPSpanExporter(endpoint=<span class="st">"http://jaeger:4317"</span>)
+provider.add_span_processor(BatchSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+
+tracer = trace.get_tracer(<span class="st">"order-service"</span>)
+
+<span class="kw">async def</span> <span class="fn">create_order</span>(request):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"create_order"</span>) <span class="kw">as</span> span:
+        span.set_attribute(<span class="st">"order.customer_id"</span>, request.customer_id)
+
+        <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"validate_inventory"</span>):
+            <span class="kw">await</span> inventory_svc.validate(request.items)
+
+        <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"save_order"</span>):
+            order = <span class="kw">await</span> db.save_order(request)
+
+        span.set_attribute(<span class="st">"order.id"</span>, order.id)
+        <span class="kw">return</span> order
+<span class="cm"># Jaeger UIで全サービスにまたがるリクエストを可視化</span></code></pre>
+  </div>
+
+  <h3>演習3: マイクロサービス設計問題診断（5問）</h3>
+  <div class="card">
+    <h4>問題1: 全サービスで共有DBを使用している</h4>
+    <div class="callout danger"><p><strong>問題:</strong> OrderServiceとInventoryServiceが同じDBに直接アクセスしている。スキーマ変更が全サービスに影響し、独立デプロイができない（分散モノリス）。<br><strong>修正:</strong> 「Database per Service」パターン。各サービスが自分のDBを所有し、他サービスのDBには直接アクセスしない。データが必要な場合はAPIを呼ぶか、イベントで同期する。</p></div>
+
+    <h4>問題2: サービス間の長い同期呼び出しチェーン</h4>
+    <pre><code>OrderService → InventoryService → ProductService → CategoryService
+<span class="cm"># 全サービスの合計レイテンシ: 各10ms × 4 = 40ms</span>
+<span class="cm"># CategoryServiceがダウンするとOrderServiceも503</span></code></pre>
+    <div class="callout danger"><p><strong>問題:</strong> 深い同期呼び出しチェーンにより、末端サービスの障害が全体に伝播（カスケード障害）。レイテンシも蓄積。<br><strong>修正:</strong> ①チェーンを短くする（必要なデータをOrderService自身がキャッシュ）。②CategoryServiceへの呼び出しを非同期化。③Circuit Breakerで障害伝播を防ぐ。</p></div>
+
+    <h4>問題3: サービスに複数のビジネスドメインが混在</h4>
+    <div class="callout warn"><p><strong>問題:</strong> 「UserService」が認証・プロフィール管理・注文履歴・決済履歴を全て担当している。変更頻度・スケール要件・所有チームが異なる機能が混在。<br><strong>修正:</strong> DDDのBounded Contextに基づいて分割する。AuthService・ProfileService・OrderHistoryServiceは別サービスへ。</p></div>
+
+    <h4>問題4: サービスが他サービスの内部実装に依存</h4>
+    <pre><code><span class="cm">// OrderServiceがInventoryServiceのテーブルを直接JOINしている</span>
+<span class="kw">const</span> order = <span class="kw">await</span> inventoryDB.query(
+    <span class="st">"SELECT o.*, i.stock_count FROM orders o JOIN inventory i ON ..."</span>);</code></pre>
+    <div class="callout danger"><p><strong>問題:</strong> InventoryServiceのDB実装に直接依存。DBスキーマ変更やDB技術変更（PostgreSQL→DynamoDB）で即座に壊れる。<br><strong>修正:</strong> InventoryServiceのAPIを呼ぶ（<code>GET /inventory/{productId}</code>）。データが必要なら自分のDBにコピーをキャッシュするRead Modelを作る（CQRS）。</p></div>
+
+    <h4>問題5: サービスのバージョン管理なしにAPIを変更</h4>
+    <div class="callout warn"><p><strong>問題:</strong> OrderServiceのAPIを変更したところ、そのAPIを呼んでいた全クライアントが壊れた。マイクロサービスの「独立デプロイ」の原則を破っている。<br><strong>修正:</strong> ①APIのバージョニング（<code>/v1/orders</code> → <code>/v2/orders</code>）。②後方互換性を維持（古いフィールドはdeprecatedにし一定期間は維持）。③Consumer Driven Contract Testing（PactなどのCDCテスト）でクライアントとの互換性を自動検証。</p></div>
+  </div>
+</section>
+
+</body>
+</html>

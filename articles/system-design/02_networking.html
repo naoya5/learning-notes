@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch02 ネットワーク & プロトコル | System Design</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:1rem;height:52px;flex-wrap:wrap}
+.nav-logo{font-weight:700;color:var(--accent);font-size:.95rem;white-space:nowrap}
+.nav-links{display:flex;gap:.5rem;flex-wrap:wrap}
+.nav-links a{padding:.3rem .7rem;border-radius:6px;font-size:.82rem;color:var(--text2);border:1px solid transparent;transition:all .2s}
+.nav-links a:hover{border-color:var(--border);color:var(--text);text-decoration:none}
+.nav-links a.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.hero{background:linear-gradient(135deg,#0f1120 0%,#1a1040 50%,#0d1a2e 100%);padding:4rem 2rem 3rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(99,102,241,.15) 0%,transparent 60%),radial-gradient(ellipse at 70% 30%,rgba(34,211,238,.1) 0%,transparent 50%);pointer-events:none}
+.chapter-badge{display:inline-block;background:var(--accent);color:#fff;font-size:.75rem;font-weight:700;padding:.3rem .9rem;border-radius:20px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+.hero h1{font-size:2.6rem;font-weight:800;background:linear-gradient(90deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.75rem}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:600px;margin:0 auto}
+.container{max-width:1100px;margin:0 auto;padding:2.5rem 2rem}
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;margin-bottom:2.5rem}
+.toc h2{font-size:1rem;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.toc ol{padding-left:1.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.3rem}
+.toc li{color:var(--text2);font-size:.9rem}
+.toc a{color:var(--accent2)}
+.section{margin-bottom:3.5rem}
+.section-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem}
+.section-num{background:var(--accent);color:#fff;font-size:.8rem;font-weight:700;width:2rem;height:2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.section h2{font-size:1.6rem;font-weight:700;color:var(--text)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+.card.accent-left{border-left:4px solid var(--accent)}
+.card.green-left{border-left:4px solid var(--green)}
+.card.cyan-left{border-left:4px solid var(--accent2)}
+.card.amber-left{border-left:4px solid var(--accent3)}
+.card.purple-left{border-left:4px solid var(--purple)}
+.card.red-left{border-left:4px solid var(--red)}
+.card h3{font-size:1.1rem;font-weight:600;margin-bottom:.75rem;color:var(--text)}
+.card p{color:var(--text2);font-size:.95rem;margin-bottom:.5rem}
+pre{background:#0d0f18;border:1px solid var(--border);border-radius:10px;padding:1.25rem;overflow-x:auto;font-size:.83rem;line-height:1.6;margin:.75rem 0}
+code{font-family:'Fira Code','Consolas',monospace;color:#c9d1d9}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e}.num{color:#79c0ff}.type{color:#ffa657}
+.table-wrap{overflow-x:auto;margin:.75rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--surface2);color:var(--text2);text-align:left;padding:.65rem 1rem;border:1px solid var(--border);font-weight:600;white-space:nowrap}
+td{padding:.6rem 1rem;border:1px solid var(--border);color:var(--text2);vertical-align:top}
+tr:hover td{background:var(--surface2)}
+.tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600}
+.tag-green{background:rgba(16,185,129,.15);color:var(--green)}
+.tag-red{background:rgba(239,68,68,.15);color:var(--red)}
+.tag-blue{background:rgba(99,102,241,.15);color:var(--accent)}
+.tag-amber{background:rgba(245,158,11,.15);color:var(--accent3)}
+.alert{border-radius:10px;padding:1rem 1.25rem;margin:.75rem 0;display:flex;gap:.75rem;align-items:flex-start;font-size:.9rem}
+.alert-icon{font-size:1.1rem;flex-shrink:0;margin-top:.1rem}
+.alert-tip{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:var(--text2)}
+.alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--text2)}
+.alert-info{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25);color:var(--text2)}
+.alert b{color:var(--text)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.grid-2{grid-template-columns:1fr}}
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin:.75rem 0;overflow:auto;text-align:center}
+.diagram svg{max-width:100%}
+.interview{background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(167,139,250,.08));border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:1.5rem;margin-top:2rem}
+.interview h3{color:var(--purple);margin-bottom:.75rem;font-size:1rem}
+.interview ul{padding-left:1.25rem;color:var(--text2);font-size:.9rem}
+.interview li{margin-bottom:.4rem}
+.footer-nav{background:var(--surface);border-top:1px solid var(--border);padding:2rem;margin-top:3rem}
+.footer-nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-nav a{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:.9rem;transition:all .2s}
+.footer-nav a:hover{border-color:var(--accent);color:var(--text);text-decoration:none}
+.flow{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0;align-items:center}
+.flow-step{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.4rem .9rem;font-size:.85rem;color:var(--text2)}
+.flow-arrow{color:var(--text3);font-size:1rem}
+.hl-accent{color:var(--accent)}.hl-cyan{color:var(--accent2)}.hl-green{color:var(--green)}.hl-amber{color:var(--accent3)}.hl-purple{color:var(--purple)}.hl-red{color:var(--red)}
+ul.list,ol.list{padding-left:1.5rem;color:var(--text2);font-size:.93rem}
+ul.list li,ol.list li{margin-bottom:.4rem}
+.badge{display:inline-block;padding:.2rem .6rem;border-radius:6px;font-size:.75rem;font-weight:600;margin-left:.4rem}
+.badge-new{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-v3{background:rgba(34,211,238,.15);color:var(--accent2)}
+.badge-old{background:rgba(245,158,11,.15);color:var(--accent3)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <span class="nav-logo">&#8998; System Design</span>
+    <div class="nav-links">
+      <a href="00_index.html">&#127968; Home</a>
+      <a href="01_fundamentals.html">&larr; Ch01</a>
+      <a href="02_networking.html" class="active">Ch02 ネットワーク &amp; プロトコル</a>
+      <a href="03_databases.html">Ch03 &rarr;</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="chapter-badge">Chapter 02</div>
+  <h1>ネットワーク &amp; プロトコル</h1>
+  <p>OSIモデルからHTTP/3、TLS、CDNまで &mdash; 大規模システムを支えるネットワークの全体像</p>
+</div>
+
+<div class="container">
+
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#osi">OSI / TCP IP モデル</a></li>
+    <li><a href="#http">HTTP の進化 (1.1 &rarr; 2 &rarr; 3)</a></li>
+    <li><a href="#tcp-udp">TCP vs UDP</a></li>
+    <li><a href="#dns">DNS と名前解決</a></li>
+    <li><a href="#cdn">CDN (Content Delivery Network)</a></li>
+    <li><a href="#realtime">リアルタイム通信</a></li>
+    <li><a href="#tls">TLS / HTTPS の仕組み</a></li>
+    <li><a href="#latency">レイテンシとスループット</a></li>
+  </ol>
+</div>
+
+<!-- ===== SECTION 1: OSI ===== -->
+<div class="section" id="osi">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2>OSI / TCP IP モデル</h2>
+  </div>
+
+  <div class="card accent-left">
+    <h3>なぜ層に分けるのか</h3>
+    <p>ネットワーク通信の複雑さを管理するため、機能を独立した「層（レイヤー）」に分割します。各層は隣接する層とのみやり取りし、内部実装を隠蔽します。たとえばイーサネットをWi-Fiに変えても、上位層のHTTPは変更不要です。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 410" xmlns="http://www.w3.org/2000/svg" role="img">
+      <title>OSIモデルとTCP/IPモデルの比較図</title>
+      <defs>
+        <linearGradient id="hdr1" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#6366f1" stop-opacity=".8"/>
+          <stop offset="100%" stop-color="#a78bfa" stop-opacity=".8"/>
+        </linearGradient>
+        <linearGradient id="hdr2" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#22d3ee" stop-opacity=".7"/>
+          <stop offset="100%" stop-color="#6366f1" stop-opacity=".7"/>
+        </linearGradient>
+      </defs>
+      <!-- Headers -->
+      <rect x="30" y="10" width="300" height="36" rx="8" fill="url(#hdr1)"/>
+      <text x="180" y="34" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="sans-serif">OSI モデル（7層）</text>
+      <rect x="430" y="10" width="300" height="36" rx="8" fill="url(#hdr2)"/>
+      <text x="580" y="34" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="sans-serif">TCP/IP モデル（4層）</text>
+      <!-- OSI L7 -->
+      <rect x="30" y="58" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="55" y="84" fill="#a78bfa" font-size="20" font-family="sans-serif">7</text>
+      <text x="90" y="80" fill="#6366f1" font-size="11" font-weight="700" font-family="sans-serif">アプリケーション層</text>
+      <text x="90" y="94" fill="#64748b" font-size="10" font-family="sans-serif">HTTP, FTP, SMTP, DNS, WebSocket</text>
+      <!-- OSI L6 -->
+      <rect x="30" y="106" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1" stroke-opacity=".5"/>
+      <text x="55" y="132" fill="#a78bfa" font-size="20" font-family="sans-serif">6</text>
+      <text x="90" y="128" fill="#94a3b8" font-size="11" font-weight="700" font-family="sans-serif">プレゼンテーション層</text>
+      <text x="90" y="142" fill="#64748b" font-size="10" font-family="sans-serif">TLS/SSL暗号化, 文字コード変換, 圧縮</text>
+      <!-- OSI L5 -->
+      <rect x="30" y="154" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#6366f1" stroke-width="1" stroke-opacity=".5"/>
+      <text x="55" y="180" fill="#a78bfa" font-size="20" font-family="sans-serif">5</text>
+      <text x="90" y="176" fill="#94a3b8" font-size="11" font-weight="700" font-family="sans-serif">セッション層</text>
+      <text x="90" y="190" fill="#64748b" font-size="10" font-family="sans-serif">セッション確立・維持・終了</text>
+      <!-- OSI L4 -->
+      <rect x="30" y="202" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="55" y="228" fill="#22d3ee" font-size="20" font-family="sans-serif">4</text>
+      <text x="90" y="224" fill="#22d3ee" font-size="11" font-weight="700" font-family="sans-serif">トランスポート層</text>
+      <text x="90" y="238" fill="#94a3b8" font-size="10" font-family="sans-serif">TCP, UDP &mdash; ポート番号, 信頼性制御</text>
+      <!-- OSI L3 -->
+      <rect x="30" y="250" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="55" y="276" fill="#10b981" font-size="20" font-family="sans-serif">3</text>
+      <text x="90" y="272" fill="#10b981" font-size="11" font-weight="700" font-family="sans-serif">ネットワーク層</text>
+      <text x="90" y="286" fill="#94a3b8" font-size="10" font-family="sans-serif">IP, ICMP &mdash; ルーティング, IPアドレス</text>
+      <!-- OSI L2 -->
+      <rect x="30" y="298" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="55" y="324" fill="#f59e0b" font-size="20" font-family="sans-serif">2</text>
+      <text x="90" y="320" fill="#f59e0b" font-size="11" font-weight="700" font-family="sans-serif">データリンク層</text>
+      <text x="90" y="334" fill="#94a3b8" font-size="10" font-family="sans-serif">Ethernet, Wi-Fi &mdash; MACアドレス, フレーム</text>
+      <!-- OSI L1 -->
+      <rect x="30" y="346" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="55" y="372" fill="#ef4444" font-size="20" font-family="sans-serif">1</text>
+      <text x="90" y="368" fill="#ef4444" font-size="11" font-weight="700" font-family="sans-serif">物理層</text>
+      <text x="90" y="382" fill="#94a3b8" font-size="10" font-family="sans-serif">電気信号, 光ファイバー, 無線電波</text>
+      <!-- TCP/IP Application -->
+      <rect x="430" y="58" width="300" height="138" rx="6" fill="#13151f" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="580" y="118" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="700" font-family="sans-serif">アプリケーション層</text>
+      <text x="580" y="136" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">L5 + L6 + L7 を統合</text>
+      <text x="580" y="152" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">HTTP, DNS, SMTP, FTP, SSH</text>
+      <!-- TCP/IP Transport -->
+      <rect x="430" y="202" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="580" y="226" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">トランスポート層</text>
+      <text x="580" y="240" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">TCP / UDP</text>
+      <!-- TCP/IP Internet -->
+      <rect x="430" y="250" width="300" height="42" rx="6" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="580" y="274" text-anchor="middle" fill="#10b981" font-size="12" font-weight="700" font-family="sans-serif">インターネット層</text>
+      <text x="580" y="288" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">IP, ICMP</text>
+      <!-- TCP/IP Link -->
+      <rect x="430" y="298" width="300" height="90" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="580" y="348" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" font-family="sans-serif">ネットワークアクセス層</text>
+      <text x="580" y="364" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">L1 + L2 を統合（Ethernet, Wi-Fi）</text>
+      <!-- Divider -->
+      <text x="380" y="210" text-anchor="middle" fill="#2a2d3e" font-size="28" font-family="sans-serif">&#8660;</text>
+    </svg>
+  </div>
+
+  <div class="card cyan-left">
+    <h3>カプセル化（Encapsulation）の流れ</h3>
+    <p>送信時はデータが上位層から下位層へ渡され、各層がヘッダを付加します。受信時は逆に下位層から上位層へデヘッダを剥がしながら渡されます。</p>
+    <div class="flow">
+      <div class="flow-step">アプリデータ</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">L4: TCPヘッダ &rarr; セグメント</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">L3: IPヘッダ &rarr; パケット</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">L2: MACヘッダ &rarr; フレーム</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">L1: 電気/光信号</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>層</th><th>PDU名称</th><th>主なプロトコル</th><th>識別子</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>L7 アプリケーション</td><td>データ / メッセージ</td><td>HTTP, HTTPS, DNS, SMTP</td><td>URL, ドメイン名</td></tr>
+        <tr><td>L4 トランスポート</td><td>セグメント(TCP) / データグラム(UDP)</td><td>TCP, UDP</td><td>ポート番号 0&ndash;65535</td></tr>
+        <tr><td>L3 ネットワーク</td><td>パケット</td><td>IPv4, IPv6, ICMP</td><td>IPアドレス</td></tr>
+        <tr><td>L2 データリンク</td><td>フレーム</td><td>Ethernet, Wi-Fi (802.11)</td><td>MACアドレス</td></tr>
+        <tr><td>L1 物理</td><td>ビット</td><td>光ファイバー, CAT6, 無線</td><td>&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「L4ロードバランサーとL7ロードバランサーの違いは？」&rarr; L4はIP/ポートで振り分け、L7はHTTPヘッダ・Cookie・URLパスで振り分け可能</li>
+      <li>ファイアウォールはL3/L4で動作、WAF（Web Application Firewall）はL7で動作</li>
+      <li>実際の現場ではOSI 7層よりTCP/IP 4層モデルが多用される</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 2: HTTP ===== -->
+<div class="section" id="http">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2>HTTP の進化</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card accent-left">
+      <h3>HTTP/1.1 <span class="badge badge-old">1997</span></h3>
+      <p><strong class="hl-green">Keep-Alive:</strong> 1つのTCP接続を複数リクエストで再利用。ハンドシェイクのオーバーヘッドを削減。</p>
+      <p><strong class="hl-red">Head-of-Line Blocking:</strong> パイプライニングを使っても、先のレスポンスが来るまで次を処理できない致命的な問題。</p>
+      <p><strong class="hl-red">ヘッダ冗長:</strong> 同一ドメインへの毎リクエストでCookieや大きなヘッダを繰り返し送信。</p>
+      <p><strong>並列化の回避策:</strong> ブラウザは6接続/ホストに制限。スプライト・ドメインシャーディングで対処していた。</p>
+    </div>
+    <div class="card green-left">
+      <h3>HTTP/2 <span class="badge badge-new">2015</span></h3>
+      <p><strong class="hl-green">Multiplexing:</strong> 1つのTCP接続上で複数ストリームを並列処理。アプリケーション層のHOLブロッキングを解消。</p>
+      <p><strong class="hl-green">HPACK圧縮:</strong> ヘッダをHuffman符号化＋動的テーブルで圧縮。</p>
+      <p><strong class="hl-green">Server Push:</strong> クライアントのリクエスト前にサーバがリソースをプッシュ。</p>
+      <p><strong class="hl-red">残課題:</strong> TCP層でのHOLブロッキングは残存。パケットロスで全ストリームが影響を受ける。</p>
+    </div>
+  </div>
+
+  <div class="card cyan-left">
+    <h3>HTTP/3 <span class="badge badge-v3">RFC 9114 &mdash; 2022</span></h3>
+    <p>HTTP/2の根本課題（TCP HOLブロッキング）を解決するため、<strong class="hl-cyan">QUIC（Quick UDP Internet Connections）</strong>プロトコル上に構築されました。</p>
+    <div class="grid-2" style="margin-top:.75rem">
+      <div>
+        <p><strong class="hl-green">0-RTT / 1-RTT 接続確立:</strong> TLSハンドシェイクをQUICに統合。以前接続したサーバーには0-RTTで再接続可能。</p>
+        <p><strong class="hl-green">ストリーム独立性:</strong> UDPベースのため、パケットロスが特定ストリームのみに影響。他ストリームは継続する。</p>
+      </div>
+      <div>
+        <p><strong class="hl-green">接続マイグレーション:</strong> モバイルでWi-Fi &rarr; 4G切り替え時も接続IDで維持できる。</p>
+        <p><strong class="hl-amber">注意点:</strong> UDP 443番ポートを使用。企業ファイアウォールでブロックされる場合は自動的にHTTP/2へフォールバックする。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 740 260" xmlns="http://www.w3.org/2000/svg">
+      <title>HTTP/1.1 vs HTTP/2 vs HTTP/3 接続モデルの比較</title>
+      <!-- HTTP/1.1 -->
+      <text x="120" y="22" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="700" font-family="sans-serif">HTTP/1.1</text>
+      <text x="40" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Client</text>
+      <text x="170" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Server</text>
+      <!-- 3 TCP connections -->
+      <line x1="55" y1="50" x2="185" y2="50" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="55" y="55" width="45" height="18" rx="3" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="77" y="67" text-anchor="middle" fill="#e2e8f0" font-size="8" font-family="sans-serif">Req 1</text>
+      <rect x="55" y="78" width="45" height="18" rx="3" fill="#1c1f2e" stroke="#2a2d3e" stroke-width="1"/>
+      <text x="77" y="90" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">待機中</text>
+      <line x1="55" y1="108" x2="185" y2="108" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="55" y="113" width="45" height="18" rx="3" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="77" y="125" text-anchor="middle" fill="#e2e8f0" font-size="8" font-family="sans-serif">Req 2</text>
+      <line x1="55" y1="143" x2="185" y2="143" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="55" y="148" width="45" height="18" rx="3" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="77" y="160" text-anchor="middle" fill="#e2e8f0" font-size="8" font-family="sans-serif">Req 3</text>
+      <text x="120" y="210" text-anchor="middle" fill="#ef4444" font-size="10" font-family="sans-serif">接続多 / HOL</text>
+
+      <!-- HTTP/2 -->
+      <text x="385" y="22" text-anchor="middle" fill="#6366f1" font-size="13" font-weight="700" font-family="sans-serif">HTTP/2</text>
+      <text x="295" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Client</text>
+      <text x="460" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Server</text>
+      <line x1="305" y1="50" x2="475" y2="50" stroke="#6366f1" stroke-width="2.5"/>
+      <text x="388" y="44" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">1つのTCP接続</text>
+      <rect x="310" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="331" y="66" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">Stream 1</text>
+      <rect x="358" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1"/>
+      <text x="379" y="66" text-anchor="middle" fill="#22d3ee" font-size="8" font-family="sans-serif">Stream 2</text>
+      <rect x="406" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="427" y="66" text-anchor="middle" fill="#10b981" font-size="8" font-family="sans-serif">Stream 3</text>
+      <rect x="305" y="84" width="165" height="22" rx="3" fill="rgba(239,68,68,.1)" stroke="#ef4444" stroke-width="1"/>
+      <text x="388" y="99" text-anchor="middle" fill="#ef4444" font-size="8.5" font-family="sans-serif">&#9888; パケットロス &rarr; 全ストリーム影響 (TCP HOL)</text>
+      <text x="385" y="210" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">接続数1 / Multiplex &#10003;</text>
+
+      <!-- HTTP/3 -->
+      <text x="625" y="22" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="sans-serif">HTTP/3 (QUIC)</text>
+      <text x="540" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Client</text>
+      <text x="705" y="45" fill="#64748b" font-size="9" font-family="sans-serif">Server</text>
+      <line x1="550" y1="50" x2="720" y2="50" stroke="#22d3ee" stroke-width="2.5" stroke-dasharray="6,2"/>
+      <text x="633" y="44" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">QUIC (UDP)</text>
+      <rect x="555" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="576" y="66" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">Stream 1</text>
+      <rect x="603" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="624" y="66" text-anchor="middle" fill="#ef4444" font-size="8" font-family="sans-serif">ロス中...</text>
+      <rect x="651" y="55" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#10b981" stroke-width="1"/>
+      <text x="672" y="66" text-anchor="middle" fill="#10b981" font-size="8" font-family="sans-serif">継続 &#10003;</text>
+      <rect x="555" y="78" width="42" height="16" rx="3" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="576" y="89" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">継続 &#10003;</text>
+      <text x="625" y="210" text-anchor="middle" fill="#10b981" font-size="10" font-family="sans-serif">HOL完全解消 / 0-RTT &#10003;</text>
+    </svg>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>機能</th><th>HTTP/1.1</th><th>HTTP/2</th><th>HTTP/3</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>転送プロトコル</td>
+          <td>TCP</td><td>TCP</td>
+          <td><span class="tag tag-blue">QUIC (UDP)</span></td>
+        </tr>
+        <tr>
+          <td>多重化 (Multiplexing)</td>
+          <td><span class="tag tag-red">なし</span></td>
+          <td><span class="tag tag-green">あり</span></td>
+          <td><span class="tag tag-green">あり（改善）</span></td>
+        </tr>
+        <tr>
+          <td>ヘッダ圧縮</td>
+          <td><span class="tag tag-red">なし</span></td>
+          <td>HPACK</td><td>QPACK</td>
+        </tr>
+        <tr>
+          <td>TCP HOLブロッキング</td>
+          <td><span class="tag tag-red">あり</span></td>
+          <td><span class="tag tag-red">あり</span></td>
+          <td><span class="tag tag-green">なし</span></td>
+        </tr>
+        <tr>
+          <td>接続確立RTT</td>
+          <td>1-RTT + TLS</td>
+          <td>1-RTT + TLS</td>
+          <td><span class="tag tag-green">0-RTT / 1-RTT</span></td>
+        </tr>
+        <tr>
+          <td>Server Push</td>
+          <td><span class="tag tag-red">なし</span></td>
+          <td><span class="tag tag-green">あり</span></td>
+          <td>限定的</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>HTTP/2のmultiplexingとHTTP/1.1のパイプライニングの違いを説明できるか</li>
+      <li>HTTP/3がUDPを使う理由：TCPはカーネルに実装されておりHOL問題を修正できないため、QUICをユーザー空間に実装</li>
+      <li>「なぜまだHTTP/1.1を使うサービスがあるか」&rarr; 後方互換性、プロキシの問題、HTTP/2の実装コスト</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 3: TCP vs UDP ===== -->
+<div class="section" id="tcp-udp">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2>TCP vs UDP</h2>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 290" xmlns="http://www.w3.org/2000/svg">
+      <title>TCPの3ウェイハンドシェイクと切断フロー</title>
+      <!-- Client line -->
+      <rect x="30" y="10" width="120" height="34" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="90" y="32" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">クライアント</text>
+      <line x1="90" y1="44" x2="90" y2="270" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Server line -->
+      <rect x="550" y="10" width="120" height="34" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="610" y="32" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">サーバ</text>
+      <line x1="610" y1="44" x2="610" y2="270" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Section label -->
+      <text x="350" y="62" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700" font-family="sans-serif">&#9472; 3ウェイハンドシェイク（接続確立）&#9472;</text>
+      <!-- SYN -->
+      <line x1="90" y1="74" x2="610" y2="94" stroke="#10b981" stroke-width="2"/>
+      <polygon points="610,94 600,87 602,97" fill="#10b981"/>
+      <text x="350" y="82" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">① SYN  (seq=x)</text>
+      <!-- SYN-ACK -->
+      <line x1="610" y1="110" x2="90" y2="130" stroke="#22d3ee" stroke-width="2"/>
+      <polygon points="90,130 100,123 100,133" fill="#22d3ee"/>
+      <text x="350" y="118" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">② SYN-ACK  (seq=y, ack=x+1)</text>
+      <!-- ACK -->
+      <line x1="90" y1="146" x2="610" y2="166" stroke="#10b981" stroke-width="2"/>
+      <polygon points="610,166 600,159 602,169" fill="#10b981"/>
+      <text x="350" y="154" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">③ ACK  (ack=y+1)  &#8594; 接続確立 &#10003;</text>
+      <!-- Data -->
+      <text x="350" y="192" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">&#8661; データ転送（セグメント＋ACK応答） &#8661;</text>
+      <!-- Teardown -->
+      <text x="350" y="215" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="700" font-family="sans-serif">&#9472; 4ウェイ切断 &#9472;</text>
+      <line x1="90" y1="224" x2="610" y2="239" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <polygon points="610,239 600,232 602,242" fill="#ef4444"/>
+      <text x="350" y="234" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">FIN &#8594; ACK &#8594; FIN &#8594; ACK</text>
+    </svg>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>特性</th><th>TCP</th><th>UDP</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>接続確立</td>
+          <td>3ウェイハンドシェイク（1.5 RTT）</td>
+          <td><span class="tag tag-green">コネクションレス（0 RTT）</span></td>
+        </tr>
+        <tr>
+          <td>信頼性</td>
+          <td><span class="tag tag-green">順序保証 + 再送制御</span></td>
+          <td><span class="tag tag-red">保証なし（ベストエフォート）</span></td>
+        </tr>
+        <tr>
+          <td>フロー制御</td>
+          <td>あり（ウィンドウサイズ）</td>
+          <td>なし</td>
+        </tr>
+        <tr>
+          <td>輻輳制御</td>
+          <td>あり（Slow Start, AIMD）</td>
+          <td>なし</td>
+        </tr>
+        <tr>
+          <td>ヘッダサイズ</td>
+          <td>20〜60バイト</td>
+          <td><span class="tag tag-green">8バイト（固定）</span></td>
+        </tr>
+        <tr>
+          <td>速度</td>
+          <td>比較的低速（オーバーヘッドあり）</td>
+          <td><span class="tag tag-green">高速</span></td>
+        </tr>
+        <tr>
+          <td>典型的ユースケース</td>
+          <td>HTTP, HTTPS, FTP, SMTP, SSH</td>
+          <td>DNS, ビデオ会議, ゲーム, QUIC</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card amber-left">
+    <h3>ユースケース別選択ガイド</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ユースケース</th><th>選択</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>Web API / REST</td><td><span class="tag tag-blue">TCP</span></td><td>データの完全性が必須</td></tr>
+          <tr><td>ファイル転送</td><td><span class="tag tag-blue">TCP</span></td><td>欠落したら再送が必要</td></tr>
+          <tr><td>ライブ映像ストリーミング</td><td><span class="tag tag-amber">UDP</span></td><td>多少の欠落より低レイテンシ優先</td></tr>
+          <tr><td>オンラインゲーム（FPS等）</td><td><span class="tag tag-amber">UDP</span></td><td>古いフレームより最新状態が重要</td></tr>
+          <tr><td>DNS クエリ</td><td><span class="tag tag-amber">UDP</span></td><td>小さいパケット、速度優先</td></tr>
+          <tr><td>VoIP / 音声通話</td><td><span class="tag tag-amber">UDP</span></td><td>リアルタイム性優先（RTP over UDP）</td></tr>
+          <tr><td>金融トランザクション</td><td><span class="tag tag-blue">TCP</span></td><td>整合性・順序が絶対必須</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「TCPの3ウェイハンドシェイクを説明してください」&rarr; SYN / SYN-ACK / ACK と各シーケンス番号の役割</li>
+      <li>「ビデオ会議でTCPではなくUDPを使う理由」&rarr; 再送で遅延が累積すると会話が成立しなくなるため</li>
+      <li>QUICはUDP上に信頼性・暗号化を独自実装。「UDP = 信頼性なし」は現代では必ずしも正確ではない</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 4: DNS ===== -->
+<div class="section" id="dns">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2>DNS と名前解決</h2>
+  </div>
+
+  <div class="card accent-left">
+    <h3>DNS とは</h3>
+    <p>DNS（Domain Name System）はインターネットの「電話帳」です。人間が読める <code>www.example.com</code> をコンピュータが通信に使う <code>93.184.216.34</code>（IPアドレス）に変換します。分散階層型のデータベースとして設計されており、単一障害点を排除しています。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 740 310" xmlns="http://www.w3.org/2000/svg">
+      <title>DNSの再帰的名前解決フロー</title>
+      <defs>
+        <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr2g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+        </marker>
+        <marker id="arr2r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+      <!-- Client -->
+      <rect x="20" y="130" width="100" height="48" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="70" y="151" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700" font-family="sans-serif">クライアント</text>
+      <text x="70" y="167" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ブラウザ</text>
+      <!-- Resolver -->
+      <rect x="195" y="130" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="255" y="151" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">再帰リゾルバ</text>
+      <text x="255" y="167" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ISP / 8.8.8.8</text>
+      <!-- Root DNS -->
+      <rect x="400" y="20" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="460" y="42" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700" font-family="sans-serif">ルートDNS</text>
+      <text x="460" y="58" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">13台（a〜m.root-servers.net）</text>
+      <!-- TLD DNS -->
+      <rect x="400" y="130" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="460" y="152" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">TLD DNSサーバ</text>
+      <text x="460" y="168" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">.com / .jp 管理</text>
+      <!-- Authoritative DNS -->
+      <rect x="400" y="240" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="460" y="260" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="700" font-family="sans-serif">権威DNSサーバ</text>
+      <text x="460" y="276" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">example.com 管理</text>
+      <!-- Cache box -->
+      <rect x="600" y="130" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="660" y="152" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700" font-family="sans-serif">OS/ブラウザ</text>
+      <text x="660" y="168" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">DNSキャッシュ</text>
+      <!-- Steps -->
+      <!-- 1: client → resolver -->
+      <line x1="120" y1="154" x2="195" y2="154" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr1)"/>
+      <text x="158" y="147" text-anchor="middle" fill="#6366f1" font-size="8.5" font-family="sans-serif">① クエリ</text>
+      <!-- 2: resolver → root -->
+      <line x1="315" y1="142" x2="400" y2="56" stroke="#f59e0b" stroke-width="1.5"/>
+      <polygon points="400,56 391,65 401,63" fill="#f59e0b"/>
+      <text x="362" y="90" text-anchor="middle" fill="#f59e0b" font-size="8.5" font-family="sans-serif">② ルート問合せ</text>
+      <!-- 3: root → resolver -->
+      <line x1="400" y1="62" x2="315" y2="148" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="340" y="115" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">③ .com TLD教示</text>
+      <!-- 4: resolver → TLD -->
+      <line x1="315" y1="158" x2="400" y2="158" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2g)"/>
+      <text x="357" y="150" text-anchor="middle" fill="#10b981" font-size="8.5" font-family="sans-serif">④ TLD問合せ</text>
+      <!-- 5: TLD → resolver -->
+      <line x1="400" y1="166" x2="315" y2="166" stroke="#10b981" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="358" y="180" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">⑤ 権威サーバ教示</text>
+      <!-- 6: resolver → authoritative -->
+      <line x1="315" y1="168" x2="400" y2="244" stroke="#ef4444" stroke-width="1.5"/>
+      <polygon points="400,244 391,236 401,234" fill="#ef4444"/>
+      <text x="349" y="216" text-anchor="middle" fill="#ef4444" font-size="8.5" font-family="sans-serif">⑥ 権威問合せ</text>
+      <!-- 7: authoritative → resolver -->
+      <line x1="400" y1="250" x2="315" y2="170" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="343" y="242" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">⑦ IPアドレス返答</text>
+      <!-- 8: resolver → client -->
+      <line x1="195" y1="163" x2="120" y2="163" stroke="#22d3ee" stroke-width="2" stroke-dasharray="4,2"/>
+      <polygon points="120,163 130,156 130,166" fill="#22d3ee"/>
+      <text x="158" y="178" text-anchor="middle" fill="#22d3ee" font-size="8.5" font-family="sans-serif">⑧ IP + キャッシュ</text>
+      <!-- cache note -->
+      <line x1="600" y1="154" x2="520" y2="154" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="560" y="147" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">TTL内はキャッシュ利用</text>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green-left">
+      <h3>主な DNS レコードタイプ</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>レコード</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>A</code></td><td>ドメイン &rarr; IPv4アドレス</td></tr>
+            <tr><td><code>AAAA</code></td><td>ドメイン &rarr; IPv6アドレス</td></tr>
+            <tr><td><code>CNAME</code></td><td>別名 &rarr; 別のドメイン</td></tr>
+            <tr><td><code>MX</code></td><td>メールサーバ指定</td></tr>
+            <tr><td><code>TXT</code></td><td>テキスト情報（SPF, DKIM等）</td></tr>
+            <tr><td><code>NS</code></td><td>権威DNSサーバ指定</td></tr>
+            <tr><td><code>PTR</code></td><td>逆引き（IP &rarr; ドメイン）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card cyan-left">
+      <h3>TTL とキャッシュ戦略</h3>
+      <p><strong class="hl-cyan">TTL（Time To Live）</strong>はDNSレコードがキャッシュされる秒数です。</p>
+      <ul class="list" style="margin-top:.5rem">
+        <li><strong>TTL短め（60〜300秒）:</strong> 変更を素早く反映できる。クエリ数が増加しコスト増。</li>
+        <li><strong>TTL長め（3600〜86400秒）:</strong> キャッシュ効率が高い。変更反映に時間がかかる。</li>
+        <li>CDN切替・ブルーグリーンデプロイ前はTTLを事前に短くするのが定石。</li>
+      </ul>
+      <div class="alert alert-info" style="margin-top:.75rem">
+        <span class="alert-icon">&#8505;&#65039;</span>
+        <div>障害復旧時は低TTL（60秒）にしておくと、フェイルオーバーが迅速になります。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「DNSの名前解決の流れを説明してください」&rarr; ブラウザキャッシュ &rarr; OS &rarr; リゾルバ &rarr; ルート &rarr; TLD &rarr; 権威DNSの順</li>
+      <li>再帰クエリ（クライアントが1回問い合わせる）と反復クエリ（リゾルバが各サーバに逐次問い合わせる）の違い</li>
+      <li>Anycastでルートサーバを世界中に分散させることで、単一障害点と低レイテンシを両立している</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 5: CDN ===== -->
+<div class="section" id="cdn">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2>CDN（Content Delivery Network）</h2>
+  </div>
+
+  <div class="card accent-left">
+    <h3>CDN とは</h3>
+    <p>世界各地のエッジサーバーにコンテンツをキャッシュし、ユーザーに最も近いサーバーから配信するネットワークです。レイテンシを削減しつつ、オリジンサーバーの負荷を大幅に軽減します。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+      <title>CDNのエッジサーバー分散配信モデル</title>
+      <!-- Origin -->
+      <rect x="290" y="15" width="120" height="48" rx="8" fill="#1c1f2e" stroke="#ef4444" stroke-width="2"/>
+      <text x="350" y="37" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="700" font-family="sans-serif">オリジンサーバ</text>
+      <text x="350" y="53" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">US-East (AWS)</text>
+      <!-- Edge servers -->
+      <rect x="30" y="110" width="110" height="44" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="85" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">Edge 東京</text>
+      <text x="85" y="146" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">PoP Japan</text>
+      <rect x="185" y="110" width="110" height="44" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="240" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">Edge 欧州</text>
+      <text x="240" y="146" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">PoP Frankfurt</text>
+      <rect x="405" y="110" width="110" height="44" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="460" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">Edge 米国西</text>
+      <text x="460" y="146" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">PoP Los Angeles</text>
+      <rect x="560" y="110" width="110" height="44" rx="8" fill="#1c1f2e" stroke="#10b981" stroke-width="1.5"/>
+      <text x="615" y="130" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">Edge APAC</text>
+      <text x="615" y="146" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">PoP Singapore</text>
+      <!-- Origin to Edge lines (cache pull) -->
+      <line x1="350" y1="63" x2="85" y2="110" stroke="#ef4444" stroke-width="1" stroke-dasharray="5,3" opacity=".6"/>
+      <line x1="350" y1="63" x2="240" y2="110" stroke="#ef4444" stroke-width="1" stroke-dasharray="5,3" opacity=".6"/>
+      <line x1="350" y1="63" x2="460" y2="110" stroke="#ef4444" stroke-width="1" stroke-dasharray="5,3" opacity=".6"/>
+      <line x1="350" y1="63" x2="615" y2="110" stroke="#ef4444" stroke-width="1" stroke-dasharray="5,3" opacity=".6"/>
+      <text x="350" y="95" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">&#8592; Pull: 初回リクエスト時のみオリジン取得 &#8594;</text>
+      <!-- Users -->
+      <rect x="40" y="205" width="80" height="30" rx="6" fill="#2a2d3e" stroke="#6366f1" stroke-width="1"/>
+      <text x="80" y="224" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">&#128100; 日本ユーザ</text>
+      <rect x="200" y="205" width="80" height="30" rx="6" fill="#2a2d3e" stroke="#6366f1" stroke-width="1"/>
+      <text x="240" y="224" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">&#128100; 欧州ユーザ</text>
+      <rect x="420" y="205" width="80" height="30" rx="6" fill="#2a2d3e" stroke="#6366f1" stroke-width="1"/>
+      <text x="460" y="224" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">&#128100; 米国ユーザ</text>
+      <rect x="575" y="205" width="80" height="30" rx="6" fill="#2a2d3e" stroke="#6366f1" stroke-width="1"/>
+      <text x="615" y="224" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">&#128100; ASEANユーザ</text>
+      <!-- User to Edge -->
+      <line x1="80" y1="205" x2="85" y2="154" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="85,154 78,164 88,164" fill="#22d3ee"/>
+      <line x1="240" y1="205" x2="240" y2="154" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="240,154 233,164 243,164" fill="#22d3ee"/>
+      <line x1="460" y1="205" x2="460" y2="154" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="460,154 453,164 463,164" fill="#22d3ee"/>
+      <line x1="615" y1="205" x2="615" y2="154" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="615,154 608,164 618,164" fill="#22d3ee"/>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green-left">
+      <h3>Push CDN vs Pull CDN</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Push CDN</th><th>Pull CDN</th></tr></thead>
+          <tbody>
+            <tr><td>仕組み</td><td>事前にコンテンツをアップロード</td><td>初回リクエスト時にオリジンから取得</td></tr>
+            <tr><td>更新</td><td>手動/自動でCDNへ配信</td><td>TTL切れ or Purge後に自動更新</td></tr>
+            <tr><td>向いている</td><td>静的ファイル、動画、大容量</td><td>ほとんどのWebサイト</td></tr>
+            <tr><td>ストレージ</td><td>事前に全て格納（コスト大）</td><td>必要分のみキャッシュ</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card cyan-left">
+      <h3>キャッシュ制御ヘッダ</h3>
+      <pre style="margin-top:.5rem"><code><span class="cm"># 1日キャッシュ（静的アセット）</span>
+Cache-Control: public, max-age=86400
+
+<span class="cm"># キャッシュ禁止（APIレスポンス）</span>
+Cache-Control: no-store, no-cache
+
+<span class="cm"># バックグラウンドで再検証</span>
+Cache-Control: stale-while-revalidate=60
+
+<span class="cm"># ブラウザ1時間、CDN1日</span>
+Cache-Control: max-age=3600, s-maxage=86400</code></pre>
+    </div>
+  </div>
+
+  <div class="card purple-left">
+    <h3>動的コンテンツの CDN 活用</h3>
+    <ul class="list">
+      <li><strong class="hl-green">エッジキャッシュ（短TTL）:</strong> ニュース記事・商品情報など頻繁に変わるが全ユーザー共通のレスポンス</li>
+      <li><strong class="hl-cyan">エッジコンピューティング:</strong> Cloudflare Workers / Lambda@Edge でオリジンの代わりにエッジで処理</li>
+      <li><strong class="hl-amber">Vary ヘッダ:</strong> Accept-Language や Accept-Encoding 別にキャッシュを分岐させる</li>
+      <li><strong class="hl-red">バイパス条件:</strong> Cookie やクエリパラメータを含む個人化された動的 API は CDN をバイパスし直接オリジンへ</li>
+      <li><strong class="hl-purple">Cache-Tag / Surrogate-Key:</strong> コンテンツのグループ単位（商品IDなど）でのキャッシュ Purge が可能</li>
+    </ul>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「CDNキャッシュの更新方法」&rarr; ① TTL満了 ② Purge API ③ ファイル名にhashを付与するキャッシュバスティング</li>
+      <li>「動的コンテンツをCDNでキャッシュできるか？」&rarr; 短TTL・Cache-Tagによる選択的Purge・エッジコンピューティングの組み合わせで対応可能</li>
+      <li>PoPとエッジサーバーの違い：PoPは物理的なデータセンター拠点、エッジサーバーはその中の実サーバー</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 6: Real-time ===== -->
+<div class="section" id="realtime">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2>リアルタイム通信</h2>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 740 330" xmlns="http://www.w3.org/2000/svg">
+      <title>Short Polling / Long Polling / WebSocket / SSEの比較図</title>
+      <!-- Short Polling -->
+      <text x="80" y="20" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" font-family="sans-serif">Short Polling</text>
+      <text x="35" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Client</text>
+      <text x="110" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Server</text>
+      <line x1="45" y1="44" x2="45" y2="270" stroke="#6366f1" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="120" y1="44" x2="120" y2="270" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <!-- Poll cycles -->
+      <line x1="45" y1="58" x2="120" y2="68" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="120,68 110,62 111,72" fill="#6366f1"/>
+      <line x1="120" y1="76" x2="45" y2="86" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <polygon points="45,86 55,79 55,89" fill="#22d3ee"/>
+      <text x="82" y="63" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">GET /updates</text>
+      <text x="82" y="98" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">204 No Content</text>
+      <line x1="45" y1="118" x2="120" y2="128" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="120,128 110,122 111,132" fill="#6366f1"/>
+      <line x1="120" y1="136" x2="45" y2="146" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <polygon points="45,146 55,139 55,149" fill="#22d3ee"/>
+      <text x="82" y="158" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">200 OK &#123;data&#125;</text>
+      <line x1="45" y1="178" x2="120" y2="188" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="120,188 110,182 111,192" fill="#6366f1"/>
+      <line x1="120" y1="196" x2="45" y2="206" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <polygon points="45,206 55,199 55,209" fill="#22d3ee"/>
+      <text x="80" y="255" text-anchor="middle" fill="#ef4444" font-size="9" font-family="sans-serif">無駄リクエスト多</text>
+      <text x="80" y="268" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="sans-serif">実装が簡単</text>
+
+      <!-- Long Polling -->
+      <text x="245" y="20" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" font-family="sans-serif">Long Polling</text>
+      <text x="195" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Client</text>
+      <text x="275" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Server</text>
+      <line x1="205" y1="44" x2="205" y2="270" stroke="#6366f1" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="285" y1="44" x2="285" y2="270" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="205" y1="58" x2="285" y2="68" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="285,68 275,62 276,72" fill="#6366f1"/>
+      <text x="245" y="63" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">GET /updates</text>
+      <!-- Server holds -->
+      <rect x="282" y="72" width="8" height="60" rx="2" fill="#2a2d3e" stroke="#22d3ee" stroke-width="1"/>
+      <text x="245" y="110" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">サーバー保持中...</text>
+      <line x1="285" y1="136" x2="205" y2="150" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="205,150 215,143 215,153" fill="#22d3ee"/>
+      <text x="245" y="162" text-anchor="middle" fill="#22d3ee" font-size="7.5" font-family="sans-serif">200 OK &#123;data&#125;</text>
+      <!-- Re-request -->
+      <line x1="205" y1="175" x2="285" y2="185" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="285,185 275,179 276,189" fill="#6366f1"/>
+      <text x="245" y="255" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">遅延は改善</text>
+      <text x="245" y="268" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="sans-serif">接続管理が複雑</text>
+
+      <!-- WebSocket -->
+      <text x="455" y="20" text-anchor="middle" fill="#10b981" font-size="12" font-weight="700" font-family="sans-serif">WebSocket</text>
+      <text x="400" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Client</text>
+      <text x="490" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Server</text>
+      <line x1="413" y1="44" x2="413" y2="270" stroke="#6366f1" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="497" y1="44" x2="497" y2="270" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="413" y1="58" x2="497" y2="70" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="497,70 487,64 488,74" fill="#6366f1"/>
+      <text x="455" y="62" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">Upgrade: websocket</text>
+      <line x1="497" y1="80" x2="413" y2="92" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="413,92 423,85 423,95" fill="#22d3ee"/>
+      <text x="455" y="102" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">101 Switching Protocols</text>
+      <rect x="413" y="110" width="84" height="100" rx="4" fill="rgba(16,185,129,.07)" stroke="#10b981" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="455" y="152" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700" font-family="sans-serif">双方向</text>
+      <text x="455" y="166" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">Full Duplex</text>
+      <text x="455" y="180" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">任意タイミング送受信</text>
+      <text x="455" y="255" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">低レイテンシ双方向</text>
+      <text x="455" y="268" text-anchor="middle" fill="#10b981" font-size="9" font-family="sans-serif">チャット・ゲーム向き</text>
+
+      <!-- SSE -->
+      <text x="645" y="20" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">SSE</text>
+      <text x="595" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Client</text>
+      <text x="680" y="40" fill="#64748b" font-size="8.5" font-family="sans-serif">Server</text>
+      <line x1="608" y1="44" x2="608" y2="270" stroke="#6366f1" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="685" y1="44" x2="685" y2="270" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3" opacity=".5"/>
+      <line x1="608" y1="58" x2="685" y2="68" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="685,68 675,62 676,72" fill="#6366f1"/>
+      <text x="647" y="62" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">GET /stream</text>
+      <line x1="685" y1="78" x2="608" y2="90" stroke="#a78bfa" stroke-width="1"/>
+      <text x="647" y="100" text-anchor="middle" fill="#64748b" font-size="7.5" font-family="sans-serif">200 text/event-stream</text>
+      <line x1="685" y1="110" x2="608" y2="122" stroke="#a78bfa" stroke-width="1.5"/>
+      <polygon points="608,122 618,115 618,125" fill="#a78bfa"/>
+      <text x="647" y="108" text-anchor="middle" fill="#a78bfa" font-size="7.5" font-family="sans-serif">data: &#123;event1&#125;</text>
+      <line x1="685" y1="140" x2="608" y2="152" stroke="#a78bfa" stroke-width="1.5"/>
+      <polygon points="608,152 618,145 618,155" fill="#a78bfa"/>
+      <text x="647" y="138" text-anchor="middle" fill="#a78bfa" font-size="7.5" font-family="sans-serif">data: &#123;event2&#125;</text>
+      <line x1="685" y1="170" x2="608" y2="182" stroke="#a78bfa" stroke-width="1.5"/>
+      <polygon points="608,182 618,175 618,185" fill="#a78bfa"/>
+      <text x="647" y="168" text-anchor="middle" fill="#a78bfa" font-size="7.5" font-family="sans-serif">data: &#123;event3&#125;</text>
+      <text x="645" y="255" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">サーバ &rarr; クライアント</text>
+      <text x="645" y="268" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">通知・AI応答向き</text>
+    </svg>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>方式</th><th>プロトコル</th><th>方向</th><th>レイテンシ</th><th>サーバ負荷</th><th>主なユースケース</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Short Polling</td><td>HTTP</td><td>クライアント主導</td>
+          <td><span class="tag tag-red">高（間隔依存）</span></td>
+          <td><span class="tag tag-red">高（無駄リクエスト）</span></td>
+          <td>シンプルな状態確認</td>
+        </tr>
+        <tr>
+          <td>Long Polling</td><td>HTTP</td><td>クライアント主導</td>
+          <td><span class="tag tag-amber">中</span></td><td><span class="tag tag-amber">中</span></td>
+          <td>通知、古いブラウザ対応</td>
+        </tr>
+        <tr>
+          <td>WebSocket</td><td>ws:// / wss://</td>
+          <td><span class="tag tag-green">双方向</span></td>
+          <td><span class="tag tag-green">低</span></td>
+          <td>中（接続維持コスト）</td>
+          <td>チャット, ゲーム, コラボ編集</td>
+        </tr>
+        <tr>
+          <td>SSE</td><td>HTTP (text/event-stream)</td>
+          <td>サーバ &rarr; クライアント</td>
+          <td><span class="tag tag-green">低</span></td>
+          <td><span class="tag tag-green">低</span></td>
+          <td>通知, ライブフィード, AI応答</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green-left">
+      <h3>WebSocket 実装例</h3>
+      <pre><code><span class="cm">// クライアント (JavaScript)</span>
+<span class="kw">const</span> ws = <span class="kw">new</span> <span class="fn">WebSocket</span>(<span class="str">'wss://api.example.com/ws'</span>);
+
+ws.<span class="fn">onopen</span> = () => {
+  ws.<span class="fn">send</span>(<span class="fn">JSON.stringify</span>({
+    type: <span class="str">'join'</span>, room: <span class="str">'lobby'</span>
+  }));
+};
+
+ws.<span class="fn">onmessage</span> = (e) => {
+  <span class="kw">const</span> data = <span class="fn">JSON.parse</span>(e.data);
+  <span class="fn">updateUI</span>(data);
+};
+
+<span class="cm">// 自動再接続</span>
+ws.<span class="fn">onclose</span> = () =>
+  <span class="fn">setTimeout</span>(reconnect, <span class="num">3000</span>);</code></pre>
+    </div>
+    <div class="card purple-left">
+      <h3>SSE 実装例 (Node.js)</h3>
+      <pre><code>app.<span class="fn">get</span>(<span class="str">'/stream'</span>, (req, res) => {
+  res.<span class="fn">setHeader</span>(<span class="str">'Content-Type'</span>,
+    <span class="str">'text/event-stream'</span>);
+  res.<span class="fn">setHeader</span>(<span class="str">'Cache-Control'</span>,<span class="str">'no-cache'</span>);
+  res.<span class="fn">setHeader</span>(<span class="str">'Connection'</span>,<span class="str">'keep-alive'</span>);
+
+  <span class="kw">const</span> send = (d) =>
+    res.<span class="fn">write</span>(`data: ${<span class="fn">JSON.stringify</span>(d)}\n\n`);
+
+  <span class="kw">const</span> iv = <span class="fn">setInterval</span>(() =>
+    <span class="fn">send</span>({ token: <span class="fn">nextToken</span>() }), <span class="num">50</span>);
+
+  req.<span class="fn">on</span>(<span class="str">'close'</span>, () =>
+    <span class="fn">clearInterval</span>(iv));
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="alert alert-tip">
+    <span class="alert-icon">&#128161;</span>
+    <div><b>ChatGPT / Claude のストリーミング応答はSSEを使用</b>しています。トークンが生成されるたびにSSEイベントとして送信し、クライアントが順次表示します。WebSocketではなくSSEが選ばれる理由は、一方向通信で十分かつHTTPベースでCDN・プロキシ互換性が高いためです。</div>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「WebSocketとSSEをいつ使い分けるか？」&rarr; 双方向が必要（チャット・ゲーム）はWS、サーバーからの一方向通知（ライブフィード・AI応答）はSSE</li>
+      <li>「Long PollingとWebSocketの違い」&rarr; LPはHTTP接続を都度張り直す、WSは1回の接続を維持し続ける</li>
+      <li>WebSocketはHTTP Upgradeヘッダで接続を切り替え（TCPは同じ接続を継続使用）</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 7: TLS ===== -->
+<div class="section" id="tls">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2>TLS / HTTPS の仕組み</h2>
+  </div>
+
+  <div class="card accent-left">
+    <h3>TLS とは</h3>
+    <p><strong class="hl-accent">TLS（Transport Layer Security）</strong>はHTTP通信を暗号化し、盗聴・改ざん・なりすましを防ぐプロトコルです。HTTPS = HTTP over TLS です。現在の標準はTLS 1.3（RFC 8446、2018年）です。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 350" xmlns="http://www.w3.org/2000/svg">
+      <title>TLS 1.3 ハンドシェイクのフロー詳細</title>
+      <rect x="30" y="10" width="120" height="34" rx="8" fill="#1c1f2e" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="90" y="32" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">クライアント</text>
+      <line x1="90" y1="44" x2="90" y2="330" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <rect x="550" y="10" width="120" height="34" rx="8" fill="#1c1f2e" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="610" y="32" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">サーバ</text>
+      <line x1="610" y1="44" x2="610" y2="330" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- TCP done note -->
+      <text x="350" y="60" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">&#9472; ① TCP 3ウェイハンドシェイク完了（省略）&#9472;</text>
+      <!-- ClientHello -->
+      <line x1="90" y1="74" x2="610" y2="92" stroke="#10b981" stroke-width="2"/>
+      <polygon points="610,92 600,85 602,95" fill="#10b981"/>
+      <text x="350" y="82" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">② ClientHello</text>
+      <text x="350" y="96" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">（TLSバージョン, 暗号スイート候補, クライアント乱数, SNI）</text>
+      <!-- ServerHello + Cert -->
+      <line x1="610" y1="112" x2="90" y2="136" stroke="#22d3ee" stroke-width="2"/>
+      <polygon points="90,136 100,129 100,139" fill="#22d3ee"/>
+      <text x="350" y="120" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">③ ServerHello + Certificate + ServerKeyExchange</text>
+      <text x="350" y="134" text-anchor="middle" fill="#64748b" font-size="8.5" font-family="sans-serif">（選択暗号スイート, サーバ証明書, ECDH公開値）</text>
+      <!-- Cert verify -->
+      <rect x="30" y="148" width="120" height="40" rx="6" fill="#1c1f2e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="90" y="167" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="700" font-family="sans-serif">④ 証明書チェーン検証</text>
+      <text x="90" y="181" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">CA署名 + 有効期限確認</text>
+      <!-- ClientKeyExchange -->
+      <line x1="90" y1="198" x2="610" y2="218" stroke="#10b981" stroke-width="2"/>
+      <polygon points="610,218 600,211 602,221" fill="#10b981"/>
+      <text x="350" y="207" text-anchor="middle" fill="#10b981" font-size="11" font-family="sans-serif">⑤ ClientKeyExchange（ECDH公開値）+ Finished</text>
+      <!-- Server Finished -->
+      <line x1="610" y1="234" x2="90" y2="254" stroke="#22d3ee" stroke-width="2"/>
+      <polygon points="90,254 100,247 100,257" fill="#22d3ee"/>
+      <text x="350" y="244" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">⑥ Server Finished</text>
+      <!-- Encrypted -->
+      <rect x="90" y="266" width="520" height="30" rx="6" fill="rgba(16,185,129,.1)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="350" y="285" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700" font-family="sans-serif">&#9989; 暗号化通信開始（セッション鍵による対称暗号 AES-256-GCM）</text>
+      <text x="350" y="320" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">TLS 1.3: 合計 1-RTT で完了。再接続（PSK）は 0-RTT も可能。</text>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green-left">
+      <h3>暗号化の種類</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>種類</th><th>鍵</th><th>用途</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td>対称暗号</td><td>同一鍵</td><td>データ暗号化（高速）</td><td>AES-256-GCM</td></tr>
+            <tr><td>非対称暗号</td><td>公開鍵/秘密鍵</td><td>鍵交換・デジタル署名</td><td>RSA, ECDSA</td></tr>
+            <tr><td>鍵交換</td><td>&mdash;</td><td>安全な共通鍵合意</td><td>ECDHE（楕円曲線DH）</td></tr>
+            <tr><td>ハッシュ</td><td>&mdash;</td><td>整合性確認</td><td>SHA-256, SHA-384</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card cyan-left">
+      <h3>証明書チェーン</h3>
+      <div class="flow" style="flex-direction:column;align-items:flex-start;gap:.4rem">
+        <div class="flow-step" style="border-color:var(--accent3);color:var(--accent3)">&#128274; ルートCA証明書（ブラウザ/OSに組み込み済み）</div>
+        <div style="color:var(--text3);padding-left:1rem">&#8595; 署名で信頼を伝搬</div>
+        <div class="flow-step" style="border-color:var(--accent2);color:var(--accent2)">&#128274; 中間CA証明書（Let's Encrypt 等）</div>
+        <div style="color:var(--text3);padding-left:1rem">&#8595; 署名で信頼を伝搬</div>
+        <div class="flow-step" style="border-color:var(--green);color:var(--green)">&#128274; サーバー証明書（example.com）</div>
+      </div>
+      <p style="margin-top:.75rem;font-size:.85rem;color:var(--text2)">ブラウザはルートCAの署名を検証し、チェーンを辿ってサーバー証明書の正当性を確認します。</p>
+    </div>
+  </div>
+
+  <pre><code><span class="cm"># Nginx TLS 1.2/1.3 設定例</span>
+server {
+    listen <span class="num">443</span> ssl http2;
+    server_name example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    <span class="cm"># TLS 1.3 推奨 (1.2も後方互換で残す)</span>
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers   ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+
+    <span class="cm"># HSTS: 1年間 HTTPS を強制</span>
+    add_header Strict-Transport-Security
+      <span class="str">"max-age=31536000; includeSubDomains; preload"</span> always;
+
+    <span class="cm"># OCSP Stapling でレスポンス高速化</span>
+    ssl_stapling on;
+    ssl_stapling_verify on;
+}</code></pre>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「TLSハンドシェイクで何を決めるか」&rarr; ① TLSバージョン ② 暗号スイート ③ セッション鍵（ECDHE経由）</li>
+      <li>「なぜ対称・非対称暗号を組み合わせるか」&rarr; 非対称暗号は遅いため鍵交換のみに使い、実データは高速な対称暗号で処理する</li>
+      <li><strong>Perfect Forward Secrecy（PFS）:</strong> ECDHE使用時、秘密鍵が漏洩しても過去の通信を復号できない</li>
+      <li>TLS 1.3はTLS 1.2比で1-RTT削減（ハンドシェイクのラウンドトリップが1回少ない）</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SECTION 8: Latency ===== -->
+<div class="section" id="latency">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <h2>レイテンシとスループット</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card accent-left">
+      <h3>レイテンシ（Latency）</h3>
+      <p>リクエスト送信から最初のバイト受信までの時間。ユーザー体験に直結します。</p>
+      <ul class="list" style="margin-top:.5rem">
+        <li><strong>RTT（Round Trip Time）:</strong> 往復時間</li>
+        <li><strong>TTFB（Time To First Byte）:</strong> 最初のバイトを受け取るまでの時間</li>
+        <li><strong>P50 / P95 / P99:</strong> パーセンタイルレイテンシ。P99はテール（外れ値）ユーザー体験を示す</li>
+      </ul>
+    </div>
+    <div class="card green-left">
+      <h3>スループット（Throughput）</h3>
+      <p>単位時間当たりに処理できるデータ量またはリクエスト数。</p>
+      <ul class="list" style="margin-top:.5rem">
+        <li><strong>QPS / RPS:</strong> Queries / Requests Per Second</li>
+        <li><strong>帯域幅:</strong> bps（bits per second）</li>
+        <li><strong>TPS:</strong> Transactions Per Second</li>
+        <li><strong>Little's Law:</strong> L = &lambda; &times; W（同時接続数 = 到着率 &times; 平均応答時間）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>操作</th><th>目安レイテンシ</th><th>規模感</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>L1キャッシュ参照</td><td>~0.5 ns</td><td>光が0.15m進む時間</td></tr>
+        <tr><td>L2キャッシュ参照</td><td>~7 ns</td><td>L1の14倍</td></tr>
+        <tr><td>メインメモリ (RAM) アクセス</td><td>~100 ns</td><td>L1の200倍</td></tr>
+        <tr><td>SSD ランダム読み取り</td><td>~100 &micro;s (0.1ms)</td><td>メモリの1000倍</td></tr>
+        <tr><td>HDD シーク時間</td><td>~10 ms</td><td>SSDの100倍</td></tr>
+        <tr><td><strong>同一DC内ネットワーク RTT</strong></td><td><span class="tag tag-green">~0.5 ms</span></td><td>ローカルネットワーク</td></tr>
+        <tr><td>東京 &rarr; 大阪 RTT</td><td>~3&ndash;5 ms</td><td>光速 + 処理遅延</td></tr>
+        <tr><td><strong>東京 &rarr; 米国西海岸 RTT</strong></td><td><span class="tag tag-amber">~100&ndash;150 ms</span></td><td>太平洋横断（9000km）</td></tr>
+        <tr><td>東京 &rarr; 欧州 RTT</td><td><span class="tag tag-red">~200&ndash;300 ms</span></td><td>ユーラシア大陸横断</td></tr>
+        <tr><td>TCP 3ウェイハンドシェイク</td><td>1.5 &times; RTT</td><td>地理的距離に依存</td></tr>
+        <tr><td>TLS 1.3 追加コスト</td><td>+1 RTT（初回）/ 0 RTT（再接続）</td><td>0-RTTはセキュリティトレードオフあり</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card amber-left">
+    <h3>ネットワーク最適化テクニック</h3>
+    <div class="grid-2">
+      <div>
+        <p><strong class="hl-green">Keep-Alive:</strong> TCP接続を再利用しハンドシェイクのオーバーヘッドを削減。HTTP/1.1以降デフォルト有効。</p>
+        <pre><code><span class="cm"># Nginx upstream Keep-Alive</span>
+upstream backend {
+  server 127.0.0.1:3000;
+  keepalive <span class="num">32</span>;
+  keepalive_requests <span class="num">1000</span>;
+  keepalive_timeout <span class="num">60</span>s;
+}</code></pre>
+      </div>
+      <div>
+        <p><strong class="hl-cyan">Connection Pooling:</strong> 接続を事前に確保し都度接続のコストを排除。DBやHTTPクライアントで必須。</p>
+        <pre><code><span class="cm">// Node.js HTTPS エージェント</span>
+<span class="kw">const</span> agent = <span class="kw">new</span> https.<span class="type">Agent</span>({
+  keepAlive: <span class="kw">true</span>,
+  maxSockets: <span class="num">50</span>,
+  maxFreeSockets: <span class="num">10</span>,
+  timeout: <span class="num">60000</span>,
+});</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card purple-left">
+    <h3>その他の最適化手法一覧</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>手法</th><th>効果</th><th>実装例</th></tr></thead>
+        <tbody>
+          <tr><td>Gzip / Brotli 圧縮</td><td>転送量 60&ndash;80% 削減</td><td>Nginx <code>gzip on; brotli on;</code></td></tr>
+          <tr><td>CDN 利用</td><td>地理的レイテンシ削減</td><td>CloudFront, Fastly, Cloudflare</td></tr>
+          <tr><td>HTTP/2 Multiplexing</td><td>接続数削減・並列化</td><td>Nginx <code>listen 443 ssl http2;</code></td></tr>
+          <tr><td>DNS Prefetch</td><td>DNS解決を事前実行</td><td><code>&lt;link rel="dns-prefetch" href="//api.example.com"&gt;</code></td></tr>
+          <tr><td>Preconnect</td><td>TCP+TLS接続を事前確立</td><td><code>&lt;link rel="preconnect" href="//api.example.com"&gt;</code></td></tr>
+          <tr><td>TCP BBR 輻輳制御</td><td>高スループット・低レイテンシ</td><td>Linux: <code>net.ipv4.tcp_congestion_control=bbr</code></td></tr>
+          <tr><td>HTTP/2 Server Push</td><td>クリティカルアセットを先送り</td><td>Nginx <code>http2_push /style.css;</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert alert-warn">
+    <span class="alert-icon">&#9888;&#65039;</span>
+    <div><b>レイテンシとスループットはトレードオフ</b> &mdash; バッファリング（大量データをまとめて送る）はスループットを上げますがレイテンシが増します。ストリーミング（小さいチャンクを逐次送る）は低レイテンシですがスループットが下がることがあります。ユースケースに応じてバランスを取ることが重要です。</div>
+  </div>
+
+  <div class="interview">
+    <h3>&#128161; 面接頻出ポイント</h3>
+    <ul>
+      <li>「P99レイテンシとは？」&rarr; 99%のリクエストがこの時間以内に完了する。テールレイテンシはユーザー体験の最悪ケースを評価するのに重要</li>
+      <li>「東京から米国西海岸のRTTは？」&rarr; 約100&ndash;150ms。光速のみで計算すると最低約65ms（9000km &divide; 光速 &times; 2）</li>
+      <li>「Connection Poolingが重要な理由」&rarr; DBへの接続確立は100&ndash;300msかかることがあり、毎回接続するとレイテンシが爆発する</li>
+      <li>「CDNの主なパフォーマンス改善効果3つ」&rarr; ① 地理的近接化 ② キャッシュでオリジン負荷削減 ③ エッジでのTCP接続事前確立</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="card" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(34,211,238,.08));border-color:rgba(99,102,241,.4);margin-top:2rem">
+  <h3 style="color:var(--accent2);font-size:1.2rem;margin-bottom:1rem">&#128203; Chapter 02 まとめ</h3>
+  <div class="grid-2">
+    <ul class="list">
+      <li><strong class="hl-accent">OSI / TCP IP:</strong> L4がTCP/UDP、L3がIP、L7がアプリケーション</li>
+      <li><strong class="hl-cyan">HTTP/3:</strong> QUICでTCP HOLブロッキングを完全解消、0-RTT接続</li>
+      <li><strong class="hl-green">TCP:</strong> 信頼性重視。<strong class="hl-amber">UDP:</strong> 速度重視（ゲーム・動画）</li>
+      <li><strong class="hl-amber">DNS:</strong> TTLでキャッシュ。権威DNSが最終的な答えを持つ</li>
+    </ul>
+    <ul class="list">
+      <li><strong class="hl-purple">CDN:</strong> エッジでキャッシュ。Push vs Pull、短TTL戦略</li>
+      <li><strong class="hl-green">WebSocket:</strong> 双方向。<strong class="hl-purple">SSE:</strong> サーバー &rarr; クライアント一方向</li>
+      <li><strong class="hl-cyan">TLS:</strong> 非対称暗号で鍵交換 &rarr; 対称暗号でデータ暗号化</li>
+      <li><strong class="hl-red">レイテンシ:</strong> 東京&harr;米国は約100&ndash;150ms（光速限界は約65ms）</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="footer-nav">
+  <div class="footer-nav-inner">
+    <a href="01_fundamentals.html">
+      <span>&larr;</span>
+      <div>
+        <div style="font-size:.75rem;color:var(--text3)">前のチャプター</div>
+        <div>Ch01 システム設計の基礎</div>
+      </div>
+    </a>
+    <a href="00_index.html" style="flex-direction:column;text-align:center;gap:.25rem">
+      <div style="font-size:.75rem;color:var(--text3)">&#127968;</div>
+      <div>ホームに戻る</div>
+    </a>
+    <a href="03_databases.html">
+      <div>
+        <div style="font-size:.75rem;color:var(--text3)">次のチャプター</div>
+        <div>Ch03 データベース設計</div>
+      </div>
+      <span>&rarr;</span>
+    </a>
+  </div>
+</div>
+
+
+<!-- ============================
+     深掘り & 実践セクション
+     ============================ -->
+<div class="container" style="padding-top:0">
+
+<div style="border-top:2px solid var(--border);margin-top:48px;padding-top:8px;"></div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">+</div>
+    <h2>深掘り: HTTP/2 Multiplexingの実際の動作</h2>
+  </div>
+
+  <div class="card cyan-left">
+    <h3>ストリームIDとフレームの構造（バイナリプロトコル詳細）</h3>
+    <p>HTTP/2はHTTP/1.1のテキストベースプロトコルをバイナリフレームに置き換えた。フレームはすべて9バイトのヘッダで始まる。</p>
+    <pre><code><span class="cm">// HTTP/2 フレーム構造（9バイトヘッダ）</span>
++-----------------------------------------------+
+|                 Length (24 bits)               |
++---------------+---------------+---------------+
+|   Type (8)    |   Flags (8)   |
++-+-------------+---------------+
+|R|          Stream ID (31)     |
++=+=============+===============+
+|         Frame Payload         |
++-----------------------------------------------+
+
+<span class="cm">// 主要フレームタイプ</span>
+DATA         = <span class="num">0x0</span>  <span class="cm">// 実際のデータ</span>
+HEADERS      = <span class="num">0x1</span>  <span class="cm">// HTTPヘッダ</span>
+PRIORITY     = <span class="num">0x2</span>  <span class="cm">// ストリーム優先度</span>
+RST_STREAM   = <span class="num">0x3</span>  <span class="cm">// ストリームのリセット</span>
+SETTINGS     = <span class="num">0x4</span>  <span class="cm">// 接続設定</span>
+PUSH_PROMISE = <span class="num">0x5</span>  <span class="cm">// Server Push予告</span>
+PING         = <span class="num">0x6</span>  <span class="cm">// 生存確認</span>
+GOAWAY       = <span class="num">0x7</span>  <span class="cm">// 接続終了</span>
+WINDOW_UPDATE= <span class="num">0x8</span>  <span class="cm">// フロー制御</span>
+
+<span class="cm">// Multiplexing: 複数リクエストを1TCP接続で並行送信</span>
+Stream 1: [HEADERS] → [DATA chunk1] → [DATA chunk2 END_STREAM]
+Stream 3: [HEADERS] → [DATA chunk1] → [DATA chunk2 END_STREAM]
+Stream 5: [HEADERS] → [DATA chunk1 END_STREAM]
+<span class="cm">// 奇数ストリームID = クライアント起点</span>
+<span class="cm">// 偶数ストリームID = サーバー起点（Server Push）</span></code></pre>
+  </div>
+
+  <div class="card accent-left">
+    <h3>HPACK: Header Compression（静的テーブル + 動的テーブル）</h3>
+    <p>HTTP/2ではヘッダを圧縮してオーバーヘッドを削減する。HPACKは2種類のテーブルを使う。</p>
+    <pre><code><span class="cm">// 静的テーブル（61エントリ、仕様に固定）</span>
+Index  Name                Value
+  1    :authority
+  2    :method             GET
+  3    :method             POST
+  4    :path               /
+  7    :scheme             https
+ 13    :status             200
+ ...
+
+<span class="cm">// 動的テーブル（接続ごとに構築）</span>
+<span class="cm">// 初回リクエスト: フルヘッダを送信しテーブルに追加</span>
+<span class="str">":method: GET"</span>        → Index <span class="num">2</span>  (静的)
+<span class="str">"user-agent: Chrome"</span> → Index <span class="num">62</span> (動的テーブルに追加)
+
+<span class="cm">// 2回目以降: インデックス番号だけ送信</span>
+<span class="cm">// 例: user-agent は 1バイト（0x3E = 62）だけ送れば済む</span>
+<span class="cm">// → 典型的なAPIリクエストで 85〜88% のヘッダ圧縮率</span></code></pre>
+  </div>
+
+  <div class="card amber-left">
+    <h3>HTTP/2でも残るHoL Blocking → HTTP/3がUDPに移行した理由</h3>
+    <p>HTTP/2のストリーム多重化はアプリケーション層のHoLブロッキングを解決したが、TCP層の問題が残った。</p>
+    <pre><code><span class="cm">// TCP上のHTTP/2: パケットロス発生時</span>
+Stream 1: [frame1] [frame2] [LOST] [frame4] ...
+Stream 3: [frame1] [frame2] [frame3] ...
+Stream 5: [frame1] [frame2] [frame3] ...
+
+<span class="cm">// TCPは順序保証のためLOSTパケットの再送まで</span>
+<span class="cm">// Stream 3,5も含めて全ストリームが停止!</span>
+<span class="cm">// → TCP Head-of-Line Blocking</span>
+
+<span class="cm">// HTTP/3 (QUIC over UDP) の解決策</span>
+<span class="cm">// QUICは各ストリームを独立して管理</span>
+QUIC Stream 1: [frame1] [frame2] [LOST] [frame4]
+              <span class="cm">// → Stream 1 だけが再送待ち</span>
+QUIC Stream 3: [正常に進む]  <span class="cm">// 影響なし!</span>
+QUIC Stream 5: [正常に進む]  <span class="cm">// 影響なし!</span>
+
+<span class="cm">// さらに QUIC は TLS 1.3 を組み込み</span>
+<span class="cm">// → ハンドシェイクが 1-RTT（新規）/ 0-RTT（再接続）</span></code></pre>
+    <div class="alert alert-tip">
+      <div class="alert-label">Server Pushが廃止方向になった理由</div>
+      Server PushはクライアントがキャッシュしているリソースもPushしてしまう問題があった。103 Early Hints（Link preloadヘッダ）が代替手段として普及中。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">+</div>
+    <h2>深掘り: TLSハンドシェイク詳細（TLS 1.2 vs 1.3）</h2>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+    <div class="card red-left">
+      <h3>TLS 1.2: 2-RTTハンドシェイク</h3>
+      <pre style="font-size:0.78rem;"><code><span class="cm">// RTT1: 暗号スイート交渉</span>
+C→S: ClientHello
+     (supported ciphers, TLS version,
+      client random, SNI)
+S→C: ServerHello
+     (chosen cipher, server random)
+S→C: Certificate (公開鍵証明書)
+S→C: ServerHelloDone
+
+<span class="cm">// RTT2: 鍵交換</span>
+C→S: ClientKeyExchange
+     (pre-master secret, RSA暗号化 or
+      DH公開鍵)
+C→S: ChangeCipherSpec
+C→S: Finished (MAC)
+
+S→C: ChangeCipherSpec
+S→C: Finished (MAC)
+
+<span class="cm">// 計: 2-RTT + TCP 1-RTT = 3-RTT</span>
+<span class="cm">// RSA鍵交換は PFS なし（秘密鍵漏洩で過去の通信も復号可能）</span></code></pre>
+    </div>
+    <div class="card green-left">
+      <h3>TLS 1.3: 1-RTT ＆ 0-RTT再接続</h3>
+      <pre style="font-size:0.78rem;"><code><span class="cm">// RTT1: 鍵交換と暗号化を同時に</span>
+C→S: ClientHello
+     (key_share: DH公開鍵,
+      supported groups, ciphers,
+      PSK identity [再接続時])
+S→C: ServerHello
+     (key_share: DH公開鍵応答)
+S→C: {EncryptedExtensions}
+S→C: {Certificate}
+S→C: {CertificateVerify}
+S→C: {Finished}
+
+<span class="cm">// 接続確立!（1-RTT）</span>
+C→S: {Finished}
+C→S: {Application Data}
+
+<span class="cm">// 0-RTT（再接続時）</span>
+C→S: ClientHello + EarlyData
+<span class="cm">// リプレイ攻撃リスクあり → 冪等GETのみ推奨</span>
+
+<span class="cm">// TLS 1.3 の廃止された機能</span>
+<span class="cm">// × RSA鍵交換（PFSがない）</span>
+<span class="cm">// × RC4, DES, 3DES</span>
+<span class="cm">// × SHA-1証明書</span>
+<span class="cm">// × 圧縮（CRIME攻撃対策）</span></code></pre>
+    </div>
+  </div>
+
+  <div class="card accent-left">
+    <h3>実際の確認コマンド（openssl s_client）</h3>
+    <pre><code><span class="cm"># TLSバージョンと証明書を確認</span>
+openssl s_client -connect example.com:<span class="num">443</span> -tls1_3 &lt;/dev/null 2&gt;&amp;1 | grep -E <span class="str">"Protocol|Cipher|issuer"</span>
+
+<span class="cm"># 出力例</span>
+Protocol  : TLSv1.3
+Cipher    : TLS_AES_128_GCM_SHA256
+issuer=/C=US/O=Let's Encrypt/CN=R3
+
+<span class="cm"># サポートされる CipherSuite を列挙</span>
+openssl ciphers -v <span class="str">'TLSv1.3'</span>
+
+<span class="cm"># Server Name Indication (SNI) を指定して接続</span>
+openssl s_client -connect <span class="num">93.184.216.34</span>:<span class="num">443</span> -servername example.com
+
+<span class="cm"># 証明書チェーンの検証</span>
+openssl s_client -connect example.com:<span class="num">443</span> -verify_return_error 2&gt;&amp;1 | tail -<span class="num">5</span>
+
+<span class="cm"># TLS 1.3 の 0-RTT 対応確認（curl）</span>
+curl --http3 -I https://example.com -v 2&gt;&amp;1 | grep -E <span class="str">"TLS|QUIC|Early"</span></code></pre>
+    <div class="alert alert-info">
+      <div class="alert-label">PFS（Perfect Forward Secrecy）とは</div>
+      サーバーの長期秘密鍵が漏洩しても、過去の通信を復号できない性質。TLS 1.3ではすべての鍵交換がDH（Diffie-Hellman）ベースとなり、セッションごとに一時鍵を生成するためPFSが強制される。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">+</div>
+    <h2>深掘り: DNS 完全解説</h2>
+  </div>
+
+  <div class="card cyan-left">
+    <h3>DNSレコードの全種類と用途</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0.75rem;margin-bottom:1rem;">
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--accent2);font-weight:700;margin-bottom:4px;">A / AAAA</p>
+        <p style="color:var(--text2);font-size:0.84rem;">ドメイン → IPv4(A) / IPv6(AAAA) アドレスへのマッピング。最も基本的なレコード。</p>
+        <pre style="font-size:0.75rem;margin-top:6px;"><code>example.com. A <span class="num">93.184.216.34</span>
+example.com. AAAA <span class="num">2606:2800:220:1:248:1893:25c8:1946</span></code></pre>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--green);font-weight:700;margin-bottom:4px;">CNAME</p>
+        <p style="color:var(--text2);font-size:0.84rem;">別名（エイリアス）。CDNで使用される。CNAME先を変えるだけでIPを切り替えられる。</p>
+        <pre style="font-size:0.75rem;margin-top:6px;"><code>www.example.com. CNAME d1234.cloudfront.net.
+<span class="cm"># ルートドメインにはCNAME不可 → ALIAS/ANAMEレコード</span></code></pre>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--accent3);font-weight:700;margin-bottom:4px;">MX</p>
+        <p style="color:var(--text2);font-size:0.84rem;">メールサーバー。優先度（priority）が低いほど優先される。</p>
+        <pre style="font-size:0.75rem;margin-top:6px;"><code>example.com. MX <span class="num">10</span> mail1.example.com.
+example.com. MX <span class="num">20</span> mail2.example.com.</code></pre>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--purple);font-weight:700;margin-bottom:4px;">TXT</p>
+        <p style="color:var(--text2);font-size:0.84rem;">テキスト情報。SPF/DKIM/DMARECメール認証、ドメイン所有権確認に使用。</p>
+        <pre style="font-size:0.75rem;margin-top:6px;"><code>example.com. TXT <span class="str">"v=spf1 include:_spf.google.com ~all"</span>
+_dmarc.example.com. TXT <span class="str">"v=DMARC1; p=reject"</span></code></pre>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--red);font-weight:700;margin-bottom:4px;">NS / SOA</p>
+        <p style="color:var(--text2);font-size:0.84rem;">NS: ゾーンのネームサーバー。SOA: ゾーン管理情報（シリアル番号・TTLデフォルト）。</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;">
+        <p style="color:var(--accent);font-weight:700;margin-bottom:4px;">SRV / PTR</p>
+        <p style="color:var(--text2);font-size:0.84rem;">SRV: サービス発見（Kubernetes内部DNS等）。PTR: 逆引き（IP→ドメイン）。</p>
+        <pre style="font-size:0.75rem;margin-top:6px;"><code>_https._tcp.example.com. SRV <span class="num">0 5 443</span> server.example.com.</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card amber-left">
+    <h3>DNSキャッシュポイゾニング と DNSSEC</h3>
+    <pre><code><span class="cm">// 攻撃の仕組み（Kaminsky攻撃 2008年）</span>
+1. 攻撃者が example.com の偽回答を大量送信
+2. リゾルバが正規のクエリを送った直後に
+   偽の UDP応答（送信元:53）を大量に試みる
+3. トランザクションID(16bit)が一致すると
+   偽のAレコードがキャッシュに書き込まれる
+4. ユーザーが evil-server.com のIPに誘導される
+
+<span class="cm">// DNSSEC による対策</span>
+<span class="cm">// 各レコードに電子署名(RRSIG)を付与</span>
+example.com. A <span class="num">93.184.216.34</span>
+example.com. RRSIG A 8 2 3600 (
+  <span class="str">20231231000000 20231201000000 12345 example.com.</span>
+  <span class="str">base64encodedSignature...</span> )
+
+<span class="cm">// 検証チェーン: ルートゾーン → TLD → ドメイン</span>
+<span class="cm">// 偽の回答は署名が合わないため拒否される</span>
+
+<span class="cm">// DNS over HTTPS (DoH)</span>
+GET https://cloudflare-dns.com/dns-query?name=example.com&amp;type=A
+<span class="cm">// → DNS クエリをHTTPS暗号化 → ISPによる盗聴・改ざん防止</span>
+<span class="cm">// → Firefox, Chrome が標準搭載</span></code></pre>
+    <div class="alert alert-info">
+      <div class="alert-label">GeoDNS + エニーキャストの組み合わせ</div>
+      CDNはGeoDNSで地域ごとに異なるIPを返し、さらにそのIPがエニーキャストで最寄りのPoPサーバーにルーティングされる。例: Cloudflareの 1.1.1.1 は世界中の270+のデータセンターで同じIPアドレスを持つ。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">+</div>
+    <h2>実践演習: パケットトレース分析</h2>
+  </div>
+
+  <div class="card green-left">
+    <h3>curl による HTTP/2 フレーム確認</h3>
+    <pre><code><span class="cm"># -v: 詳細表示、--http2: HTTP/2 強制</span>
+curl -v --http2 https://www.google.com 2>&amp;1 | head -<span class="num">50</span>
+
+<span class="cm"># 出力例（重要部分）</span>
+* Connected to www.google.com (<span class="num">142.250.185.68</span>) port <span class="num">443</span>
+* ALPN: offers h2           <span class="cm">← HTTP/2 をネゴシエート</span>
+* ALPN: server accepted h2  <span class="cm">← サーバーが HTTP/2 を選択</span>
+* Using HTTP2, server supports multiplexing
+&gt; GET / HTTP/2
+&gt; Host: www.google.com
+&lt; HTTP/2 200              <span class="cm">← HTTP/2 ステータスライン</span>
+&lt; content-type: text/html
+
+<span class="cm"># タイミング情報を取得</span>
+curl -w <span class="str">"\n
+DNS解決:      %{time_namelookup}s
+TCP接続:      %{time_connect}s
+TLSハンドシェイク: %{time_appconnect}s
+最初のバイト:  %{time_starttransfer}s
+合計:         %{time_total}s\n"</span> \
+  -o /dev/null -s https://www.google.com</code></pre>
+  </div>
+
+  <div class="card accent-left">
+    <h3>dig / nslookup による DNS 解析</h3>
+    <pre><code><span class="cm"># Aレコードを確認（デフォルトのDNSサーバー使用）</span>
+dig example.com A
+
+<span class="cm"># 出力例の読み方</span>
+;; ANSWER SECTION:
+example.com.  <span class="num">3591</span> IN A <span class="num">93.184.216.34</span>
+<span class="cm">#              ↑TTL(秒) ↑クラス ↑タイプ ↑IPアドレス</span>
+
+<span class="cm"># 特定のDNSサーバーに問い合わせ</span>
+dig @<span class="num">8.8.8.8</span> example.com A
+
+<span class="cm"># DNSSECの検証確認</span>
+dig +dnssec example.com A
+
+<span class="cm"># トレース（反復解決の全過程を表示）</span>
+dig +trace example.com A
+<span class="cm"># → ルートサーバー → .comのNS → example.comのNS → Aレコード の順に表示</span>
+
+<span class="cm"># 逆引き（IP → ドメイン）</span>
+dig -x <span class="num">93.184.216.34</span>
+
+<span class="cm"># nslookup でMXレコード確認</span>
+nslookup -type=MX gmail.com
+
+<span class="cm"># TTLが短い場合の注意</span>
+<span class="cm"># TTL=60 → 1分ごとに全DNSキャッシュが無効化</span>
+<span class="cm"># DNS切り替え時は事前にTTLを短くしておく（準備期間: 24〜48時間）</span></code></pre>
+  </div>
+
+  <div class="card purple-left">
+    <h3>ping / traceroute による遅延分析</h3>
+    <pre><code><span class="cm"># RTT（往復遅延）測定</span>
+ping -c <span class="num">10</span> 8.8.8.8
+<span class="cm"># 出力例</span>
+rtt min/avg/max/mdev = <span class="num">5.123/6.234/8.456/0.891</span> ms
+<span class="cm">#                     ↑最小 ↑平均 ↑最大 ↑ジッター</span>
+
+<span class="cm"># traceroute でルート追跡</span>
+traceroute 8.8.8.8
+<span class="cm"># 出力例</span>
+ 1  192.168.1.1   <span class="num">1.234</span> ms   <span class="cm">← 自宅ルーター</span>
+ 2  10.0.0.1      <span class="num">8.456</span> ms   <span class="cm">← ISPゲートウェイ</span>
+ 3  203.0.113.1   <span class="num">12.789</span> ms  <span class="cm">← ISP中継ルーター</span>
+ 4  8.8.8.8       <span class="num">15.234</span> ms  <span class="cm">← Googleのサーバー</span>
+
+<span class="cm"># * が表示される場合</span>
+<span class="cm"># → そのルーターがICMPをブロック（ファイアウォール）</span>
+<span class="cm"># → MTR（my traceroute）でより詳細に</span>
+mtr --report 8.8.8.8
+
+<span class="cm"># TCP traceroute（ファイアウォール越え）</span>
+traceroute -T -p <span class="num">443</span> google.com</code></pre>
+    <div class="alert alert-tip">
+      <div class="alert-label">遅延の読み方</div>
+      hop間の遅延が急増する箇所がボトルネック。100ms以上の増加は大陸間クロス（海底ケーブル）。ホップが多くても最終RTTが小さければ問題なし。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">+</div>
+    <h2>実践演習: ネットワーク設計問題</h2>
+  </div>
+
+  <div class="card cyan-left">
+    <h3>設計問題1: 世界中に均等分散したCDNの設計</h3>
+    <div class="alert alert-warn" style="margin-bottom:1rem;">
+      <div class="alert-label">問題文</div>
+      DAU 1億人、世界5大陸にユーザーが均等分布するCDNを設計せよ。コンテンツ更新頻度は1日1回、P99レイテンシ &lt; 50ms が要件。
+    </div>
+    <pre><code><span class="cm">// PoP（Point of Presence）選定の考え方</span>
+<span class="cm">// 各リージョンの主要インターネット交換点（IXP）に配置</span>
+
+リージョン   PoP候補                 カバレッジ
+-----------------------------------------------------------
+北米東部    Ashburn, VA (AMSIX)     米東海岸, カナダ東部
+北米西部    Los Angeles, CA        米西海岸, 太平洋アジア
+欧州西部    Amsterdam (AMS-IX)     欧州全体
+アジア東部  Tokyo, Singapore        日本, 東南アジア
+その他      São Paulo, Mumbai      南米, 南アジア
+
+<span class="cm">// エニーキャスト実装</span>
+<span class="cm">// 全PoPが同じIPアドレス範囲をBGPでアドバタイズ</span>
+<span class="cm">// ユーザーは自動的に最も近いPoPにルーティング</span>
+
+<span class="cm">// コンテンツ配布戦略</span>
+Origin Server → Push to all PoPs (1日1回の一括更新)
+     vs
+Origin Server → Pull on first request (オンデマンド取得)
+
+<span class="cm">// 大容量静的コンテンツ → Push（事前配布で確実）</span>
+<span class="cm">// 動的/頻繁更新コンテンツ → Pull + キャッシュ無効化API</span>
+
+<span class="cm">// キャッシュ戦略</span>
+Cache-Control: public, max-age=<span class="num">86400</span>  <span class="cm">// 静的アセット: 1日</span>
+Cache-Control: public, max-age=<span class="num">300</span>   <span class="cm">// APIレスポンス: 5分</span>
+Cache-Control: private, no-store     <span class="cm">// 認証済みコンテンツ: キャッシュ不可</span></code></pre>
+  </div>
+
+  <div class="card green-left">
+    <h3>設計問題2: WebSocketライブスコア配信システム</h3>
+    <div class="alert alert-warn" style="margin-bottom:1rem;">
+      <div class="alert-label">問題文</div>
+      スポーツスコアのリアルタイム配信。100万人が同時接続、スコア更新は1分に数回、接続断時の自動再接続が必要。
+    </div>
+    <pre><code><span class="cm">// 接続管理のアーキテクチャ</span>
+Client
+  ↓ WebSocket (ws://scores.example.com)
+Load Balancer (Sticky Session: IP Hash or Cookie)
+  ↓                    ↓
+WebSocket Server A    WebSocket Server B ...
+  ↓ Subscribe         ↓ Subscribe
+            Redis Pub/Sub
+              ↑ Publish
+         Score Updater Service
+              ↑
+         スポーツデータAPI
+
+<span class="cm">// スケールアウト: WebSocketサーバーの水平展開</span>
+<span class="cm">// 問題: サーバーをまたいだブロードキャストが難しい</span>
+<span class="cm">// 解決: Redis Pub/Subで全サーバーに配信</span>
+
+<span class="cm">// WebSocket サーバー実装（Node.js / pseudocode）</span>
+<span class="kw">const</span> redis = <span class="fn">createClient</span>()
+<span class="kw">const</span> subscriber = redis.<span class="fn">duplicate</span>()
+
+subscriber.<span class="fn">subscribe</span>(<span class="str">'score:updates'</span>, (message) => {
+  <span class="cm">// このサーバーに接続中の全クライアントにブロードキャスト</span>
+  connectedClients.<span class="fn">forEach</span>(ws => ws.<span class="fn">send</span>(message))
+})
+
+<span class="cm">// クライアント側: 自動再接続</span>
+<span class="kw">function</span> <span class="fn">connectWithRetry</span>() {
+  <span class="kw">const</span> ws = <span class="kw">new</span> <span class="fn">WebSocket</span>(<span class="str">'wss://scores.example.com'</span>)
+  ws.onclose = () => {
+    <span class="cm">// Exponential backoff: 1s, 2s, 4s, 8s, 最大30s</span>
+    setTimeout(<span class="fn">connectWithRetry</span>, Math.<span class="fn">min</span>(delay * <span class="num">2</span>, <span class="num">30000</span>))
+  }
+  ws.onmessage = (e) => <span class="fn">updateScore</span>(<span class="fn">JSON.parse</span>(e.data))
+}
+
+<span class="cm">// 見積もり</span>
+接続数: <span class="num">1</span>M 同時接続
+メモリ/接続: ~<span class="num">10</span>KB (バッファ込み)
+必要メモリ: 1M × 10KB = <span class="num">10</span>GB → 5台 × 2GB = <span class="num">10</span>台で冗長化
+更新頻度: <span class="num">10</span>回/分 × メッセージ<span class="num">200</span>B = <span class="num">2</span>KB/分 → 帯域は軽微</code></pre>
+    <div class="alert alert-info">
+      <div class="alert-label">WebSocket vs SSE vs Long Polling の比較</div>
+      WebSocket: 双方向・最低レイテンシ。SSE (Server-Sent Events): サーバー→クライアント一方向だが HTTP/2対応・自動再接続付き、スコア配信には最適解の一つ。Long Polling: レガシー環境向け、効率は低い。
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>

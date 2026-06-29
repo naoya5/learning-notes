@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch12 セキュリティ設計 | システムデザイン学習</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#13151f; --surface2:#1c1f2e; --border:#2a2d3e;
+  --accent:#6366f1; --accent2:#22d3ee; --accent3:#f59e0b;
+  --green:#10b981; --red:#ef4444; --purple:#a78bfa;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  --chapter-color: #f43f5e;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.7;}
+a{color:var(--accent2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,13,20,0.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+nav a{color:var(--text2);font-size:0.85rem;padding:4px 10px;border-radius:6px;transition:all .2s;}
+nav a:hover{background:var(--surface2);color:var(--text);text-decoration:none;}
+nav a.current{background:var(--chapter-color);color:#fff;}
+nav .sep{color:var(--border);}
+
+/* HEADER */
+.hero{background:linear-gradient(135deg,#1a0a10 0%,#2d0a1a 40%,#1a0a1a 100%);border-bottom:1px solid var(--border);padding:64px 24px 48px;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(244,63,94,0.2) 0%,transparent 70%);}
+.hero-badge{display:inline-block;background:rgba(244,63,94,0.2);border:1px solid rgba(244,63,94,0.4);color:#f43f5e;padding:4px 14px;border-radius:20px;font-size:0.8rem;margin-bottom:16px;position:relative;}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,#fff 0%,#f43f5e 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;position:relative;margin-bottom:12px;}
+.hero p{color:var(--text2);font-size:1.1rem;max-width:700px;margin:0 auto;position:relative;}
+
+/* LAYOUT */
+.container{max-width:1100px;margin:0 auto;padding:0 24px;}
+.section{padding:56px 0;}
+.section-title{font-size:1.7rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+.section-title .num{background:var(--chapter-color);color:#fff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:700;flex-shrink:0;}
+.section-desc{color:var(--text2);margin-bottom:32px;font-size:0.95rem;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;}
+.card h3{font-size:1.1rem;font-weight:700;margin-bottom:12px;color:var(--text);}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:24px;}
+
+/* PRINCIPLE CARDS */
+.principle-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;border-left:4px solid var(--chapter-color);}
+.principle-card h4{font-size:0.95rem;font-weight:700;color:var(--chapter-color);margin-bottom:8px;}
+.principle-card p{color:var(--text2);font-size:0.88rem;line-height:1.6;}
+
+/* CODE BLOCKS */
+.code-block{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:20px;font-family:'Fira Code','Cascadia Code',monospace;font-size:0.82rem;line-height:1.7;overflow-x:auto;margin:16px 0;}
+.code-block .kw{color:#ff7b72;}
+.code-block .str{color:#a5d6ff;}
+.code-block .cm{color:#8b949e;}
+.code-block .fn{color:#d2a8ff;}
+.code-block .num{color:#79c0ff;}
+.code-block .var{color:#ffa657;}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;margin:20px 0;}
+table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+th{background:var(--surface2);color:var(--text);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;}
+.badge-green{background:rgba(16,185,129,0.15);color:var(--green);}
+.badge-red{background:rgba(239,68,68,0.15);color:var(--red);}
+.badge-yellow{background:rgba(245,158,11,0.15);color:var(--accent3);}
+.badge-blue{background:rgba(99,102,241,0.15);color:var(--accent);}
+.badge-purple{background:rgba(167,139,250,0.15);color:var(--purple);}
+
+/* FLOW */
+.flow-container{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;overflow-x:auto;}
+
+/* INTERVIEW TIP */
+.interview-tip{background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(34,211,238,0.1));border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:20px;margin:20px 0;}
+.interview-tip h4{color:var(--accent);font-size:0.9rem;font-weight:700;margin-bottom:8px;}
+.interview-tip p,.interview-tip li{color:var(--text2);font-size:0.88rem;}
+.interview-tip ul{padding-left:18px;}
+.interview-tip li{margin-bottom:4px;}
+
+/* WARNING */
+.warning{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:16px;margin:12px 0;}
+.warning p{color:var(--text2);font-size:0.88rem;}
+.warning strong{color:var(--red);}
+
+/* INFO */
+.info-box{background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.25);border-radius:10px;padding:16px;margin:12px 0;}
+.info-box p{color:var(--text2);font-size:0.88rem;}
+.info-box strong{color:var(--accent2);}
+
+/* STEP LIST */
+.step-list{counter-reset:step;list-style:none;padding:0;}
+.step-list li{counter-increment:step;display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);}
+.step-list li:last-child{border-bottom:none;}
+.step-list li::before{content:counter(step);background:var(--chapter-color);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;margin-top:2px;}
+.step-list li .step-body{flex:1;}
+.step-list li strong{display:block;color:var(--text);margin-bottom:2px;font-size:0.95rem;}
+.step-list li span{color:var(--text2);font-size:0.87rem;}
+
+/* TAG */
+.tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:4px;font-size:0.75rem;margin:2px;}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:40px 0;}
+
+/* FOOTER NAV */
+.footer-nav{background:var(--surface);border-top:1px solid var(--border);padding:32px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:gap;gap:16px;margin-top:48px;}
+.footer-nav a{background:var(--surface2);border:1px solid var(--border);padding:10px 20px;border-radius:8px;color:var(--text);font-size:0.9rem;transition:all .2s;}
+.footer-nav a:hover{border-color:var(--chapter-color);color:var(--chapter-color);text-decoration:none;}
+.footer-nav .current-label{color:var(--text3);font-size:0.85rem;}
+
+/* TWO-COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+@media(max-width:700px){.two-col{grid-template-columns:1fr;}}
+
+/* HIGHLIGHT */
+.highlight{color:var(--chapter-color);font-weight:600;}
+.highlight-green{color:var(--green);font-weight:600;}
+.highlight-blue{color:var(--accent2);font-weight:600;}
+
+ul.list{padding-left:20px;color:var(--text2);font-size:0.9rem;}
+ul.list li{margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="00_index.html">🏠 ホーム</a>
+  <span class="sep">›</span>
+  <a href="11_reliability.html">← Ch11 信頼性</a>
+  <span class="sep">›</span>
+  <a class="current" href="#">Ch12 セキュリティ設計</a>
+  <span class="sep">›</span>
+  <a href="13_observability.html">Ch13 可観測性 →</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Chapter 12</div>
+  <h1>🔐 セキュリティ設計</h1>
+  <p>認証・認可・暗号化・DDoS防御・ゼロトラストまで、システムを守る設計パターンを体系的に学ぶ</p>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- SECTION 1: セキュリティ設計の原則 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">1</span>
+    セキュリティ設計の原則
+  </div>
+  <p class="section-desc">セキュリティは後付けではなく、設計段階から組み込む必要がある。Security by Design の考え方と主要な原則を理解する。</p>
+
+  <div class="card-grid">
+    <div class="principle-card">
+      <h4>🛡️ Security by Design</h4>
+      <p>セキュリティを後から追加するのではなく、要件定義・設計段階から考慮する。脆弱性は発見が遅れるほどコストが増大する（SDLC早期発見の重要性）。</p>
+    </div>
+    <div class="principle-card">
+      <h4>🔑 最小権限の原則</h4>
+      <p>各コンポーネント・ユーザーは、必要最低限の権限のみを持つ。DB接続もREAD ONLYで十分なら書き込み権限を与えない。侵害時の被害範囲を最小化する。</p>
+    </div>
+    <div class="principle-card">
+      <h4>🧅 多層防御（Defense in Depth）</h4>
+      <p>単一のセキュリティ層に依存せず、ネットワーク・アプリ・データ層に複数の防御を重ねる。1層が突破されても次の層で防御できる設計。</p>
+    </div>
+    <div class="principle-card">
+      <h4>🔒 Fail Secure</h4>
+      <p>エラー発生時はアクセス拒否側に倒す（Fail Secure）。認証サービスがダウンしたとき「全員通過」ではなく「全員拒否」。Fail Safeは物理安全で使う概念（火災時にドアを開放など）。</p>
+    </div>
+    <div class="principle-card">
+      <h4>📉 攻撃面の最小化</h4>
+      <p>不要なAPIエンドポイント・ポート・サービスを無効化する。外部に公開するサービスが少ないほど攻撃の入口が減る。使われていない機能は削除する。</p>
+    </div>
+    <div class="principle-card">
+      <h4>🎯 OWASP Top 10</h4>
+      <p>Open Web Application Security Project が発表するWebアプリ上位10脆弱性。Broken Access Control、Cryptographic Failures、Injection などが含まれる。設計・コードレビューの基準として活用。</p>
+    </div>
+  </div>
+
+  <!-- Defense in Depth SVG -->
+  <div class="flow-container">
+    <h3 style="margin-bottom:16px;font-size:1rem;">多層防御（Defense in Depth）の概念図</h3>
+    <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+      <!-- Outer: Network -->
+      <ellipse cx="350" cy="160" rx="320" ry="140" fill="none" stroke="#f43f5e" stroke-width="2" stroke-dasharray="6,3" opacity="0.5"/>
+      <text x="350" y="28" fill="#f43f5e" text-anchor="middle" font-size="13" font-family="sans-serif" opacity="0.8">ネットワーク層（Firewall / DDoS Protection）</text>
+
+      <!-- Middle: Application -->
+      <ellipse cx="350" cy="160" rx="230" ry="100" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="6,3" opacity="0.6"/>
+      <text x="350" y="68" fill="#6366f1" text-anchor="middle" font-size="12" font-family="sans-serif" opacity="0.9">アプリケーション層（WAF / 認証 / 認可）</text>
+
+      <!-- Inner: Data -->
+      <ellipse cx="350" cy="160" rx="140" ry="60" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="2" opacity="0.7"/>
+      <text x="350" y="112" fill="#22d3ee" text-anchor="middle" font-size="11" font-family="sans-serif">データ層（暗号化 / アクセス制御）</text>
+
+      <!-- Core -->
+      <rect x="290" y="137" width="120" height="46" rx="8" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="350" y="155" fill="#10b981" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">コアデータ</text>
+      <text x="350" y="172" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif">（保護対象）</text>
+
+      <!-- Attacker arrow -->
+      <line x1="30" y1="160" x2="100" y2="160" stroke="#ef4444" stroke-width="2" marker-end="url(#arrowRed)"/>
+      <text x="32" y="150" fill="#ef4444" font-size="12" font-family="sans-serif">🏴‍☠️ 攻撃者</text>
+      <defs>
+        <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+        </marker>
+      </defs>
+
+      <!-- Labels on left -->
+      <text x="350" y="305" fill="#64748b" text-anchor="middle" font-size="11" font-family="sans-serif">各層を突破するたびに次の防御が機能する</text>
+    </svg>
+  </div>
+
+  <div class="interview-tip">
+    <h4>💬 面接でよく聞かれること</h4>
+    <ul>
+      <li>「セキュリティ設計で最初に考えることは？」→ 脅威モデリング（STRIDE）、攻撃面の特定</li>
+      <li>「最小権限をDBに適用するには？」→ 読み取り専用ユーザー、スキーマ分離、Row-Level Security</li>
+      <li>「Fail SecureとFail Safeの違いは？」→ デジタルセキュリティ vs 物理安全の文脈で説明</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 2: 認証 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">2</span>
+    認証（Authentication）
+  </div>
+  <p class="section-desc">「あなたは誰か」を検証する仕組み。セッションベース、JWT、APIキー、MFAの仕組みと使い分けを理解する。</p>
+
+  <!-- Session-based auth -->
+  <div class="card">
+    <h3>📦 セッションベース認証（Cookie + Session Store）</h3>
+    <div class="flow-container" style="padding:16px;">
+      <svg viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:680px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+          </marker>
+          <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+          </marker>
+        </defs>
+
+        <!-- Client -->
+        <rect x="20" y="80" width="100" height="40" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="70" y="96" fill="#6366f1" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">クライアント</text>
+        <text x="70" y="110" fill="#6366f1" text-anchor="middle" font-size="10" font-family="sans-serif">（Browser）</text>
+
+        <!-- Server -->
+        <rect x="270" y="80" width="100" height="40" rx="8" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="1.5"/>
+        <text x="320" y="96" fill="#f43f5e" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Webサーバー</text>
+        <text x="320" y="110" fill="#f43f5e" text-anchor="middle" font-size="10" font-family="sans-serif">（App Server）</text>
+
+        <!-- Session Store -->
+        <rect x="500" y="80" width="110" height="40" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="555" y="96" fill="#22d3ee" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Session Store</text>
+        <text x="555" y="110" fill="#22d3ee" text-anchor="middle" font-size="10" font-family="sans-serif">（Redis等）</text>
+
+        <!-- Step 1: Login -->
+        <line x1="120" y1="95" x2="268" y2="95" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="194" y="88" fill="#94a3b8" text-anchor="middle" font-size="10" font-family="sans-serif">① POST /login</text>
+        <text x="194" y="100" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">user+password</text>
+
+        <!-- Step 2: Store session -->
+        <line x1="370" y1="90" x2="498" y2="90" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrG)"/>
+        <text x="434" y="83" fill="#22d3ee" text-anchor="middle" font-size="10" font-family="sans-serif">② Session保存</text>
+
+        <!-- Step 3: Set-Cookie -->
+        <line x1="268" y1="108" x2="120" y2="108" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrG)"/>
+        <text x="194" y="125" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif">③ Set-Cookie: session_id=abc</text>
+
+        <!-- Step 4: Next request -->
+        <line x1="120" y1="145" x2="268" y2="145" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="194" y="138" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">④ GET /api/data</text>
+        <text x="194" y="150" fill="#f59e0b" text-anchor="middle" font-size="9" font-family="sans-serif">Cookie: session_id=abc</text>
+
+        <!-- Step 5: Validate -->
+        <line x1="370" y1="155" x2="498" y2="145" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <text x="434" y="143" fill="#94a3b8" text-anchor="middle" font-size="10" font-family="sans-serif">⑤ セッション検証</text>
+
+        <!-- Step 6: Response -->
+        <line x1="268" y1="170" x2="120" y2="170" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrG)"/>
+        <text x="194" y="185" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif">⑥ レスポンス返却</text>
+
+        <!-- Properties -->
+        <rect x="20" y="210" width="630" height="40" rx="6" fill="rgba(255,255,255,0.03)" stroke="var(--border)" stroke-width="1"/>
+        <text x="30" y="228" fill="#64748b" font-size="10" font-family="sans-serif">特徴: サーバー側でセッション状態を管理 | スケールアウト時はセッションストアの共有が必要 | Cookieの属性（HttpOnly, Secure, SameSite）が重要</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- JWT -->
+  <div class="card">
+    <h3>🎫 JWTトークン認証</h3>
+    <p style="color:var(--text2);font-size:0.9rem;margin-bottom:16px;">JWT（JSON Web Token）は <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;color:var(--accent2);">Header.Payload.Signature</code> の3部構成。サーバー側でセッション状態を持たないステートレス認証。</p>
+
+    <div class="two-col">
+      <div>
+        <div class="code-block">
+<span class="cm">// JWT 構造</span>
+Header (Base64URL):
+{
+  <span class="str">"alg"</span>: <span class="str">"HS256"</span>,
+  <span class="str">"typ"</span>: <span class="str">"JWT"</span>
+}
+
+Payload (Base64URL):
+{
+  <span class="str">"sub"</span>: <span class="str">"user123"</span>,
+  <span class="str">"name"</span>: <span class="str">"Naoya"</span>,
+  <span class="str">"role"</span>: <span class="str">"admin"</span>,
+  <span class="str">"iat"</span>: <span class="num">1719225600</span>,
+  <span class="str">"exp"</span>: <span class="num">1719229200</span> <span class="cm">// 1時間</span>
+}
+
+Signature:
+HMACSHA256(
+  base64(header) + <span class="str">"."</span> + base64(payload),
+  secretKey
+)
+        </div>
+      </div>
+      <div>
+        <div class="info-box">
+          <strong>JWS vs JWE</strong>
+          <p style="margin-top:8px;"><strong>JWS (JSON Web Signature)</strong>: Payloadに署名。内容は誰でも<strong>読めるが改ざん不可</strong>。通常の JWTはJWS。</p>
+          <p style="margin-top:8px;"><strong>JWE (JSON Web Encryption)</strong>: Payloadを<strong>暗号化</strong>。内容自体を隠したい場合（例: PII含む）。</p>
+        </div>
+        <div class="warning">
+          <p><strong>⚠️ JWTの注意点</strong>: Payloadはデコード可能なため<strong>機密情報を入れない</strong>。トークン失効管理が難しい（JTI blacklistやshort expiry推奨）。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MFA -->
+  <div class="card">
+    <h3>🔐 多要素認証（MFA / 2FA）</h3>
+    <div class="card-grid">
+      <div>
+        <h4 style="color:var(--accent);margin-bottom:8px;font-size:0.9rem;">TOTP（Time-based OTP）</h4>
+        <p style="color:var(--text2);font-size:0.85rem;">共有シークレット鍵 + 現在時刻（30秒単位）をHMACでハッシュし6桁を生成。Google Authenticatorはこの仕組み。オフラインで動作可能。</p>
+        <div class="code-block" style="margin-top:8px;">
+<span class="cm">// TOTP計算</span>
+counter = floor(epoch / <span class="num">30</span>)
+OTP = HMAC-SHA1(secret, counter)
+  .slice(<span class="num">-6</span>) <span class="cm">// 下6桁</span>
+        </div>
+      </div>
+      <div>
+        <h4 style="color:var(--accent3);margin-bottom:8px;font-size:0.9rem;">SMS OTP</h4>
+        <p style="color:var(--text2);font-size:0.85rem;">ランダムな6桁をSMSで送信。実装は簡単だが<strong>SIMスワップ攻撃</strong>のリスクあり。TOTPより安全性は低い。高セキュリティ要件ではTOTP/FIDO2を推奨。</p>
+        <h4 style="color:var(--green);margin-bottom:8px;font-size:0.9rem;margin-top:12px;">FIDO2 / WebAuthn</h4>
+        <p style="color:var(--text2);font-size:0.85rem;">パスキー（Passkeys）の基盤。生体認証+デバイス内公開鍵ペア。フィッシング耐性が最も高い。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison table -->
+  <h3 style="margin-bottom:12px;font-size:1rem;">セッション vs JWT 比較表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>特性</th><th>セッションベース</th><th>JWT（ステートレス）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>サーバー状態</td><td><span class="badge badge-red">ステートフル（Store必要）</span></td><td><span class="badge badge-green">ステートレス</span></td></tr>
+        <tr><td>スケーラビリティ</td><td>セッションストア共有が必要</td><td><span class="badge badge-green">水平スケール容易</span></td></tr>
+        <tr><td>即時失効</td><td><span class="badge badge-green">可能（Storeから削除）</span></td><td><span class="badge badge-red">困難（blacklist要）</span></td></tr>
+        <tr><td>トークンサイズ</td><td>小（Session IDのみ）</td><td>大（Payload含む）</td></tr>
+        <tr><td>Payload読み取り</td><td>不可（サーバー管理）</td><td><span class="badge badge-yellow">デコード可能（要注意）</span></td></tr>
+        <tr><td>適用シーン</td><td>Webアプリ（単一ドメイン）</td><td>API・マイクロサービス・モバイル</td></tr>
+        <tr><td>CSRF対策</td><td>SameSite Cookie必要</td><td>Authorization Headerで回避</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 3: OAuth 2.0 と OIDC -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">3</span>
+    OAuth 2.0 と OpenID Connect
+  </div>
+  <p class="section-desc">OAuth 2.0 は「認可」フレームワーク、OpenID Connect は OAuth 2.0 上に構築された「認証」プロトコル。</p>
+
+  <!-- Authorization Code Flow -->
+  <div class="card">
+    <h3>🔄 Authorization Code Flow（最も安全・推奨）</h3>
+    <div class="flow-container">
+      <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+          </marker>
+          <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+          </marker>
+          <marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+          </marker>
+        </defs>
+
+        <!-- Actors -->
+        <!-- User/Browser -->
+        <rect x="20" y="20" width="110" height="44" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="75" y="38" fill="#6366f1" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">ユーザー</text>
+        <text x="75" y="53" fill="#6366f1" text-anchor="middle" font-size="10" font-family="sans-serif">（Browser）</text>
+
+        <!-- Client App -->
+        <rect x="280" y="20" width="120" height="44" rx="8" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="1.5"/>
+        <text x="340" y="38" fill="#f43f5e" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">クライアント</text>
+        <text x="340" y="53" fill="#f43f5e" text-anchor="middle" font-size="10" font-family="sans-serif">（Webアプリ）</text>
+
+        <!-- Auth Server -->
+        <rect x="540" y="20" width="130" height="44" rx="8" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="605" y="38" fill="#f59e0b" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">認可サーバー</text>
+        <text x="605" y="53" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">（Auth Server）</text>
+
+        <!-- Lifelines -->
+        <line x1="75" y1="64" x2="75" y2="370" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+        <line x1="340" y1="64" x2="340" y2="370" stroke="#f43f5e" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+        <line x1="605" y1="64" x2="605" y2="370" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+
+        <!-- 1: User clicks login -->
+        <line x1="75" y1="95" x2="338" y2="95" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a1)"/>
+        <text x="207" y="88" fill="#94a3b8" text-anchor="middle" font-size="10" font-family="sans-serif">① ログインクリック</text>
+
+        <!-- 2: Redirect to auth server -->
+        <line x1="340" y1="120" x2="603" y2="120" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#a3)"/>
+        <text x="472" y="113" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">② Redirect（client_id, scope, state, redirect_uri）</text>
+
+        <!-- 3: Show login page to user -->
+        <line x1="603" y1="145" x2="77" y2="145" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a1)"/>
+        <text x="340" y="138" fill="#94a3b8" text-anchor="middle" font-size="10" font-family="sans-serif">③ ログイン画面を表示</text>
+
+        <!-- 4: User logs in -->
+        <line x1="75" y1="170" x2="603" y2="170" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a1)"/>
+        <text x="340" y="163" fill="#94a3b8" text-anchor="middle" font-size="10" font-family="sans-serif">④ 認証情報入力 + 認可同意</text>
+
+        <!-- 5: Auth code via redirect -->
+        <line x1="603" y1="200" x2="77" y2="200" stroke="#10b981" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="340" y="193" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">⑤ Redirect: ?code=AUTHCODE&state=xxx</text>
+
+        <!-- 6: Exchange code for token -->
+        <line x1="340" y1="230" x2="603" y2="230" stroke="#a78bfa" stroke-width="2" marker-end="url(#a1)"/>
+        <text x="472" y="222" fill="#a78bfa" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">⑥ POST /token（code + client_secret）★バックチャネル</text>
+
+        <!-- 7: Return tokens -->
+        <line x1="603" y1="258" x2="342" y2="258" stroke="#10b981" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="472" y="251" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">⑦ access_token + refresh_token + id_token</text>
+
+        <!-- 8: API call -->
+        <line x1="340" y1="285" x2="77" y2="285" stroke="#10b981" stroke-width="1.5" marker-end="url(#a2)"/>
+        <text x="207" y="278" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif">⑧ アクセストークンでAPIコール</text>
+
+        <!-- Note -->
+        <rect x="20" y="320" width="670" height="42" rx="6" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.3)" stroke-width="1"/>
+        <text x="355" y="337" fill="#a78bfa" text-anchor="middle" font-size="10" font-family="sans-serif">⑥のバックチャネル（サーバー to サーバー）交換により、Authorization Codeがブラウザに露出してもアクセストークンは安全</text>
+        <text x="355" y="352" fill="#a78bfa" text-anchor="middle" font-size="10" font-family="sans-serif">SPAやネイティブアプリでは client_secret が持てないため PKCE を追加する</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- PKCE -->
+  <div class="card">
+    <h3>🔒 PKCE（Proof Key for Code Exchange）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:14px;">SPAやモバイルアプリでは client_secret をハードコードできない。Authorization Code を傍受されてもトークン取得を防ぐ仕組み。</p>
+    <div class="code-block">
+<span class="cm">// PKCE フロー（クライアント側）</span>
+<span class="kw">const</span> <span class="var">code_verifier</span> = randomBase64URL(<span class="num">43</span>-<span class="num">128</span>文字);
+<span class="kw">const</span> <span class="var">code_challenge</span> = base64url(SHA256(<span class="var">code_verifier</span>));
+
+<span class="cm">// 1. 認可リクエスト時に code_challenge を含める</span>
+GET /authorize?
+  code_challenge=<span class="var">&lt;hash&gt;</span>&
+  code_challenge_method=S256&
+  ...
+
+<span class="cm">// 2. トークン交換時に code_verifier を送る（code_secret不要）</span>
+POST /token
+  code=AUTHCODE&
+  code_verifier=<span class="var">&lt;originalRandom&gt;</span>
+<span class="cm">// サーバーがSHA256(verifier)==challengeを検証 → 傍受者は verifier を知らない</span>
+    </div>
+  </div>
+
+  <!-- Grant Types Table -->
+  <h3 style="margin-bottom:12px;font-size:1rem;">OAuth 2.0 Grant Type 比較</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Grant Type</th><th>用途</th><th>推奨度</th><th>特徴</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Authorization Code + PKCE</strong></td>
+          <td>SPA・モバイル・Webアプリ</td>
+          <td><span class="badge badge-green">推奨</span></td>
+          <td>最も安全、ユーザー認証あり</td>
+        </tr>
+        <tr>
+          <td><strong>Client Credentials</strong></td>
+          <td>M2M（サービス間通信）</td>
+          <td><span class="badge badge-green">推奨（M2M用）</span></td>
+          <td>ユーザー不在、client_id+secretで取得</td>
+        </tr>
+        <tr>
+          <td><strong>Device Code</strong></td>
+          <td>スマートTV・CLI</td>
+          <td><span class="badge badge-blue">限定用途</span></td>
+          <td>ブラウザなし環境でユーザーが別デバイスで認可</td>
+        </tr>
+        <tr>
+          <td><strong>Implicit</strong></td>
+          <td>（旧SPA）</td>
+          <td><span class="badge badge-red">非推奨</span></td>
+          <td>トークンがURLに露出、PKCE付きCodeに移行</td>
+        </tr>
+        <tr>
+          <td><strong>Resource Owner Password</strong></td>
+          <td>（旧ファーストパーティ）</td>
+          <td><span class="badge badge-red">非推奨</span></td>
+          <td>パスワードをアプリが直接扱う、リスク大</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Token types -->
+  <div class="card-grid" style="margin-top:20px;">
+    <div class="card" style="border-left:4px solid var(--accent);">
+      <h3 style="font-size:0.95rem;color:var(--accent);">Access Token</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">APIにアクセスするための短命トークン（15分〜1時間）。Bearer Tokenとして Authorization ヘッダで送信。漏洩時の影響を最小化するため短命に。</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--green);">
+      <h3 style="font-size:0.95rem;color:var(--green);">Refresh Token</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">Access Tokenを再取得するための長命トークン（数日〜数ヶ月）。Auth ServerのAPIにのみ使用。<strong>Rotation</strong>（使用のたびに新しいものと交換）を実装する。</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--accent3);">
+      <h3 style="font-size:0.95rem;color:var(--accent3);">ID Token（OIDC）</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">OpenID ConnectのJWT。ユーザーの identity 情報（sub, name, email）を含む。APIアクセスではなく、ユーザーがログインしていることを示すために使用。</p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 4: 認可 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">4</span>
+    認可（Authorization）
+  </div>
+  <p class="section-desc">「あなたは何をできるか」を制御する仕組み。RBAC・ABAC・ACL・OPAの特性と使い分けを理解する。</p>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>👥 RBAC（Role-Based Access Control）</h3>
+      <p style="color:var(--text2);font-size:0.87rem;margin-bottom:12px;">ユーザーにロールを割り当て、ロールにパーミッションを付与。シンプルで管理しやすい。エンタープライズシステムで広く採用。</p>
+      <div class="code-block" style="font-size:0.78rem;">
+User → Role → Permissions
+  alice → admin  → [read, write, delete]
+  bob   → editor → [read, write]
+  carol → viewer → [read]
+
+<span class="cm">// DB設計例</span>
+users ←→ user_roles ←→ roles
+               ↓
+          role_permissions ←→ permissions
+      </div>
+    </div>
+    <div class="card">
+      <h3>🧮 ABAC（Attribute-Based Access Control）</h3>
+      <p style="color:var(--text2);font-size:0.87rem;margin-bottom:12px;">ユーザー・リソース・環境の属性に基づいてアクセス制御。細粒度の制御が可能だが複雑。GDPR対応やマルチテナントに適する。</p>
+      <div class="code-block" style="font-size:0.78rem;">
+<span class="cm">// ABAC ポリシー例</span>
+Allow IF:
+  user.department == resource.owner_dept
+  AND user.clearance >= resource.sensitivity
+  AND time.hour BETWEEN 9 AND 18
+  AND request.ip IN corporate_ranges
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🤖 OPA（Open Policy Agent）によるポリシー管理</h3>
+    <p style="color:var(--text2);font-size:0.87rem;margin-bottom:12px;">ポリシーをコードとして管理（Policy as Code）。Regoという宣言的言語でポリシーを記述し、マイクロサービス・Kubernetes・APIゲートウェイで横断的に適用。</p>
+    <div class="code-block">
+<span class="cm"># Rego ポリシー例（OPA）</span>
+<span class="kw">package</span> authz
+
+<span class="kw">default</span> <span class="fn">allow</span> = <span class="kw">false</span>
+
+<span class="fn">allow</span> {
+  <span class="var">input</span>.method == <span class="str">"GET"</span>
+  <span class="var">input</span>.user.roles[_] == <span class="str">"viewer"</span>
+}
+
+<span class="fn">allow</span> {
+  <span class="var">input</span>.method == <span class="str">"POST"</span>
+  <span class="var">input</span>.user.roles[_] == <span class="str">"editor"</span>
+  <span class="var">input</span>.resource.owner == <span class="var">input</span>.user.id
+}
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>方式</th><th>管理単位</th><th>柔軟性</th><th>複雑度</th><th>適用場面</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>ACL</strong></td><td>リソースごとのリスト</td><td>低</td><td>低</td><td>ファイルシステム、S3バケット</td></tr>
+        <tr><td><strong>RBAC</strong></td><td>ロール</td><td>中</td><td>中</td><td>ほとんどのWebアプリ</td></tr>
+        <tr><td><strong>ABAC</strong></td><td>属性ポリシー</td><td>高</td><td>高</td><td>複雑な組織・マルチテナント</td></tr>
+        <tr><td><strong>OPA</strong></td><td>コードとしてのポリシー</td><td>最高</td><td>高</td><td>マイクロサービス、K8s Admission</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 5: TLS/HTTPS -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">5</span>
+    TLS / HTTPS
+  </div>
+  <p class="section-desc">転送中のデータを暗号化するTLS。1.3ではラウンドトリップが削減され、より高速・安全になった。</p>
+
+  <!-- TLS 1.3 Handshake -->
+  <div class="card">
+    <h3>🤝 TLS 1.3 ハンドシェイクフロー</h3>
+    <div class="flow-container">
+      <svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:680px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="tls1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+          </marker>
+          <marker id="tls2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+          </marker>
+        </defs>
+
+        <!-- Client box -->
+        <rect x="20" y="20" width="130" height="44" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="85" y="38" fill="#6366f1" text-anchor="middle" font-size="12" font-family="sans-serif" font-weight="bold">クライアント</text>
+        <text x="85" y="54" fill="#6366f1" text-anchor="middle" font-size="10" font-family="sans-serif">（Browser/App）</text>
+
+        <!-- Server box -->
+        <rect x="520" y="20" width="130" height="44" rx="8" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="1.5"/>
+        <text x="585" y="38" fill="#f43f5e" text-anchor="middle" font-size="12" font-family="sans-serif" font-weight="bold">サーバー</text>
+        <text x="585" y="54" fill="#f43f5e" text-anchor="middle" font-size="10" font-family="sans-serif">（TLS Server）</text>
+
+        <!-- Lifelines -->
+        <line x1="85" y1="64" x2="85" y2="300" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,3" opacity="0.35"/>
+        <line x1="585" y1="64" x2="585" y2="300" stroke="#f43f5e" stroke-width="1" stroke-dasharray="4,3" opacity="0.35"/>
+
+        <!-- RTT bracket -->
+        <rect x="5" y="80" width="8" height="130" rx="2" fill="#22d3ee" opacity="0.5"/>
+        <text x="3" y="148" fill="#22d3ee" font-size="9" font-family="sans-serif" transform="rotate(-90,3,148)">1 RTT</text>
+
+        <!-- Step 1: ClientHello -->
+        <line x1="85" y1="95" x2="583" y2="95" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#tls1)"/>
+        <text x="335" y="88" fill="#22d3ee" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">① ClientHello</text>
+        <text x="335" y="100" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（TLSバージョン, 対応Cipher Suites, Client公開鍵(ECDH)）</text>
+
+        <!-- Step 2: ServerHello + Cert + Finished -->
+        <line x1="583" y1="135" x2="87" y2="135" stroke="#10b981" stroke-width="1.5" marker-end="url(#tls2)"/>
+        <text x="335" y="128" fill="#10b981" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">② ServerHello + Certificate + Finished</text>
+        <text x="335" y="143" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（選択Cipher Suite, Server公開鍵(ECDH), TLS証明書, MACで整合性確認）</text>
+
+        <!-- Key derivation -->
+        <rect x="160" y="158" width="350" height="28" rx="6" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.3)" stroke-width="1"/>
+        <text x="335" y="170" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">🔑 ECDH鍵交換 → 共有シークレット導出 → セッション鍵生成（HKDF）</text>
+        <text x="335" y="181" fill="#f59e0b" text-anchor="middle" font-size="9" font-family="sans-serif">前方秘匿性（PFS）: セッション鍵は毎回一時的なECDH鍵ペアから生成</text>
+
+        <!-- Step 3: Finished (Client) -->
+        <line x1="85" y1="205" x2="583" y2="205" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#tls1)"/>
+        <text x="335" y="198" fill="#22d3ee" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="bold">③ Finished（クライアント確認）</text>
+
+        <!-- Encrypted channel -->
+        <rect x="85" y="225" width="500" height="30" rx="6" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="335" y="245" fill="#10b981" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">🔒 暗号化されたアプリケーションデータ送受信（AES-GCM等）</text>
+
+        <!-- TLS 1.2 note -->
+        <text x="335" y="285" fill="#64748b" text-anchor="middle" font-size="10" font-family="sans-serif">※TLS 1.2は2-RTT。TLS 1.3は1-RTT（0-RTT再開も可能だが再送攻撃に注意）</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>📜 証明書チェーン</h3>
+      <div class="code-block" style="font-size:0.8rem;">
+Root CA（信頼のアンカー）
+  └─ Intermediate CA（中間CA）
+       └─ End Entity 証明書
+            （example.com のサーバー証明書）
+
+検証: End Entity → Intermediate → Root CA
+ブラウザはRoot CAを事前にインストール済み
+Intermediate CAをバンドルして送信することが重要
+      </div>
+    </div>
+    <div class="card">
+      <h3>🔄 mTLS（相互TLS認証）</h3>
+      <p style="color:var(--text2);font-size:0.87rem;margin-bottom:10px;">サーバーだけでなく<strong>クライアントも証明書を提示</strong>。サービスメッシュ（Istio）やゼロトラストでサービス間認証に使用。</p>
+      <div class="code-block" style="font-size:0.78rem;">
+<span class="cm"># Nginx: クライアント証明書要求</span>
+ssl_verify_client on;
+ssl_client_certificate /etc/ssl/ca.crt;
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🔒 HSTS と Certificate Pinning</h3>
+    <div class="two-col">
+      <div>
+        <h4 style="color:var(--accent2);margin-bottom:8px;font-size:0.9rem;">HTTP Strict Transport Security (HSTS)</h4>
+        <p style="color:var(--text2);font-size:0.85rem;">ブラウザに「このドメインは常にHTTPS」を記憶させる。初回HTTPアクセスのSSLストリッピング攻撃を防ぐ。<code>preload</code>でブラウザの事前インストールリストに登録。</p>
+        <div class="code-block" style="margin-top:8px;font-size:0.78rem;">
+Strict-Transport-Security:
+  max-age=31536000;
+  includeSubDomains;
+  preload
+        </div>
+      </div>
+      <div>
+        <h4 style="color:var(--accent3);margin-bottom:8px;font-size:0.9rem;">Certificate Pinning</h4>
+        <p style="color:var(--text2);font-size:0.85rem;">モバイルアプリなどで特定の証明書/公開鍵のみを信頼する。中間者攻撃に対して強力だが、証明書更新時に<strong>アプリ更新が必要</strong>というトレードオフがある。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 6: 暗号化 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">6</span>
+    暗号化（Encryption）
+  </div>
+  <p class="section-desc">転送中・保管時・エンドツーエンドの3つの暗号化。パスワードの安全な保存と鍵管理も重要。</p>
+
+  <div class="card-grid">
+    <div class="card" style="border-top:3px solid var(--accent2);">
+      <h3 style="color:var(--accent2);font-size:0.95rem;">🚀 転送中の暗号化</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">TLS 1.3 による HTTPS。内部サービス間通信にも mTLS を使用（ゼロトラスト）。データベース接続・メッセージキューも TLS 必須。</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3 style="color:var(--accent);font-size:0.95rem;">💾 保管時の暗号化</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">AES-256-GCM が標準。DBの透過的暗号化（TDE）、ディスク暗号化（BitLocker/LUKS）。クラウドではKMSで鍵管理し、BYOK（持ち込み鍵）も可能。</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--purple);">
+      <h3 style="color:var(--purple);font-size:0.95rem;">🔐 E2E暗号化</h3>
+      <p style="color:var(--text2);font-size:0.85rem;">サーバーでも復号不可。クライアント側で公開鍵暗号化（例：Signal Protocol）。医療・法律など高秘匿要件で使用。サーバーは暗号文のみを保存。</p>
+    </div>
+  </div>
+
+  <!-- Password hashing -->
+  <div class="card">
+    <h3>🔑 パスワードの安全な保存</h3>
+    <div class="warning">
+      <p><strong>⚠️ MD5/SHA-1/SHA-256 でのパスワードハッシュは危険</strong> — 高速ハッシュはGPUで総当たり攻撃可能。パスワードには必ず<strong>遅い（コスト設定可能な）ハッシュ関数</strong>を使う。</p>
+    </div>
+    <div class="code-block">
+<span class="cm">// bcrypt（推奨、cost factor=12）</span>
+<span class="kw">const</span> <span class="var">hash</span> = await bcrypt.<span class="fn">hash</span>(password, <span class="num">12</span>);
+<span class="cm">// $2b$12$... コスト12 = 約300ms/ハッシュ（意図的に遅い）</span>
+
+<span class="cm">// Argon2id（最新推奨 - メモリハード）</span>
+argon2id(
+  password,
+  salt,
+  memory=<span class="num">64MB</span>,  <span class="cm">// メモリコスト（GPU攻撃を困難に）</span>
+  iterations=<span class="num">3</span>,
+  parallelism=<span class="num">4</span>
+)
+
+<span class="cm">// scrypt（メモリハード）</span>
+scrypt(password, salt, N=<span class="num">32768</span>, r=<span class="num">8</span>, p=<span class="num">1</span>)
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>アルゴリズム</th><th>特性</th><th>推奨コスト</th><th>評価</th></tr></thead>
+        <tbody>
+          <tr><td>bcrypt</td><td>時間コスト（CPU）</td><td>cost=12〜14</td><td><span class="badge badge-green">推奨</span></td></tr>
+          <tr><td>argon2id</td><td>時間+メモリコスト</td><td>mem=64MB, iter=3</td><td><span class="badge badge-green">最推奨</span></td></tr>
+          <tr><td>scrypt</td><td>時間+メモリコスト</td><td>N=32768</td><td><span class="badge badge-blue">良好</span></td></tr>
+          <tr><td>PBKDF2</td><td>時間コストのみ</td><td>iter=600,000</td><td><span class="badge badge-yellow">許容（FIPS環境）</span></td></tr>
+          <tr><td>MD5/SHA-1</td><td>高速ハッシュ</td><td>-</td><td><span class="badge badge-red">使用禁止</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- KMS -->
+  <div class="card">
+    <h3>🗝️ 鍵管理（Key Management Service）</h3>
+    <div class="two-col">
+      <div>
+        <h4 style="color:var(--accent3);font-size:0.9rem;margin-bottom:8px;">AWS KMS</h4>
+        <ul class="list">
+          <li>CMK（Customer Managed Key）でデータ暗号化鍵(DEK)を暗号化</li>
+          <li>エンベロープ暗号化: DEK→データ暗号化、CMK→DEK暗号化</li>
+          <li>KMSにマスター鍵は保存されない（HSMで保護）</li>
+          <li>自動ローテーション（1年ごと）</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:var(--purple);font-size:0.9rem;margin-bottom:8px;">HashiCorp Vault</h4>
+        <ul class="list">
+          <li>シークレット（DBパスワード・APIキー）の一元管理</li>
+          <li>Dynamic Secrets: アクセスごとに短命な認証情報を発行</li>
+          <li>Transit Engine: 暗号化をAPIとして提供（「暗号化サービス」）</li>
+          <li>Seal/Unseal: Shamir秘密分散で起動時の鍵シェアを分散</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 7: レートリミットと DDoS 防御 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">7</span>
+    レートリミットと DDoS 防御
+  </div>
+  <p class="section-desc">APIの乱用防止・DoS対策としてのレートリミット実装と、DDoS攻撃の種類・防御方法を理解する。</p>
+
+  <!-- Rate limiting algorithms visual -->
+  <div class="flow-container">
+    <h3 style="margin-bottom:16px;font-size:1rem;">レートリミット 4アルゴリズム比較</h3>
+    <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:0 auto;">
+      <!-- Token Bucket -->
+      <rect x="20" y="20" width="155" height="200" rx="10" fill="rgba(99,102,241,0.08)" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="97" y="40" fill="#6366f1" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Token Bucket</text>
+      <!-- bucket -->
+      <rect x="60" y="55" width="74" height="90" rx="4" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1"/>
+      <!-- tokens -->
+      <circle cx="80" cy="75" r="7" fill="#6366f1" opacity="0.8"/>
+      <circle cx="100" cy="75" r="7" fill="#6366f1" opacity="0.8"/>
+      <circle cx="120" cy="75" r="7" fill="#6366f1" opacity="0.8"/>
+      <circle cx="80" cy="95" r="7" fill="#6366f1" opacity="0.5"/>
+      <circle cx="100" cy="95" r="7" fill="#6366f1" opacity="0.5"/>
+      <text x="97" y="165" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">一定速度でToken補充</text>
+      <text x="97" y="178" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">リクエスト=Token消費</text>
+      <text x="97" y="191" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ バーストリクエスト許容</text>
+      <text x="97" y="207" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ Redisで実装容易</text>
+
+      <!-- Leaky Bucket -->
+      <rect x="190" y="20" width="155" height="200" rx="10" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="267" y="40" fill="#22d3ee" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Leaky Bucket</text>
+      <rect x="230" y="55" width="74" height="90" rx="4" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="1"/>
+      <!-- drop arrow -->
+      <line x1="267" y1="145" x2="267" y2="165" stroke="#22d3ee" stroke-width="2" marker-end="url(#a1)"/>
+      <text x="267" y="175" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">一定速度でLeak</text>
+      <text x="267" y="188" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">超過リクエストはキュー待ちor廃棄</text>
+      <text x="267" y="200" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ 出力レート安定</text>
+      <text x="267" y="213" fill="#ef4444" text-anchor="middle" font-size="9" font-family="sans-serif">✗ バースト対応不可</text>
+
+      <!-- Fixed Window -->
+      <rect x="360" y="20" width="155" height="200" rx="10" fill="rgba(245,158,11,0.06)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="437" y="40" fill="#f59e0b" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Fixed Window</text>
+      <rect x="380" y="55" width="50" height="50" rx="4" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1"/>
+      <text x="405" y="85" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">0:00</text>
+      <rect x="443" y="55" width="50" height="50" rx="4" fill="rgba(245,158,11,0.1)" stroke="#f59e0b" stroke-width="1"/>
+      <text x="468" y="85" fill="#f59e0b" text-anchor="middle" font-size="10" font-family="sans-serif">1:00</text>
+      <text x="437" y="125" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">時間窓ごとにカウンタリセット</text>
+      <text x="437" y="138" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">実装最シンプル</text>
+      <text x="437" y="155" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ 実装容易・低メモリ</text>
+      <text x="437" y="168" fill="#ef4444" text-anchor="middle" font-size="9" font-family="sans-serif">✗ 窓境界でバースト可能</text>
+      <text x="437" y="181" fill="#ef4444" text-anchor="middle" font-size="9" font-family="sans-serif">（例:59秒+1秒で2倍リクエスト）</text>
+
+      <!-- Sliding Window Log -->
+      <rect x="530" y="20" width="175" height="200" rx="10" fill="rgba(167,139,250,0.06)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="617" y="40" fill="#a78bfa" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Sliding Window Log</text>
+      <text x="617" y="80" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">タイムスタンプをログとして保持</text>
+      <text x="617" y="95" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">「現在時刻 - 窓幅」以前のエントリを削除</text>
+      <text x="617" y="110" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">残エントリ数がカウント</text>
+      <text x="617" y="140" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ 最も正確な制御</text>
+      <text x="617" y="153" fill="#10b981" text-anchor="middle" font-size="9" font-family="sans-serif">✓ 境界バースト問題なし</text>
+      <text x="617" y="166" fill="#ef4444" text-anchor="middle" font-size="9" font-family="sans-serif">✗ メモリ消費大</text>
+      <text x="617" y="179" fill="#ef4444" text-anchor="middle" font-size="9" font-family="sans-serif">✗ 高トラフィックでは重い</text>
+    </svg>
+  </div>
+
+  <!-- Redis implementation example -->
+  <div class="two-col">
+    <div class="code-block">
+<span class="cm">// Token Bucket（Redisで実装）</span>
+<span class="kw">async function</span> <span class="fn">rateLimit</span>(userId: <span class="kw">string</span>) {
+  <span class="kw">const</span> key = <span class="str">`rate:<span class="var">${userId}</span>`</span>;
+  <span class="kw">const</span> pipe = redis.<span class="fn">multi</span>();
+
+  <span class="cm">// Tokenを追加（最大100まで）</span>
+  pipe.<span class="fn">set</span>(key, MAX_TOKENS, <span class="str">'NX'</span>, <span class="str">'EX'</span>, <span class="num">60</span>);
+  pipe.<span class="fn">decrby</span>(key, <span class="num">1</span>);
+  pipe.<span class="fn">expire</span>(key, <span class="num">60</span>);
+
+  <span class="kw">const</span> [, remaining] = <span class="kw">await</span> pipe.<span class="fn">exec</span>();
+
+  <span class="kw">if</span> (remaining < <span class="num">0</span>) {
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'Rate limit exceeded'</span>);
+  }
+  <span class="kw">return</span> remaining;
+}
+    </div>
+    <div class="code-block">
+<span class="cm">// Sliding Window（Redis ZSETで実装）</span>
+<span class="kw">async function</span> <span class="fn">slidingWindowLimit</span>(userId) {
+  <span class="kw">const</span> now = Date.<span class="fn">now</span>();
+  <span class="kw">const</span> windowMs = <span class="num">60_000</span>;
+  <span class="kw">const</span> key = <span class="str">`sw:<span class="var">${userId}</span>`</span>;
+
+  <span class="kw">await</span> redis.<span class="fn">multi</span>()
+    .<span class="fn">zremrangebyscore</span>(key, <span class="num">0</span>, now - windowMs)
+    .<span class="fn">zadd</span>(key, now, <span class="str">`<span class="var">${now}</span>`</span>)
+    .<span class="fn">expire</span>(key, <span class="num">60</span>)
+    .<span class="fn">exec</span>();
+
+  <span class="kw">const</span> count = <span class="kw">await</span> redis.<span class="fn">zcard</span>(key);
+  <span class="kw">if</span> (count > MAX_REQUESTS)
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'429 Too Many Requests'</span>);
+}
+    </div>
+  </div>
+
+  <!-- DDoS -->
+  <div class="card">
+    <h3>🌊 DDoS 攻撃の種類と防御</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>種類</th><th>攻撃方法</th><th>防御手段</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Volumetric（帯域埋め）</strong></td><td>大量のパケットで回線を消費（UDP Flood, ICMP Flood）</td><td>Cloudflare/AWS Shield のアップストリーム吸収、Anycast拡散</td></tr>
+          <tr><td><strong>Protocol（プロトコル）</strong></td><td>SYN Flood（半開きコネクションを大量生成）</td><td>SYN Cookie、Connection Rate Limiting</td></tr>
+          <tr><td><strong>Application Layer（L7）</strong></td><td>HTTP GET/POST Flood、SlowLoris（低速接続）</td><td>WAF、CAPTCHA、行動分析、レートリミット</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="interview-tip">
+    <h4>💬 面接でよく聞かれること</h4>
+    <ul>
+      <li>「APIレートリミットをどう実装する？」→ Token Bucket + Redis、ユーザーIDとIPの両方でキー設定</li>
+      <li>「Fixed Windowの問題点は？」→ 窓境界のバースト（59秒に100件+1秒後に100件=実質2倍）</li>
+      <li>「DDoS対策を設計に組み込むには？」→ CDN/WAFをエッジに置き、オリジンのIP非公開化</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 8: OWASP Top 10 対策 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">8</span>
+    OWASP Top 10 対策
+  </div>
+  <p class="section-desc">Webアプリケーションの代表的な脆弱性と具体的な対策コード。</p>
+
+  <div class="card">
+    <h3>💉 A03: SQLインジェクション → Prepared Statement</h3>
+    <div class="two-col">
+      <div>
+        <p style="color:var(--red);font-size:0.85rem;margin-bottom:8px;">❌ 脆弱なコード</p>
+        <div class="code-block" style="border-left:3px solid var(--red);">
+<span class="cm">// 文字列結合でSQL構築 → 危険！</span>
+<span class="kw">const</span> query = <span class="str">`SELECT * FROM users
+  WHERE name='<span class="var">${username}</span>'`</span>;
+<span class="cm">// username = "'; DROP TABLE users;--"
+// → テーブル削除が実行される！</span>
+        </div>
+      </div>
+      <div>
+        <p style="color:var(--green);font-size:0.85rem;margin-bottom:8px;">✅ 安全なコード</p>
+        <div class="code-block" style="border-left:3px solid var(--green);">
+<span class="cm">// Prepared Statement（パラメータ化クエリ）</span>
+<span class="kw">const</span> query = <span class="str">'SELECT * FROM users WHERE name=?'</span>;
+db.<span class="fn">query</span>(query, [username]);
+<span class="cm">// または ORM（Prisma/TypeORM）を使用
+// 入力は常にエスケープされる</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>⚡ A03: XSS（Cross-Site Scripting）→ エスケープ + CSP</h3>
+    <div class="two-col">
+      <div>
+        <div class="code-block" style="border-left:3px solid var(--green);">
+<span class="cm">// 出力エスケープ（Stored XSS対策）</span>
+<span class="kw">function</span> <span class="fn">escapeHtml</span>(str: <span class="kw">string</span>) {
+  <span class="kw">return</span> str
+    .<span class="fn">replace</span>(/&/g, <span class="str">'&amp;'</span>)
+    .<span class="fn">replace</span>(/</g, <span class="str">'&lt;'</span>)
+    .<span class="fn">replace</span>(/>/g, <span class="str">'&gt;'</span>)
+    .<span class="fn">replace</span>(/"/g, <span class="str">'&quot;'</span>);
+}
+<span class="cm">// ReactはデフォルトでJSXをエスケープ
+// dangerouslySetInnerHTMLは使わない</span>
+        </div>
+      </div>
+      <div>
+        <div class="code-block" style="border-left:3px solid var(--green);">
+<span class="cm">// CSP ヘッダ（inline script禁止）</span>
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-<span class="var">RANDOM</span>';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  object-src 'none';
+  base-uri 'self';
+
+<span class="cm">// nonce: リクエストごとにランダム生成
+// inline scriptにも nonce を付与</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🔄 A01: CSRF → SameSite Cookie + CSRFトークン</h3>
+    <div class="two-col">
+      <div>
+        <div class="code-block" style="border-left:3px solid var(--green);">
+<span class="cm">// SameSite=Strict or Lax</span>
+Set-Cookie: session=abc;
+  HttpOnly;
+  Secure;
+  SameSite=Strict;
+  Path=/;
+  Max-Age=3600
+
+<span class="cm">// SameSite=Strict: 別サイトからのリクエスト
+// にはCookieを送らない（CSRF完全防御）
+// SameSite=Lax: GETのナビゲーションは許可</span>
+        </div>
+      </div>
+      <div>
+        <div class="code-block" style="border-left:3px solid var(--green);">
+<span class="cm">// Double Submit Cookie パターン</span>
+<span class="cm">// 1. サーバーがCSRFトークンをCookieとHTMLに両方設置</span>
+Set-Cookie: csrf_token=<span class="var">RANDOM</span>; SameSite=Strict
+
+<span class="cm">// 2. フォームにhidden fieldとして含める</span>
+&lt;input type=<span class="str">"hidden"</span> name=<span class="str">"_csrf"</span> value=<span class="str">"SAME_TOKEN"</span>&gt;
+
+<span class="cm">// 3. サーバーで両値が一致するか検証
+// → 悪意あるサイトはCookieを読めない</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>OWASP Top 10</th><th>主な対策</th><th>フレームワーク</th></tr></thead>
+      <tbody>
+        <tr><td>A01: Broken Access Control</td><td>RBAC/ABAC、サーバーサイド認可、最小権限</td><td>OPA, Casbin</td></tr>
+        <tr><td>A02: Cryptographic Failures</td><td>TLS必須、bcrypt/argon2、AES-256</td><td>OpenSSL, Vault</td></tr>
+        <tr><td>A03: Injection</td><td>Prepared Statement、入力バリデーション</td><td>ORM全般</td></tr>
+        <tr><td>A04: Insecure Design</td><td>脅威モデリング、セキュアSDLC</td><td>STRIDE, PASTA</td></tr>
+        <tr><td>A05: Security Misconfiguration</td><td>IaC、セキュリティベースライン、不要機能無効化</td><td>Terraform, CIS Benchmark</td></tr>
+        <tr><td>A06: Vulnerable Components</td><td>依存関係スキャン、SBOMの管理</td><td>Snyk, Dependabot</td></tr>
+        <tr><td>A07: Auth Failures</td><td>MFA、強パスワードポリシー、アカウントロック</td><td>Auth0, Cognito</td></tr>
+        <tr><td>A08: Software Integrity Failures</td><td>署名検証、CI/CDのコード整合性確認</td><td>Sigstore, Cosign</td></tr>
+        <tr><td>A09: Logging Failures</td><td>セキュリティイベントログ、異常検知</td><td>SIEM, CloudTrail</td></tr>
+        <tr><td>A10: SSRF</td><td>メタデータAPIエンドポイントへのアクセス制限、URLバリデーション</td><td>IMDSv2 (AWS)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 9: セキュリティヘッダー -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">9</span>
+    セキュリティヘッダー
+  </div>
+  <p class="section-desc">HTTP レスポンスヘッダーでブラウザに指示を出し、XSS・クリックジャッキング・情報漏洩を防ぐ。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--accent2);">Content-Security-Policy</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">リソースの読み込み元を制限。XSSの実害を防ぐ最強の武器。script-src でインラインスクリプトを禁止。</p>
+      <div class="code-block" style="font-size:0.75rem;">Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{random}'; object-src 'none'</div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--accent3);">X-Content-Type-Options</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">ブラウザのMIMEスニッフィングを禁止。Content-Typeを信頼させることで、偽ファイルの実行を防ぐ。</p>
+      <div class="code-block" style="font-size:0.75rem;">X-Content-Type-Options: nosniff</div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--purple);">X-Frame-Options</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">クリックジャッキング防止。iframeでサイトを埋め込むことを禁止。CSPの frame-ancestors で代替可能。</p>
+      <div class="code-block" style="font-size:0.75rem;">X-Frame-Options: DENY
+<span class="cm"># または CSP で</span>
+Content-Security-Policy: frame-ancestors 'none'</div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--chapter-color);">Strict-Transport-Security</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">HTTPSを強制。max-ageの間ブラウザがHTTPSを記憶。プリロードリストへの登録で初回アクセスも保護。</p>
+      <div class="code-block" style="font-size:0.75rem;">Strict-Transport-Security: max-age=31536000; includeSubDomains; preload</div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--green);">Referrer-Policy</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">外部サイトへ遷移時にReferrerヘッダをどこまで送るか制御。URLにトークンが含まれる場合に重要。</p>
+      <div class="code-block" style="font-size:0.75rem;">Referrer-Policy: strict-origin-when-cross-origin</div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--accent);">Permissions-Policy</h3>
+      <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px;">カメラ・マイク・位置情報など特定のブラウザ機能を制限。不要な機能へのアクセスを禁止する。</p>
+      <div class="code-block" style="font-size:0.75rem;">Permissions-Policy: camera=(), microphone=(), geolocation=(self)</div>
+    </div>
+  </div>
+
+  <!-- Nginx config -->
+  <div class="card">
+    <h3>⚙️ Nginx セキュリティヘッダ設定例</h3>
+    <div class="code-block">
+<span class="cm"># nginx.conf - セキュリティヘッダ一括設定</span>
+server {
+    listen <span class="num">443</span> ssl http2;
+    server_name example.com;
+
+    <span class="cm"># TLS設定</span>
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers <span class="str">'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384'</span>;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:<span class="num">50</span>m;
+
+    <span class="cm"># セキュリティヘッダ</span>
+    add_header Strict-Transport-Security <span class="str">"max-age=31536000; includeSubDomains; preload"</span> always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy <span class="str">"strict-origin-when-cross-origin"</span> always;
+    add_header Permissions-Policy <span class="str">"camera=(), microphone=(), payment=(self)"</span> always;
+    add_header Content-Security-Policy <span class="str">"default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'"</span> always;
+
+    <span class="cm"># サーバー情報の隠蔽</span>
+    server_tokens off;
+    more_clear_headers Server;
+}
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<!-- SECTION 10: ゼロトラストアーキテクチャ -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="section-title">
+    <span class="num">10</span>
+    ゼロトラストアーキテクチャ
+  </div>
+  <p class="section-desc">「信頼しない、常に検証する」という原則に基づく現代のセキュリティアーキテクチャ。VPN依存の境界型セキュリティからの移行。</p>
+
+  <!-- Old vs New -->
+  <div class="two-col" style="margin-bottom:20px;">
+    <div class="card" style="border-top:3px solid var(--red);">
+      <h3 style="color:var(--red);font-size:0.95rem;">❌ 境界型セキュリティ（従来型）の限界</h3>
+      <ul class="list" style="margin-top:10px;">
+        <li>「社内ネットワークにいれば信頼できる」という前提</li>
+        <li>VPN接続後は横移動（Lateral Movement）が自由</li>
+        <li>クラウド・リモートワーク・SaaSで境界が無意味に</li>
+        <li>内部犯行やVPNクレデンシャル漏洩に無力</li>
+        <li>すべての通信をVPNに集中させることでボトルネック</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green);">
+      <h3 style="color:var(--green);font-size:0.95rem;">✅ ゼロトラストの原則</h3>
+      <ul class="list" style="margin-top:10px;">
+        <li><strong>Never Trust, Always Verify</strong>: ネットワーク位置で信頼しない</li>
+        <li><strong>Verify Explicitly</strong>: すべてのアクセスをID・デバイス・コンテキストで検証</li>
+        <li><strong>Least Privilege Access</strong>: Just-in-Time/Just-Enough-Accessを実装</li>
+        <li><strong>Assume Breach</strong>: 侵害を前提に設計、影響範囲を最小化</li>
+        <li>アイデンティティが新たな「境界」となる</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Zero Trust Architecture SVG -->
+  <div class="flow-container">
+    <h3 style="margin-bottom:16px;font-size:1rem;">ゼロトラストアーキテクチャ概念図</h3>
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:0 auto;">
+      <defs>
+        <marker id="ztarr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="ztarr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#10b981"/>
+        </marker>
+      </defs>
+
+      <!-- User/Device -->
+      <rect x="20" y="100" width="110" height="60" rx="8" fill="rgba(99,102,241,0.12)" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="75" y="125" fill="#6366f1" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">ユーザー</text>
+      <text x="75" y="140" fill="#6366f1" text-anchor="middle" font-size="10" font-family="sans-serif">+ デバイス</text>
+      <text x="75" y="153" fill="#6366f1" text-anchor="middle" font-size="9" font-family="sans-serif">（状態チェック済）</text>
+
+      <!-- Policy Engine -->
+      <rect x="280" y="90" width="150" height="80" rx="8" fill="rgba(244,63,94,0.12)" stroke="#f43f5e" stroke-width="2"/>
+      <text x="355" y="118" fill="#f43f5e" text-anchor="middle" font-size="12" font-family="sans-serif" font-weight="bold">Policy Engine</text>
+      <text x="355" y="133" fill="#f43f5e" text-anchor="middle" font-size="10" font-family="sans-serif">（Policy Decision Point）</text>
+      <text x="355" y="148" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">ID + デバイス + コンテキスト</text>
+      <text x="355" y="160" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">でアクセス判定</text>
+
+      <!-- Resources -->
+      <rect x="570" y="40" width="130" height="50" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="635" y="62" fill="#22d3ee" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">企業アプリ</text>
+      <text x="635" y="78" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（クラウド/オンプレ）</text>
+
+      <rect x="570" y="110" width="130" height="50" rx="8" fill="rgba(245,158,11,0.08)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="635" y="132" fill="#f59e0b" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">API / サービス</text>
+      <text x="635" y="148" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（マイクロサービス）</text>
+
+      <rect x="570" y="180" width="130" height="50" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="635" y="202" fill="#a78bfa" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">データストア</text>
+      <text x="635" y="218" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（DB / S3）</text>
+
+      <!-- Arrows: User -> Policy -->
+      <line x1="130" y1="130" x2="278" y2="130" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ztarr)"/>
+      <text x="204" y="122" fill="#22d3ee" text-anchor="middle" font-size="9" font-family="sans-serif">アクセスリクエスト</text>
+
+      <!-- Arrows: Policy -> Resources (with Allow) -->
+      <line x1="430" y1="115" x2="568" y2="68" stroke="#10b981" stroke-width="1.5" marker-end="url(#ztarr2)"/>
+      <line x1="430" y1="130" x2="568" y2="135" stroke="#10b981" stroke-width="1.5" marker-end="url(#ztarr2)"/>
+      <line x1="430" y1="145" x2="568" y2="195" stroke="#ef4444" stroke-width="1.5" marker-end="url(#a1)"/>
+      <text x="500" y="190" fill="#10b981" font-size="9" font-family="sans-serif">Allow</text>
+      <text x="500" y="200" fill="#ef4444" font-size="9" font-family="sans-serif">Deny</text>
+
+      <!-- Identity Provider -->
+      <rect x="130" y="210" width="150" height="50" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="205" y="230" fill="#a78bfa" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Identity Provider</text>
+      <text x="205" y="248" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（IdP: Okta/Azure AD）</text>
+
+      <!-- IdP -> Policy -->
+      <line x1="280" y1="235" x2="340" y2="172" stroke="#a78bfa" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#a1)"/>
+      <text x="285" y="200" fill="#a78bfa" font-size="9" font-family="sans-serif">ID検証</text>
+
+      <!-- Device Trust -->
+      <rect x="20" y="210" width="110" height="50" rx="8" fill="rgba(16,185,129,0.08)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="75" y="230" fill="#10b981" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="bold">Device Trust</text>
+      <text x="75" y="248" fill="#94a3b8" text-anchor="middle" font-size="9" font-family="sans-serif">（MDM / EDR）</text>
+
+      <!-- Continuous verification label -->
+      <text x="360" y="285" fill="#64748b" text-anchor="middle" font-size="10" font-family="sans-serif">継続的な検証 — リクエストごとにIDとデバイス状態を再確認（セッション中も）</text>
+    </svg>
+  </div>
+
+  <!-- Zero Trust 5 steps -->
+  <div class="card" style="margin-top:20px;">
+    <h3>🚀 ゼロトラスト実装 5ステップ</h3>
+    <ol class="step-list">
+      <li>
+        <div class="step-body">
+          <strong>アイデンティティの確立（Identity as Perimeter）</strong>
+          <span>MFAを全ユーザーに強制。SSO/IdP（Okta, Azure AD）で一元管理。条件付きアクセスポリシーを設定。</span>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>デバイスの信頼確認（Device Trust）</strong>
+          <span>MDM（Mobile Device Management）でデバイス状態を管理。コンプライアンス未達デバイスはアクセス拒否（OSパッチ・ディスク暗号化の確認）。</span>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>マイクロセグメンテーション（Micro-Segmentation）</strong>
+          <span>ネットワークを細分化し、サービス間通信を最小権限に。East-West トラフィックを mTLS で保護。不要な横移動を防ぐ。</span>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>最小権限アクセス（Just-in-Time Access）</strong>
+          <span>JIT（Just-in-Time）アクセス：必要な時だけ必要なリソースへの権限を一時的に付与。特権アクセス管理（PAM）ツールで実装。</span>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>継続的な監視と検証（Continuous Monitoring）</strong>
+          <span>全アクセスログを収集・分析。UEBA（User and Entity Behavior Analytics）で異常を検知。セッション中も継続的にリスクを再評価。</span>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <!-- BeyondCorp -->
+  <div class="card">
+    <h3>🏢 BeyondCorp（Googleのゼロトラスト実装）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">Googleが2014年に発表した世界最大規模のゼロトラスト実装。VPNを廃止し、すべてのアクセスをデバイスとIDで検証。</p>
+    <div class="two-col">
+      <div>
+        <h4 style="color:var(--accent2);font-size:0.9rem;margin-bottom:8px;">主要コンポーネント</h4>
+        <ul class="list">
+          <li><strong>Device Inventory DB</strong>: 全デバイスの信頼レベルを管理</li>
+          <li><strong>Access Proxy</strong>: すべてのリクエストを仲介・検証</li>
+          <li><strong>Trust Inferer</strong>: デバイス証明書+IdPでトラストスコア算出</li>
+          <li><strong>Resource Tier</strong>: アプリの機密度に応じたアクセス要件</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:var(--green);font-size:0.9rem;margin-bottom:8px;">現代の商用実装</h4>
+        <ul class="list">
+          <li><strong>Google BeyondCorp Enterprise</strong>: GCPネイティブ</li>
+          <li><strong>Cloudflare Zero Trust（ZTNA）</strong>: VPNレスリモートアクセス</li>
+          <li><strong>Zscaler Private Access</strong>: 大企業向けZTNA</li>
+          <li><strong>Microsoft Entra ID（条件付きアクセス）</strong>: Azure統合</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="interview-tip">
+    <h4>💬 面接でよく聞かれること</h4>
+    <ul>
+      <li>「ゼロトラストとVPNの違いは？」→ VPNはネットワーク境界を前提、ZTはアイデンティティ・デバイスを境界とする</li>
+      <li>「マイクロセグメンテーションをどう実装する？」→ サービスメッシュ（Istio）+ mTLS、NetworkPolicy（Kubernetes）</li>
+      <li>「JIT（Just-in-Time）アクセスとは？」→ 必要な時だけ権限付与、CyberArk/HashiCorp Vault での実装例</li>
+      <li>「ゼロトラスト移行で最初にやることは？」→ アイデンティティの一元化（SSO + MFA の全社展開）</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- Summary / Quick Reference -->
+<div class="section">
+  <div class="section-title">
+    <span class="num" style="background:var(--accent3);">★</span>
+    セキュリティ設計 クイックリファレンス
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>カテゴリ</th><th>問題/要件</th><th>推奨ソリューション</th><th>アンチパターン</th></tr></thead>
+      <tbody>
+        <tr><td>認証</td><td>Webアプリのログイン</td><td>OAuth 2.0 (Auth Code + PKCE) + OIDC</td><td>Resource Owner Password Grant</td></tr>
+        <tr><td>認証</td><td>API認証の強化</td><td>JWT（短命、RS256）+ Refresh Token Rotation</td><td>JWT に機密情報・長い有効期限</td></tr>
+        <tr><td>認証</td><td>M2Mサービス間認証</td><td>OAuth 2.0 Client Credentials + mTLS</td><td>長命なAPIキーの使い回し</td></tr>
+        <tr><td>認可</td><td>シンプルな権限管理</td><td>RBAC（Role + Permission）</td><td>全ユーザーに同じ権限（最小権限違反）</td></tr>
+        <tr><td>認可</td><td>複雑な組織・マルチテナント</td><td>ABAC + OPA</td><td>コード内にif文でロール判定の散在</td></tr>
+        <tr><td>暗号化</td><td>パスワード保存</td><td>argon2id（mem=64MB, iter=3）</td><td>SHA-256/bcrypt cost=4（低すぎ）</td></tr>
+        <tr><td>暗号化</td><td>機密データ保管</td><td>AES-256-GCM + AWS KMS / Vault</td><td>アプリコードに鍵をハードコード</td></tr>
+        <tr><td>通信</td><td>サービス間通信</td><td>mTLS（サービスメッシュ）</td><td>内部通信はHTTPでOK（境界型思考）</td></tr>
+        <tr><td>DDoS</td><td>API保護</td><td>Token Bucket（Redis）+ Cloudflare</td><td>レートリミットなし</td></tr>
+        <tr><td>インジェクション</td><td>DB操作</td><td>Prepared Statement / ORM</td><td>文字列結合でSQL構築</td></tr>
+        <tr><td>XSS</td><td>ユーザー入力表示</td><td>エスケープ + CSP nonce</td><td>dangerouslySetInnerHTML / innerHTML</td></tr>
+        <tr><td>ゼロトラスト</td><td>リモートアクセス</td><td>ZTNA（Cloudflare / ZPA）+ MFA</td><td>全員VPN接続で完全アクセス許可</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ============================================================
+     深掘り & 実践演習セクション
+     ============================================================ -->
+<div class="container">
+
+<hr class="divider">
+
+<!-- ===== 深掘り: JWT の脆弱性と対策 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">A</span> 深掘り: JWT の脆弱性と対策</div>
+  <p class="section-desc">JWTは正しく実装しないと重大な脆弱性につながる。代表的な攻撃パターンと対策を詳しく解説する。</p>
+
+  <div class="card">
+    <h3>alg:none 攻撃</h3>
+    <p style="color:var(--text2);font-size:0.9rem;margin-bottom:12px;">
+      JWTヘッダの <code>alg</code> を <code>"none"</code> に書き換えると、一部のライブラリは署名を検証せずにpayloadを信頼してしまう。
+      攻撃者は任意のユーザーIDや権限を設定したJWTを作成できる。
+    </p>
+    <div class="code-block"><span class="cm"># 攻撃者が細工するJWTヘッダ</span>
+<span class="cm"># 元のヘッダ: {"alg":"HS256","typ":"JWT"}</span>
+<span class="cm"># 攻撃用: {"alg":"none","typ":"JWT"}</span>
+
+<span class="cm"># base64url({"alg":"none","typ":"JWT"}).base64url({"sub":"admin","role":"superuser"}).</span>
+<span class="cm"># 末尾の署名部分を省略 → 脆弱なライブラリは検証をスキップ</span>
+
+<span class="kw">import</span> jwt
+
+<span class="cm"># 対策: allowedアルゴリズムを明示的に制限</span>
+<span class="kw">def</span> <span class="fn">verify_token</span>(token: str, secret: str) -> dict:
+    <span class="kw">try</span>:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[<span class="str">"HS256"</span>],   <span class="cm"># "none" を許可しない</span>
+            options={<span class="str">"verify_exp"</span>: <span class="kw">True</span>}
+        )
+        <span class="kw">return</span> payload
+    <span class="kw">except</span> jwt.InvalidAlgorithmError:
+        <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"不正なアルゴリズム"</span>)</div>
+    <div class="warning"><p><strong>対策:</strong> 検証時にアルゴリズムをハードコードし、トークンヘッダのalgを信用しない。<code>algorithms=["HS256"]</code>のように明示的に許可リストを指定する。</p></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>RS256 vs HS256 の使い分け</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>項目</th><th>HS256</th><th>RS256</th></tr></thead>
+          <tbody>
+            <tr><td>鍵の種類</td><td>共有秘密鍵（対称）</td><td>RSA公開鍵/秘密鍵（非対称）</td></tr>
+            <tr><td>署名</td><td>同じ鍵で署名・検証</td><td>秘密鍵で署名、公開鍵で検証</td></tr>
+            <tr><td>鍵の配布</td><td>すべてのサービスに秘密鍵を共有</td><td>公開鍵だけ配布すれば検証可能</td></tr>
+            <tr><td>マイクロサービス向き</td><td>低（秘密鍵漏洩リスク）</td><td>高（認証サーバーだけが署名）</td></tr>
+            <tr><td>推奨用途</td><td>シングルサービス、テスト</td><td>マイクロサービス、本番環境</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box"><p><strong>推奨:</strong> マイクロサービスではRS256を採用。各サービスはJWKS（JSON Web Key Set）エンドポイントから公開鍵を取得して検証する。</p></div>
+    </div>
+    <div class="card">
+      <h3>JKU / X5U Header Injection</h3>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">JWTヘッダに <code>jku</code>（JSON Web Key URL）を含め、攻撃者のサーバーが提供する公開鍵で検証させる攻撃。</p>
+      <div class="code-block"><span class="cm"># 攻撃用JWTヘッダ</span>
+{
+  <span class="str">"alg"</span>: <span class="str">"RS256"</span>,
+  <span class="str">"typ"</span>: <span class="str">"JWT"</span>,
+  <span class="str">"jku"</span>: <span class="str">"https://attacker.com/evil.json"</span>
+}
+<span class="cm"># → 攻撃者のサーバーから公開鍵を取得して</span>
+<span class="cm"># → 攻撃者の秘密鍵で署名されたJWTが有効になる</span></div>
+      <div class="warning"><p><strong>対策:</strong> jku/x5uヘッダは使用しない。公開鍵はコード内にハードコードするか、信頼済みJWKSエンドポイントURLをホワイトリストで管理する。</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Short-lived AT + Long-lived RT のリフレッシュフロー実装</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">アクセストークン（AT）は短命（15分〜1時間）、リフレッシュトークン（RT）は長命（7〜30日）にし、RTでATを再発行する。</p>
+    <div class="code-block"><span class="kw">import</span> jwt, secrets, redis
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+
+REDIS = redis.Redis(host=<span class="str">'localhost'</span>)
+SECRET = <span class="str">"your-256-bit-secret"</span>
+
+<span class="kw">def</span> <span class="fn">issue_tokens</span>(user_id: str) -> dict:
+    <span class="cm"># アクセストークン: 15分</span>
+    at_payload = {
+        <span class="str">"sub"</span>: user_id,
+        <span class="str">"exp"</span>: datetime.utcnow() + timedelta(minutes=<span class="num">15</span>),
+        <span class="str">"type"</span>: <span class="str">"access"</span>
+    }
+    access_token = jwt.encode(at_payload, SECRET, algorithm=<span class="str">"HS256"</span>)
+
+    <span class="cm"># リフレッシュトークン: 30日（Redisで管理）</span>
+    refresh_token = secrets.token_urlsafe(<span class="num">32</span>)
+    REDIS.setex(
+        f<span class="str">"rt:{refresh_token}"</span>,
+        timedelta(days=<span class="num">30</span>),
+        user_id
+    )
+    <span class="kw">return</span> {<span class="str">"access_token"</span>: access_token, <span class="str">"refresh_token"</span>: refresh_token}
+
+<span class="kw">def</span> <span class="fn">refresh_access_token</span>(refresh_token: str) -> str:
+    user_id = REDIS.get(f<span class="str">"rt:{refresh_token}"</span>)
+    <span class="kw">if not</span> user_id:
+        <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"無効なリフレッシュトークン"</span>)
+
+    <span class="cm"># Rotation: 旧RTを削除 → 新RTを発行（リプレイ攻撃防止）</span>
+    REDIS.delete(f<span class="str">"rt:{refresh_token}"</span>)
+    <span class="kw">return</span> <span class="fn">issue_tokens</span>(user_id.decode())
+
+<span class="kw">def</span> <span class="fn">revoke_token</span>(refresh_token: str):
+    <span class="cm"># ログアウト時: RTをRedisから削除</span>
+    REDIS.delete(f<span class="str">"rt:{refresh_token}"</span>)
+    <span class="cm"># アクセストークンの即時失効はBlacklistが必要</span>
+    <span class="cm"># REDIS.setex(f"blacklist:{jti}", timedelta(minutes=15), "revoked")</span></div>
+    <div class="info-box"><p><strong>Blacklist vs Stateless失効:</strong> JWTは完全ステートレスのため、署名が有効なら検証が通る。即時失効が必要な場合はRedisのBlacklist（<code>blacklist:{jti}</code>）を使い、ATの有効期限まで失効済みjtiを保持する。ATを15分以内に抑えることでBlacklistのサイズを最小化できる。</p></div>
+  </div>
+</div>
+
+<!-- ===== 深掘り: OAuth 2.0の脆弱性と対策 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">B</span> 深掘り: OAuth 2.0 の脆弱性と対策</div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>State Parameter による CSRF 防止</h3>
+      <div class="code-block"><span class="cm"># OAuth認可リクエスト生成</span>
+<span class="kw">import</span> secrets, hashlib
+
+<span class="kw">def</span> <span class="fn">start_oauth</span>(session):
+    state = secrets.token_urlsafe(<span class="num">32</span>)
+    session[<span class="str">"oauth_state"</span>] = state  <span class="cm"># セッションに保存</span>
+    auth_url = (
+        <span class="str">"https://auth.example.com/authorize"</span>
+        f<span class="str">"?response_type=code&client_id=CLIENT_ID"</span>
+        f<span class="str">"&redirect_uri=https://app.example.com/callback"</span>
+        f<span class="str">"&state={state}"</span>
+    )
+    <span class="kw">return</span> auth_url
+
+<span class="kw">def</span> <span class="fn">handle_callback</span>(session, request_params):
+    <span class="cm"># コールバックでstate検証</span>
+    <span class="kw">if</span> request_params[<span class="str">"state"</span>] != session.get(<span class="str">"oauth_state"</span>):
+        <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"CSRF攻撃の可能性"</span>)
+    <span class="cm"># stateは一度だけ使用</span>
+    session.pop(<span class="str">"oauth_state"</span>)</div>
+    </div>
+    <div class="card">
+      <h3>Redirect URI Validation（オープンリダイレクト脆弱性）</h3>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">攻撃者が <code>redirect_uri=https://attacker.com</code> を指定すると、認可コードが攻撃者に送られる。</p>
+      <div class="code-block"><span class="cm"># 不十分な検証（前方一致は危険）</span>
+<span class="cm"># NG: redirect_uri.startswith("https://app.example.com")</span>
+<span class="cm"># → https://app.example.com.evil.com も通過してしまう</span>
+
+<span class="cm"># 正しい検証: 完全一致ホワイトリスト</span>
+ALLOWED_REDIRECT_URIS = {
+    <span class="str">"https://app.example.com/callback"</span>,
+    <span class="str">"https://app.example.com/mobile/callback"</span>,
+}
+
+<span class="kw">def</span> <span class="fn">validate_redirect_uri</span>(uri: str) -> <span class="fn">bool</span>:
+    <span class="kw">return</span> uri <span class="kw">in</span> ALLOWED_REDIRECT_URIS</div>
+      <div class="warning"><p><strong>対策:</strong> redirect_uriは事前登録し、完全一致で検証する。ワイルドカードやパターンマッチは使わない。</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>PKCE の実装（Proof Key for Code Exchange）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">SPAやモバイルアプリはclient_secretを安全に保管できないため、PKCEで認可コード横取り攻撃を防ぐ。</p>
+    <div class="code-block"><span class="kw">import</span> secrets, hashlib, base64
+
+<span class="kw">def</span> <span class="fn">generate_pkce_pair</span>() -> tuple[str, str]:
+    <span class="cm"># code_verifier: 43〜128文字のランダム文字列</span>
+    code_verifier = secrets.token_urlsafe(<span class="num">96</span>)  <span class="cm"># 128バイト</span>
+
+    <span class="cm"># code_challenge = BASE64URL(SHA256(code_verifier))</span>
+    digest = hashlib.sha256(code_verifier.encode()).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b<span class="str">'='</span>).decode()
+
+    <span class="kw">return</span> code_verifier, code_challenge
+
+<span class="cm"># 認可リクエスト</span>
+code_verifier, code_challenge = <span class="fn">generate_pkce_pair</span>()
+auth_url = (
+    <span class="str">"https://auth.example.com/authorize"</span>
+    f<span class="str">"?code_challenge={code_challenge}"</span>
+    f<span class="str">"&code_challenge_method=S256"</span>
+    <span class="cm"># ... 他のパラメータ</span>
+)
+
+<span class="cm"># トークンリクエスト（code_verifierを送信）</span>
+token_request = {
+    <span class="str">"grant_type"</span>: <span class="str">"authorization_code"</span>,
+    <span class="str">"code"</span>: <span class="str">"...認可コード..."</span>,
+    <span class="str">"code_verifier"</span>: code_verifier,  <span class="cm"># サーバーはSHA256して検証</span>
+    <span class="str">"redirect_uri"</span>: <span class="str">"https://app.example.com/callback"</span>
+}</div>
+  </div>
+
+  <div class="card">
+    <h3>Token Leakage: アクセストークンの保存場所の比較</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>保存場所</th><th>XSS耐性</th><th>CSRF耐性</th><th>推奨用途</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td><code>localStorage</code></td><td class="badge badge-red">低</td><td class="badge badge-green">高</td><td>避ける</td><td>XSSでトークン丸ごと窃取</td></tr>
+          <tr><td><code>sessionStorage</code></td><td class="badge badge-red">低</td><td class="badge badge-green">高</td><td>避ける</td><td>タブ閉じると消えるが同じ問題</td></tr>
+          <tr><td>httpOnly Cookie</td><td class="badge badge-green">高</td><td class="badge badge-red">低</td><td>バックエンドレンダリング</td><td>SameSite=Strict + CSRF対策が必要</td></tr>
+          <tr><td>メモリ（JS変数）</td><td class="badge badge-green">高</td><td class="badge badge-green">高</td><td>SPA推奨</td><td>ページリロードで消える。Refresh TokenはhttpOnly Cookieに</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="interview-tip"><h4>推奨パターン</h4><p>SPAではアクセストークンをメモリに保持、リフレッシュトークンをhttpOnly + SameSite=Strict Cookieに保存するBFF（Backend For Frontend）パターンが最も安全。</p></div>
+  </div>
+</div>
+
+<!-- ===== 深掘り: 暗号化の実践 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">C</span> 深掘り: 暗号化の実践</div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>AES-GCM vs AES-CBC: 認証暗号の重要性</h3>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">AES-CBCは暗号化のみで完全性を保証しない。Padding Oracle攻撃で平文を復号できる。</p>
+      <div class="code-block"><span class="cm"># AES-GCMの実装（認証付き暗号）</span>
+<span class="kw">from</span> cryptography.hazmat.primitives.ciphers.aead <span class="kw">import</span> AESGCM
+<span class="kw">import</span> os
+
+<span class="kw">def</span> <span class="fn">encrypt_aes_gcm</span>(plaintext: bytes, key: bytes) -> bytes:
+    aesgcm = <span class="fn">AESGCM</span>(key)
+    nonce = os.urandom(<span class="num">12</span>)  <span class="cm"># 96ビット推奨</span>
+    ciphertext = aesgcm.encrypt(nonce, plaintext, <span class="kw">None</span>)
+    <span class="kw">return</span> nonce + ciphertext  <span class="cm"># nonce + ciphertext + 16バイトタグ</span>
+
+<span class="kw">def</span> <span class="fn">decrypt_aes_gcm</span>(data: bytes, key: bytes) -> bytes:
+    aesgcm = <span class="fn">AESGCM</span>(key)
+    nonce, ciphertext = data[:<span class="num">12</span>], data[<span class="num">12</span>:]
+    <span class="kw">return</span> aesgcm.decrypt(nonce, ciphertext, <span class="kw">None</span>)
+    <span class="cm"># タグ検証失敗時: InvalidTag例外 → 改ざん検知</span></div>
+      <div class="info-box"><p><strong>GCMの利点:</strong> 暗号化と同時に認証タグ（HMAC相当）を生成。復号時に改ざんを自動検知。CBCのように別途HMACが不要。</p></div>
+    </div>
+    <div class="card">
+      <h3>Argon2id のパラメーター選定</h3>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">OWASP推奨: argon2id（メモリハード関数）でブルートフォースを計算コスト的に困難にする。</p>
+      <div class="code-block"><span class="kw">from</span> argon2 <span class="kw">import</span> PasswordHasher
+<span class="kw">from</span> argon2.exceptions <span class="kw">import</span> VerifyMismatchError
+
+<span class="cm"># OWASP推奨パラメーター (2023)</span>
+ph = <span class="fn">PasswordHasher</span>(
+    time_cost=<span class="num">3</span>,        <span class="cm"># 反復回数（最低2）</span>
+    memory_cost=<span class="num">65536</span>,  <span class="cm"># 64 MiB（最低19 MiB）</span>
+    parallelism=<span class="num">4</span>,      <span class="cm"># 並列度（CPUコア数に合わせる）</span>
+    hash_len=<span class="num">32</span>,         <span class="cm"># 出力ハッシュ長</span>
+    salt_len=<span class="num">16</span>          <span class="cm"># ソルト長</span>
+)
+
+<span class="kw">def</span> <span class="fn">hash_password</span>(password: str) -> str:
+    <span class="kw">return</span> ph.hash(password)  <span class="cm"># ソルト自動生成</span>
+
+<span class="kw">def</span> <span class="fn">verify_password</span>(hashed: str, password: str) -> <span class="fn">bool</span>:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> ph.verify(hashed, password)
+    <span class="kw">except</span> VerifyMismatchError:
+        <span class="kw">return</span> <span class="kw">False</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Envelope Encryption: AWS KMS による2層暗号化</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:12px;">データ暗号化鍵（DEK）をデータ鍵暗号化鍵（KEK）で暗号化する2層構造。大量データを効率的に暗号化しつつ、鍵管理を一元化できる。</p>
+    <div class="code-block"><span class="kw">import</span> boto3, os
+<span class="kw">from</span> cryptography.hazmat.primitives.ciphers.aead <span class="kw">import</span> AESGCM
+
+kms = boto3.client(<span class="str">'kms'</span>, region_name=<span class="str">'ap-northeast-1'</span>)
+CMK_KEY_ID = <span class="str">"arn:aws:kms:ap-northeast-1:123456789012:key/xxx"</span>
+
+<span class="kw">def</span> <span class="fn">encrypt_data</span>(plaintext: bytes) -> dict:
+    <span class="cm"># 1. KMSからDEK（データ暗号化鍵）を生成</span>
+    <span class="cm">#    PlaintextDEK: 平文DEK（メモリ内のみ使用）</span>
+    <span class="cm">#    CiphertextBlob: CMKで暗号化されたDEK（DBに保存）</span>
+    response = kms.generate_data_key(
+        KeyId=CMK_KEY_ID,
+        KeySpec=<span class="str">'AES_256'</span>
+    )
+    dek_plaintext = response[<span class="str">'Plaintext'</span>]      <span class="cm"># メモリ内のみ</span>
+    dek_encrypted = response[<span class="str">'CiphertextBlob'</span>]  <span class="cm"># DBに保存</span>
+
+    <span class="cm"># 2. 平文DEKでデータを暗号化</span>
+    aesgcm = <span class="fn">AESGCM</span>(dek_plaintext)
+    nonce = os.urandom(<span class="num">12</span>)
+    ciphertext = aesgcm.encrypt(nonce, plaintext, <span class="kw">None</span>)
+
+    <span class="cm"># 3. 平文DEKはメモリから破棄</span>
+    <span class="kw">return</span> {
+        <span class="str">"encrypted_dek"</span>: dek_encrypted,  <span class="cm"># DBに保存</span>
+        <span class="str">"nonce"</span>: nonce,
+        <span class="str">"ciphertext"</span>: ciphertext
+    }
+
+<span class="kw">def</span> <span class="fn">decrypt_data</span>(encrypted_dek: bytes, nonce: bytes, ciphertext: bytes) -> bytes:
+    <span class="cm"># 1. KMSでDEKを復号（KMSへのAPI呼び出し、CloudTrailに記録）</span>
+    response = kms.decrypt(CiphertextBlob=encrypted_dek)
+    dek_plaintext = response[<span class="str">'Plaintext'</span>]
+
+    <span class="cm"># 2. DEKでデータを復号</span>
+    aesgcm = <span class="fn">AESGCM</span>(dek_plaintext)
+    <span class="kw">return</span> aesgcm.decrypt(nonce, ciphertext, <span class="kw">None</span>)</div>
+    <div class="interview-tip"><h4>なぜEnvelope Encryptionが重要か</h4><p>KMSに直接大量データを送ると遅い・コスト高い。DEKをローカルで生成してデータを暗号化し、DEK自体だけKMSで暗号化することで、KMS API呼び出しをデータ単位に1回に抑えられる。鍵のローテーションはDEKの再暗号化のみでデータ本体を再暗号化する必要がない。</p></div>
+  </div>
+</div>
+
+<!-- ===== 実践演習 ===== -->
+<div class="section">
+  <div class="section-title"><span class="num">D</span> 実践演習</div>
+
+  <!-- 演習1 -->
+  <div class="card">
+    <h3>演習1: JWTの何が問題か診断する（5問）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">各JWTの実装を見て、具体的な問題点と対策を答えよ。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>問題のある実装</th><th>何が問題か</th><th>対策</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><code>{"alg":"none","typ":"JWT"}</code></td>
+            <td><span class="highlight">alg:none攻撃</span>。署名が検証されず、任意のペイロードが有効になる</td>
+            <td>ライブラリに許可アルゴリズムを明示指定。<code>algorithms=["HS256"]</code></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><code>{"exp": "2027-01-01"}</code>（アクセストークン、1年後）</td>
+            <td><span class="highlight">過長なアクセストークン</span>。漏洩時に長期間悪用可能</td>
+            <td>ATは15分〜1時間。長期セッションはRefresh Tokenで管理</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><code>{"sub":"123","password_hash":"$2b$..."}</code></td>
+            <td><span class="highlight">機密情報のペイロード格納</span>。JWTはBase64で誰でも復号可能（署名は機密性を保証しない）</td>
+            <td>ペイロードには非機密のクレームのみ。機密データはサーバー側で管理</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><code>user_id = base64.decode(token.split('.')[1])['sub']</code>（署名検証なし）</td>
+            <td><span class="highlight">署名検証スキップ</span>。攻撃者が任意のpayloadを作成して任意のユーザーに成りすませる</td>
+            <td>必ず署名検証を行う。ライブラリの <code>verify=True</code>（デフォルト）を使う</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><code>SECRET = "secret"</code>（ハードコード・短い）</td>
+            <td><span class="highlight">弱い秘密鍵</span>。ブルートフォースで解読される。"secret"はgitHubに流出したシークレット上位</td>
+            <td>256bit以上のランダムシークレット。環境変数で管理。定期ローテーション</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 演習2 -->
+  <div class="card">
+    <h3>演習2: OWASPに基づいたコードレビュー（4問）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">以下の脆弱なコードを特定し、安全な実装に修正せよ。</p>
+
+    <div class="two-col">
+      <div>
+        <p style="color:var(--red);font-size:0.85rem;font-weight:600;margin-bottom:8px;">問1: SQLインジェクション（脆弱なコード）</p>
+        <div class="code-block"><span class="cm"># 危険: 文字列結合でSQL構築</span>
+<span class="kw">def</span> <span class="fn">get_user</span>(username):
+    query = <span class="str">"SELECT * FROM users WHERE username='"</span> + username + <span class="str">"'"</span>
+    cursor.execute(query)
+    <span class="kw">return</span> cursor.fetchone()</div>
+      </div>
+      <div>
+        <p style="color:var(--green);font-size:0.85rem;font-weight:600;margin-bottom:8px;">修正後（プリペアドステートメント）</p>
+        <div class="code-block"><span class="cm"># 安全: パラメータを分離</span>
+<span class="kw">def</span> <span class="fn">get_user</span>(username):
+    query = <span class="str">"SELECT * FROM users WHERE username = %s"</span>
+    cursor.execute(query, (username,))
+    <span class="kw">return</span> cursor.fetchone()</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:16px;">
+      <div>
+        <p style="color:var(--red);font-size:0.85rem;font-weight:600;margin-bottom:8px;">問2: XSS（脆弱なコード）</p>
+        <div class="code-block"><span class="cm">// 危険: ユーザー入力をそのままHTML挿入</span>
+<span class="kw">function</span> <span class="fn">showComment</span>(comment) {
+    document.getElementById(<span class="str">'output'</span>)
+        .innerHTML = comment;  <span class="cm">// XSS!</span>
+}</div>
+      </div>
+      <div>
+        <p style="color:var(--green);font-size:0.85rem;font-weight:600;margin-bottom:8px;">修正後（textContent + DOMPurify）</p>
+        <div class="code-block"><span class="cm">// 安全: テキストとして扱う</span>
+<span class="kw">function</span> <span class="fn">showComment</span>(comment) {
+    document.getElementById(<span class="str">'output'</span>)
+        .textContent = comment;  <span class="cm">// エスケープ</span>
+    <span class="cm">// HTMLが必要な場合: DOMPurify.sanitize(comment)</span>
+}</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:16px;">
+      <div>
+        <p style="color:var(--red);font-size:0.85rem;font-weight:600;margin-bottom:8px;">問3: IDOR（脆弱なコード）</p>
+        <div class="code-block"><span class="cm"># 危険: IDを直接使用、認可チェックなし</span>
+<span class="kw">def</span> <span class="fn">get_order</span>(request, order_id):
+    order = Order.objects.get(id=order_id)
+    <span class="kw">return</span> <span class="fn">JsonResponse</span>(order.to_dict())</div>
+      </div>
+      <div>
+        <p style="color:var(--green);font-size:0.85rem;font-weight:600;margin-bottom:8px;">修正後（認可チェック追加）</p>
+        <div class="code-block"><span class="cm"># 安全: 自分のリソースのみ返す</span>
+<span class="kw">def</span> <span class="fn">get_order</span>(request, order_id):
+    order = Order.objects.get(
+        id=order_id,
+        user_id=request.user.id  <span class="cm"># 所有者確認</span>
+    )
+    <span class="kw">return</span> <span class="fn">JsonResponse</span>(order.to_dict())</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:16px;">
+      <div>
+        <p style="color:var(--red);font-size:0.85rem;font-weight:600;margin-bottom:8px;">問4: パスワード平文保存（脆弱なコード）</p>
+        <div class="code-block"><span class="cm"># 危険: パスワードを平文DBに保存</span>
+<span class="kw">def</span> <span class="fn">register</span>(username, password):
+    db.execute(
+        <span class="str">"INSERT INTO users (username, password) VALUES (%s, %s)"</span>,
+        (username, password)  <span class="cm"># 平文!</span>
+    )</div>
+      </div>
+      <div>
+        <p style="color:var(--green);font-size:0.85rem;font-weight:600;margin-bottom:8px;">修正後（argon2id ハッシュ）</p>
+        <div class="code-block"><span class="cm"># 安全: argon2idでハッシュ化</span>
+<span class="kw">from</span> argon2 <span class="kw">import</span> PasswordHasher
+ph = <span class="fn">PasswordHasher</span>()
+<span class="kw">def</span> <span class="fn">register</span>(username, password):
+    hashed = ph.hash(password)
+    db.execute(
+        <span class="str">"INSERT INTO users (username, password_hash) VALUES (%s, %s)"</span>,
+        (username, hashed)
+    )</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 演習3: チェックリスト -->
+  <div class="card">
+    <h3>演習3: 本番リリース前セキュリティチェックリスト（20項目）</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;">本番デプロイ前に必ず確認すべきセキュリティ項目。</p>
+    <div class="two-col">
+      <div>
+        <h4 style="color:var(--accent2);font-size:0.9rem;margin-bottom:12px;">認証・認可</h4>
+        <ul class="list">
+          <li>[ ] アクセストークンの有効期限が15〜60分以内</li>
+          <li>[ ] リフレッシュトークンのRotationが実装済み</li>
+          <li>[ ] パスワードがargon2id/bcrypt（cost≥12）でハッシュ化</li>
+          <li>[ ] MFAオプションが提供されている</li>
+          <li>[ ] すべてのAPIエンドポイントに認可チェックがある</li>
+          <li>[ ] OAuth stateパラメーターが実装済み</li>
+          <li>[ ] redirect_uriが完全一致ホワイトリストで検証</li>
+        </ul>
+
+        <h4 style="color:var(--accent2);font-size:0.9rem;margin-top:16px;margin-bottom:12px;">入力検証・注入対策</h4>
+        <ul class="list">
+          <li>[ ] すべてのDB操作がプリペアドステートメントを使用</li>
+          <li>[ ] ユーザー入力表示がエスケープ/sanitize済み</li>
+          <li>[ ] ファイルアップロードの拡張子・MIMEタイプ検証</li>
+          <li>[ ] XML/JSON入力のスキーマバリデーション</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:var(--accent2);font-size:0.9rem;margin-bottom:12px;">通信・暗号化</h4>
+        <ul class="list">
+          <li>[ ] TLS 1.2以上が強制（HTTP→HTTPSリダイレクト）</li>
+          <li>[ ] HSTSヘッダが設定されている</li>
+          <li>[ ] 機密データがAES-256-GCMで暗号化済み</li>
+          <li>[ ] 鍵・シークレットがコードに含まれていない</li>
+        </ul>
+
+        <h4 style="color:var(--accent2);font-size:0.9rem;margin-top:16px;margin-bottom:12px;">インフラ・モニタリング</h4>
+        <ul class="list">
+          <li>[ ] レートリミットが全エンドポイントに設定</li>
+          <li>[ ] 認証失敗・異常アクセスのアラートが設定</li>
+          <li>[ ] セキュリティヘッダー（CSP, X-Frame-Options等）設定</li>
+          <li>[ ] 依存ライブラリの既知脆弱性（CVE）スキャン済み</li>
+          <li>[ ] 機密情報のログ出力がないことを確認</li>
+        </ul>
+      </div>
+    </div>
+    <div class="interview-tip">
+      <h4>面接での活用</h4>
+      <p>「新しいサービスをセキュアにデプロイするために何を確認しますか？」という質問に対して、このチェックリストを軸に認証・認可・暗号化・インフラの4カテゴリを網羅的に説明できると高評価につながる。</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container (追記分) -->
+
+<!-- FOOTER NAV -->
+<div class="footer-nav">
+  <a href="11_reliability.html">← Ch11 信頼性設計</a>
+  <span class="current-label">Ch12 セキュリティ設計 (完全版)</span>
+  <a href="13_observability.html">Ch13 可観測性 →</a>
+</div>
+
+</body>
+</html>
