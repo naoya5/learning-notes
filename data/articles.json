@@ -1,5 +1,22 @@
 [
   {
+    "slug": "claude-code-hooks-mastery",
+    "date": "2026-06-29",
+    "title": "Claude Code Hooks 完全マスターガイド",
+    "summary": "全13 Hook イベント・Sub-Agents・Team Validation・Status Lines・Output Styles を体系的に学ぶ完全ガイド",
+    "description": "Claude Code の Hook システムを完全解説。全13イベントのライフサイクル・exit code・JSON出力制御から、Sub-Agents・Team Validation・Status Lines・Output Styles まで、実際のコード例と共に網羅した実践ガイド。",
+    "tags": [
+      "claude-code",
+      "hooks",
+      "sub-agents",
+      "agent-orchestration",
+      "tts",
+      "status-line",
+      "workflow"
+    ],
+    "updated": null
+  },
+  {
     "slug": "system-design",
     "date": "2026-06-29",
     "title": "システムデザイン 完全学習ガイド（全15章コース）",

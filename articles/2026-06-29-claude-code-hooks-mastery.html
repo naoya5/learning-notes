@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>Claude Code Hooks 完全マスターガイド — learning-notes</title>
+    <meta name="description" content="Claude Code の Hook システムを完全解説。全13イベントのライフサイクル・exit code・JSON出力制御から、Sub-Agents・Team Validation・Status Lines・Output Styles まで、実際のコード例と共に網羅した実践ガイド。" />
+
+    <!-- 構造化メタ（update-index.py が読む） -->
+    <meta name="article:slug" content="claude-code-hooks-mastery" />
+    <meta name="article:date" content="2026-06-29" />
+    <meta name="article:tags" content="claude-code,hooks,sub-agents,agent-orchestration,tts,status-line,workflow" />
+    <meta name="article:summary" content="全13 Hook イベント・Sub-Agents・Team Validation・Status Lines・Output Styles を体系的に学ぶ完全ガイド" />
+
+    <!-- OGP -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Claude Code Hooks 完全マスターガイド" />
+    <meta property="og:description" content="Claude Code の Hook システムを完全解説。全13イベントのライフサイクル・exit code・JSON出力制御から、Sub-Agents・Team Validation・Status Lines・Output Styles まで、実際のコード例と共に網羅した実践ガイド。" />
+    <meta
+      property="og:url"
+      content="https://naoya5.github.io/learning-notes/articles/2026-06-29-claude-code-hooks-mastery.html"
+    />
+
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/article.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へスキップ</a>
+
+    <button class="theme-toggle" type="button" aria-label="テーマ切り替え">
+      ◐ theme
+    </button>
+
+    <header class="site-header">
+      <a class="site-title" href="../index.html">learning-notes</a>
+    </header>
+
+    <main id="main" class="article">
+      <header class="article-hero">
+        <p class="article-meta">
+          <time datetime="2026-06-29">2026-06-29</time>
+        </p>
+        <h1>Claude Code Hooks 完全マスターガイド</h1>
+        <p class="lead">全 13 Hook イベント・Sub-Agents・Team Validation・Status Lines・Output Styles を体系的に学ぶ。Hook はプロンプトで「お願い」する代わりに、確定的な制御をコードとして書く仕組みだ。</p>
+      </header>
+
+      <nav id="toc" aria-label="目次">
+        <p id="toc-title">目次</p>
+        <ul></ul>
+      </nav>
+
+      <article class="article-body">
+
+        <!-- TL;DR -->
+        <section data-section="tldr">
+          <h2>TL;DR</h2>
+          <ul>
+            <li>Hook は Claude Code のライフサイクル 13 地点で自動実行されるシェルコマンド。LLM の判断に依存せず<strong>確定的</strong>に動く。</li>
+            <li>exit code 2 でツール実行をブロック、stdout に JSON を出せば承認・拒否・コンテキスト追加が細かく制御できる。</li>
+            <li>UV シングルファイルスクリプトを使うと Hook ごとに依存を宣言でき、venv 管理が不要になる。</li>
+            <li>Sub-Agent ファイル（<code>.claude/agents/*.md</code>）はシステムプロンプト。Builder + Validator のペアでコード品質を自動担保できる。</li>
+            <li>Status Lines v1〜v9 でコスト・トークン・コンテキスト使用量をリアルタイム表示、Output Styles でレスポンス形式を切り替えられる。</li>
+          </ul>
+        </section>
+
+        <!-- 1. Hooks とは -->
+        <section>
+          <h2>Claude Code Hooks とは</h2>
+          <p>
+            Claude Code Hooks はセッション中の特定タイミングで自動実行されるユーザー定義のシェルコマンドだ。
+            <aside class="sidenote">公式ドキュメント: <a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener">Claude Code Hooks</a></aside>
+            LLM に「毎回フォーマットしてください」と頼む代わりに Hook に書けば、必ず実行される。これが最大の利点だ。
+          </p>
+
+          <h3>何ができるか</h3>
+          <ul>
+            <li><strong>セキュリティ:</strong> <code>rm -rf</code> や <code>.env</code> アクセスをブロック</li>
+            <li><strong>品質管理:</strong> .py 編集後に ruff / ty を自動実行し lint エラーでブロック</li>
+            <li><strong>コンテキスト注入:</strong> プロンプト送信前に git status・issue を自動ロード</li>
+            <li><strong>音声通知:</strong> 完了時に TTS で「Work complete!」を読み上げ</li>
+            <li><strong>ログ収集:</strong> 全ツール実行を JSON でログ蓄積</li>
+          </ul>
+
+          <aside class="callout warn">
+            <strong>注意:</strong> Hook はシステム上で任意のコマンドを自動実行する。設定前にコードを必ず確認すること。悪意のある Hook はデータ漏洩の原因になりうる。
+          </aside>
+        </section>
+
+        <!-- 2. ライフサイクル -->
+        <section>
+          <h2>Hook ライフサイクル — 13 イベント</h2>
+          <p>セッション中、Hook は以下の順で発火する。同一イベントにマッチする Hook は<strong>すべて並列実行</strong>される。</p>
+
+          <figure class="zoomable">
+            <svg viewBox="0 0 680 380" role="img" aria-label="Claude Code Hook ライフサイクル図" style="max-width:100%;font-family:sans-serif">
+              <!-- Session -->
+              <rect x="20" y="10" width="640" height="80" rx="10" fill="none" stroke="#7c6af7" stroke-width="1.5" stroke-dasharray="4"/>
+              <text x="340" y="30" text-anchor="middle" font-size="11" fill="#7c6af7" font-weight="bold">セッションライフサイクル</text>
+              <rect x="40" y="38" width="110" height="36" rx="6" fill="#7c6af755"/>
+              <text x="95" y="60" text-anchor="middle" font-size="11" fill="currentColor">🔧 Setup</text>
+              <rect x="170" y="38" width="150" height="36" rx="6" fill="#7c6af755"/>
+              <text x="245" y="60" text-anchor="middle" font-size="11" fill="currentColor">▶️ SessionStart</text>
+              <rect x="340" y="38" width="140" height="36" rx="6" fill="#7c6af755"/>
+              <text x="410" y="60" text-anchor="middle" font-size="11" fill="currentColor">⏹️ SessionEnd</text>
+
+              <!-- Main loop -->
+              <rect x="20" y="110" width="640" height="160" rx="10" fill="none" stroke="#6ac4f7" stroke-width="1.5" stroke-dasharray="4"/>
+              <text x="340" y="130" text-anchor="middle" font-size="11" fill="#6ac4f7" font-weight="bold">メイン会話ループ</text>
+
+              <rect x="40" y="140" width="130" height="36" rx="6" fill="#6ac4f755"/>
+              <text x="105" y="162" text-anchor="middle" font-size="11" fill="currentColor">📝 UserPromptSubmit</text>
+
+              <rect x="200" y="140" width="110" height="36" rx="6" fill="#f7956a55"/>
+              <text x="255" y="162" text-anchor="middle" font-size="11" fill="currentColor">🔒 PreToolUse</text>
+
+              <rect x="330" y="140" width="140" height="36" rx="6" fill="#f7956a55"/>
+              <text x="400" y="162" text-anchor="middle" font-size="11" fill="currentColor">❓ PermissionRequest</text>
+
+              <rect x="490" y="140" width="130" height="36" rx="6" fill="#f7956a55"/>
+              <text x="555" y="162" text-anchor="middle" font-size="11" fill="currentColor">✅ PostToolUse</text>
+
+              <rect x="200" y="200" width="150" height="36" rx="6" fill="#f76a6a55"/>
+              <text x="275" y="222" text-anchor="middle" font-size="11" fill="currentColor">❌ PostToolUseFailure</text>
+
+              <rect x="380" y="200" width="90" height="36" rx="6" fill="#f76a6a55"/>
+              <text x="425" y="222" text-anchor="middle" font-size="11" fill="currentColor">🛑 Stop</text>
+
+              <rect x="490" y="200" width="140" height="36" rx="6" fill="#6af7a055"/>
+              <text x="560" y="222" text-anchor="middle" font-size="11" fill="currentColor">🔔 Notification</text>
+
+              <!-- Sub-agent -->
+              <rect x="20" y="290" width="300" height="70" rx="10" fill="none" stroke="#6af7c4" stroke-width="1.5" stroke-dasharray="4"/>
+              <text x="170" y="310" text-anchor="middle" font-size="11" fill="#6af7c4" font-weight="bold">Sub-Agent ライフサイクル</text>
+              <rect x="40" y="318" width="110" height="32" rx="6" fill="#6af7c455"/>
+              <text x="95" y="338" text-anchor="middle" font-size="11" fill="currentColor">🚀 SubagentStart</text>
+              <rect x="170" y="318" width="120" height="32" rx="6" fill="#6af7c455"/>
+              <text x="230" y="338" text-anchor="middle" font-size="11" fill="currentColor">🏁 SubagentStop</text>
+
+              <!-- Compact -->
+              <rect x="360" y="290" width="300" height="70" rx="10" fill="none" stroke="#f7d06a" stroke-width="1.5" stroke-dasharray="4"/>
+              <text x="510" y="310" text-anchor="middle" font-size="11" fill="#f7d06a" font-weight="bold">メンテナンス</text>
+              <rect x="380" y="318" width="260" height="32" rx="6" fill="#f7d06a55"/>
+              <text x="510" y="338" text-anchor="middle" font-size="11" fill="currentColor">📦 PreCompact（manual/auto）</text>
+            </svg>
+            <figcaption>図1: Claude Code の全 13 Hook イベントとその発火タイミング</figcaption>
+          </figure>
+
+          <h3>イベント別チートシート</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>イベント</th>
+                <th>発火タイミング</th>
+                <th>ブロック</th>
+                <th>主な用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>UserPromptSubmit</code></td><td>プロンプト送信直後</td><td>✅ 可</td><td>バリデーション、コンテキスト注入</td></tr>
+              <tr><td><code>PreToolUse</code></td><td>ツール実行前</td><td>✅ 可</td><td>危険コマンド防止、自動承認</td></tr>
+              <tr><td><code>PermissionRequest</code></td><td>権限ダイアログ表示時</td><td>✅ 可</td><td>読み取り専用の自動許可</td></tr>
+              <tr><td><code>PostToolUse</code></td><td>ツール成功後</td><td>❌（既実行）</td><td>lint・フォーマット・ログ</td></tr>
+              <tr><td><code>PostToolUseFailure</code></td><td>ツール失敗後</td><td>❌</td><td>エラーログ記録</td></tr>
+              <tr><td><code>Notification</code></td><td>通知送信時（非同期）</td><td>❌</td><td>デスクトップ通知・TTS</td></tr>
+              <tr><td><code>Stop</code></td><td>応答完了時</td><td>✅ 可</td><td>TTS 通知・タスク完了チェック</td></tr>
+              <tr><td><code>SubagentStart</code></td><td>Sub-Agent スポーン時</td><td>❌</td><td>起動ログ</td></tr>
+              <tr><td><code>SubagentStop</code></td><td>Sub-Agent 完了時</td><td>✅ 可</td><td>完了 TTS</td></tr>
+              <tr><td><code>PreCompact</code></td><td>コンテキスト圧縮前</td><td>❌</td><td>トランスクリプトバックアップ</td></tr>
+              <tr><td><code>SessionStart</code></td><td>セッション開始・再開時</td><td>❌</td><td>git status ロード・env 設定</td></tr>
+              <tr><td><code>SessionEnd</code></td><td>セッション終了時</td><td>❌</td><td>クリーンアップ・ログ</td></tr>
+              <tr><td><code>Setup</code></td><td>--init/--maintenance 時のみ</td><td>❌</td><td>依存インストール・マイグレーション</td></tr>
+            </tbody>
+          </table>
+
+          <aside class="callout tip">
+            <strong>Tip:</strong> <code>SessionStart</code> と <code>Setup</code> の違いは頻度。SessionStart は毎回実行されるので軽量に保つ。Setup は <code>--init</code> / <code>--maintenance</code> フラグ指定時のみ動き、重い初期化処理に向く。
+          </aside>
+        </section>
+
+        <!-- 3. 設定方法 -->
+        <section>
+          <h2>settings.json で Hook を設定する</h2>
+          <p>Hook は <code>.claude/settings.json</code>（プロジェクト）または <code>~/.claude/settings.json</code>（ユーザー全体）に記述する。</p>
+
+          <div class="code-wrap">
+            <pre><code class="language-json">{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_use.py" }]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/validators/ruff_validator.py", "timeout": 30 }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{ "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/user_prompt_submit.py --log-only" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/stop.py --chat" }]
+      }
+    ]
+  }
+}</code></pre>
+          </div>
+
+          <h3>matcher の書き方</h3>
+          <ul>
+            <li><code>"Bash"</code> — 完全一致（Bash ツールのみ）</li>
+            <li><code>"Edit|Write"</code> — 正規表現 OR</li>
+            <li><code>"Notebook.*"</code> — 前方一致</li>
+            <li><code>"*"</code> または <code>""</code> — 全ツール</li>
+            <li><code>"mcp__memory__.*"</code> — MCP ツールのパターン</li>
+          </ul>
+
+          <aside class="sidenote">matcher が使えるのは <code>PreToolUse</code>・<code>PermissionRequest</code>・<code>PostToolUse</code>・<code>Notification</code>・<code>PreCompact</code>・<code>SessionStart</code> のみ。<code>UserPromptSubmit</code>・<code>Stop</code> 等は matcher 不要。</aside>
+
+          <aside class="callout note">
+            <strong>Note:</strong> Hook パスには <code>$CLAUDE_PROJECT_DIR</code> を使うこと。Claude がどのサブディレクトリにいても正しく解決される。
+          </aside>
+        </section>
+
+        <!-- 4. フロー制御 -->
+        <section>
+          <h2>フロー制御 — exit code と JSON 出力</h2>
+
+          <h3>exit code による基本制御</h3>
+          <table>
+            <thead>
+              <tr><th>exit code</th><th>意味</th><th>stdout</th><th>stderr</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>0</code></td><td>成功</td><td>UserPromptSubmit/SessionStart はコンテキストに追加。他は verbose モード(Ctrl+O)</td><td>無視</td></tr>
+              <tr><td><code>2</code></td><td>ブロッキングエラー</td><td><strong>無視</strong>（JSON も処理されない）</td><td>Claude またはユーザーにフィード</td></tr>
+              <tr><td>その他</td><td>非ブロッキングエラー</td><td>無視</td><td>verbose モードでユーザーに表示</td></tr>
+            </tbody>
+          </table>
+
+          <h3>exit 2 の実装例 — rm -rf をブロック</h3>
+          <div class="code-wrap">
+            <pre><code class="language-python">#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.8"
+# ///
+import json, sys, re
+
+data = json.load(sys.stdin)
+tool_name = data.get("tool_name", "")
+tool_input = data.get("tool_input", {})
+
+# .env ファイルアクセスをブロック
+if tool_name in ["Read", "Edit", "Write"]:
+    path = tool_input.get("file_path", "")
+    if ".env" in path and not path.endswith(".env.sample"):
+        print("BLOCKED: .env ファイルへのアクセスを禁止", file=sys.stderr)
+        sys.exit(2)  # exit 2 → Claude にエラーとしてフィード
+
+# rm -rf をブロック
+if tool_name == "Bash":
+    cmd = tool_input.get("command", "")
+    if re.search(r"\brm\s+.*-[a-z]*r[a-z]*f", cmd.lower()):
+        print("BLOCKED: 危険な rm -rf コマンドを防止", file=sys.stderr)
+        sys.exit(2)
+
+sys.exit(0)</code></pre>
+          </div>
+
+          <h3>JSON 出力による高度な制御</h3>
+          <p>exit 0 のときに stdout に JSON を出力すると、より細かい制御が可能になる。</p>
+
+          <details class="disclosure">
+            <summary>PreToolUse — ツール実行の承認・拒否・入力書き換え</summary>
+            <div class="code-wrap">
+              <pre><code class="language-json">{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow",
+    "permissionDecisionReason": "自動承認: ドキュメントファイル",
+    "updatedInput": { "command": "npm run lint" },
+    "additionalContext": "本番環境です。慎重に操作してください。"
+  }
+}</code></pre>
+            </div>
+            <p><code>permissionDecision</code> は <code>"allow"</code>（権限スキップ） / <code>"deny"</code>（ブロック） / <code>"ask"</code>（ユーザーに確認）の3択。</p>
+          </details>
+
+          <details class="disclosure">
+            <summary>UserPromptSubmit — プロンプトのブロックとコンテキスト追加</summary>
+            <div class="code-wrap">
+              <pre><code class="language-python">import json, sys, re, datetime
+
+data = json.load(sys.stdin)
+prompt = data.get("prompt", "")
+
+# シークレットが含まれていたらブロック
+if re.search(r"(?i)\b(password|secret|key|token)\s*[:=]", prompt):
+    output = {
+        "decision": "block",
+        "reason": "セキュリティ違反: シークレットが含まれています。"
+    }
+    print(json.dumps(output))
+    sys.exit(0)  # exit 0 で JSON を処理させる（exit 2 では JSON は無視される）
+
+# コンテキストを追加（stdout に書くだけでいい）
+print(f"現在時刻: {datetime.datetime.now()}")
+sys.exit(0)</code></pre>
+            </div>
+          </details>
+
+          <details class="disclosure">
+            <summary>Stop — テスト失敗時に停止をブロック</summary>
+            <div class="code-wrap">
+              <pre><code class="language-json">{
+  "decision": "block",
+  "reason": "テストが失敗しています。失敗しているテストを修正してから完了してください。"
+}</code></pre>
+            </div>
+            <aside class="callout warn">
+              <strong>注意:</strong> Stop Hook では <code>stop_hook_active</code> フラグを必ず確認すること。このフラグが <code>true</code> の時はすでに Stop Hook が実行中なので、もう一度ブロックすると無限ループになる。
+            </aside>
+          </details>
+
+          <h3>フロー制御の優先順位</h3>
+          <ol>
+            <li><code>"continue": false</code> — 全制御より最優先</li>
+            <li><code>"decision": "block"</code> — Hook 固有のブロック</li>
+            <li>exit code 2 — stderr を Claude にフィード</li>
+            <li>その他の exit code — 非ブロッキングエラー</li>
+          </ol>
+
+          <h3>プロンプト型 Hook（type: "prompt"）</h3>
+          <p>bash コマンドの代わりに LLM（Haiku）に判断させる方式も選べる。コンテキストを理解した動的な判断が必要な場合に有効。</p>
+          <div class="code-wrap">
+            <pre><code class="language-json">{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "prompt",
+        "prompt": "Claude が停止すべきか評価してください。Context: $ARGUMENTS\n全タスクが完了していますか？\nJSON で回答: {\"ok\": true} or {\"ok\": false, \"reason\": \"説明\"}",
+        "timeout": 30
+      }]
+    }]
+  }
+}</code></pre>
+          </div>
+          <aside class="callout note">
+            <strong>Note:</strong> プロンプト型 Hook は API 呼び出しが発生するため bash Hook より遅い。確定的なルールは bash、コンテキスト理解が必要な判断はプロンプト型、と使い分けるとよい。
+          </aside>
+        </section>
+
+        <!-- 5. UV シングルファイルスクリプト -->
+        <section>
+          <h2>UV シングルファイルスクリプトアーキテクチャ</h2>
+          <p>このリポジトリのすべての Hook は <a href="https://docs.astral.sh/uv/guides/scripts/" target="_blank" rel="noopener">UV シングルファイルスクリプト</a>で書かれている。Hook ファイル自体に依存関係を宣言でき、venv 管理が一切不要になる。</p>
+
+          <div class="code-wrap">
+            <pre><code class="language-python">#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "python-dotenv",
+#     "anthropic",
+#     "openai",
+# ]
+# ///
+
+# ↑ これだけで UV が依存を自動インストール・実行する
+import anthropic
+from dotenv import load_dotenv</code></pre>
+          </div>
+
+          <p>Hook から呼び出す際は <code>uv run $CLAUDE_PROJECT_DIR/.claude/hooks/xxx.py</code> とするだけでよい。キャッシュが効くため 2 回目以降は瞬時に起動する。</p>
+        </section>
+
+        <!-- 6. Sub-Agents -->
+        <section>
+          <h2>Sub-Agents — 専門化された AI アシスタント</h2>
+          <p>Sub-Agent は特定タスクに特化した AI で、プライマリ Claude がタスクを委譲する。独立したコンテキストウィンドウと制限されたツール権限を持つ。</p>
+
+          <aside class="callout warn">
+            <strong>最重要:</strong> <code>.claude/agents/*.md</code> の内容は<strong>システムプロンプト</strong>であり、ユーザープロンプトではない。Sub-Agent はあなたに直接応答するのではなく、プライマリ Agent の指示に応答する。
+          </aside>
+
+          <h3>情報フロー</h3>
+          <figure>
+            <svg viewBox="0 0 640 80" role="img" aria-label="Sub-Agent 情報フロー">
+              <rect x="10" y="20" width="100" height="40" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="60" y="44" text-anchor="middle" font-size="13" fill="currentColor">👤 あなた</text>
+              <text x="130" y="44" text-anchor="middle" font-size="20" fill="currentColor" opacity="0.5">→</text>
+              <rect x="155" y="20" width="160" height="40" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="235" y="44" text-anchor="middle" font-size="13" fill="currentColor">🤖 Primary Agent</text>
+              <text x="333" y="44" text-anchor="middle" font-size="20" fill="currentColor" opacity="0.5">→</text>
+              <rect x="355" y="20" width="130" height="40" rx="8" fill="currentColor" opacity="0.12"/>
+              <text x="420" y="44" text-anchor="middle" font-size="13" fill="currentColor">🔧 Sub-Agent</text>
+              <text x="503" y="44" text-anchor="middle" font-size="20" fill="currentColor" opacity="0.5">→</text>
+              <text x="560" y="32" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Primary</text>
+              <text x="560" y="48" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">Agent 経由</text>
+            </svg>
+            <figcaption>図2: Sub-Agent はあなたと直接通信せず、プライマリ Agent を介して結果を返す</figcaption>
+          </figure>
+
+          <h3>Agent ファイルの書き方</h3>
+          <div class="code-wrap">
+            <pre><code class="language-yaml">---
+name: crypto-market-agent
+description: "仮想通貨市場を分析する。「PROACTIVE」と言われたら自動使用する"
+tools: WebSearch, Bash, Read    # 省略すると全ツール継承
+color: Cyan                      # ターミナルでの視覚識別
+model: haiku                     # haiku | sonnet | opus
+---
+
+# あなたは仮想通貨市場アナリストです
+
+## 指示
+1. 市場データを収集する
+2. トレンドを分析する
+3. 結果をプライマリ Agent に報告する
+
+## 報告フォーマット
+JSON 形式で: {market_trend, top_movers, recommendation}</code></pre>
+          </div>
+
+          <aside class="sidenote"><code>description</code> フィールドがプライマリ Agent が「いつ・なぜ使うか」を判断する唯一の手がかり。「PROACTIVE に使う」「〇〇と言われたら」などトリガーワードを入れると自動委譲されやすい。</aside>
+
+          <h3>Meta-Agent — エージェントを作るエージェント</h3>
+          <p>
+            <code>.claude/agents/meta-agent.md</code> は新しい Sub-Agent ファイルを自動生成する特殊な Agent だ。「テストを実行して失敗を修正する Sub-Agent を作って」と伝えるだけで、ベストプラクティス準拠の Agent ファイルが生成される。「Build the thing that builds the thing」の原則で開発速度を指数関数的に向上させる。
+          </p>
+        </section>
+
+        <!-- 7. Team Validation -->
+        <section>
+          <h2>Team-Based Validation System</h2>
+          <p><code>/plan_w_team</code> コマンドは Builder + Validator のペアでコード品質を保証する。</p>
+
+          <table>
+            <thead>
+              <tr><th>Agent</th><th>ファイル</th><th>ツール</th><th>自動検証</th><th>役割</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Builder</strong></td><td><code>team/builder.md</code></td><td>全ツール</td><td>Ruff + Ty（.py）</td><td>実装</td></tr>
+              <tr><td><strong>Validator</strong></td><td><code>team/validator.md</code></td><td>読み取り専用</td><td>なし</td><td>検証</td></tr>
+            </tbody>
+          </table>
+
+          <h3>/plan_w_team の 3 つの特徴</h3>
+          <ol>
+            <li><strong>自己バリデーション:</strong> Stop Hook でプランファイルの必須セクションを自動確認。不足があれば Agent が継続して修正する。</li>
+            <li><strong>Agent オーケストレーション:</strong> Task システムで Builder/Validator を並列調整。bash sleep ループ不要。</li>
+            <li><strong>テンプレート生成:</strong> 確定フォーマットのプランを出力する「テンプレートメタプロンプト」。成果物が予測可能になる。</li>
+          </ol>
+
+          <details class="disclosure">
+            <summary>PostToolUse バリデーターの仕組み</summary>
+            <p>Builder が <code>.py</code> ファイルを書くと <code>PostToolUse</code> Hook が自動発火し、ruff と ty を実行する。lint エラーや型エラーがあれば <code>decision: "block"</code> で Claude にフィードバックし、Claude 自身が修正するループが回る。</p>
+            <div class="code-wrap">
+              <pre><code class="language-json">{
+  "PostToolUse": [{
+    "matcher": "Write|Edit",
+    "hooks": [
+      { "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/validators/ruff_validator.py" },
+      { "type": "command", "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/validators/ty_validator.py" }
+    ]
+  }]
+}</code></pre>
+            </div>
+          </details>
+        </section>
+
+        <!-- 8. Status Lines & Output Styles -->
+        <section>
+          <h2>Status Lines と Output Styles</h2>
+
+          <h3>Custom Status Lines（v1〜v9）</h3>
+          <p>ターミナル下部にリアルタイム情報を表示する。<code>.claude/status_lines/</code> に配置し <code>settings.json</code> の <code>"statusLine"</code> で指定する。</p>
+
+          <table>
+            <thead>
+              <tr><th>バージョン</th><th>主な追加機能</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>v1</td><td>Git ブランチ・ディレクトリ・モデル（基本 MVP）</td></tr>
+              <tr><td>v2</td><td>最新プロンプト（250文字）・タスクタイプ別カラーコーディング</td></tr>
+              <tr><td>v3</td><td>Agent 自動命名（Phoenix, Sage 等）・直近 3 プロンプト</td></tr>
+              <tr><td>v4</td><td>カスタムメタデータ（<code>/update_status_line</code> で追加）</td></tr>
+              <tr><td>v5</td><td>コストトラッキング（$）・行変更数（+/-）</td></tr>
+              <tr><td>v6</td><td>コンテキストウィンドウ使用量バーと残りトークン</td></tr>
+              <tr><td>v7</td><td>セッション継続時間タイマー</td></tr>
+              <tr><td>v8</td><td>入出力トークン数・キャッシュ作成/読み取り統計</td></tr>
+              <tr><td>v9</td><td>Powerline ミニマルスタイル（セグメント区切り付き）</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Output Styles</h3>
+          <p><code>.claude/output-styles/*.md</code> に置いたスタイルは <code>/output-style [名前]</code> で切り替えられる。Claude のレスポンス形式が変わる。</p>
+          <ul>
+            <li><strong>genui ⭐</strong> — スタイル込みの美しい HTML を生成。ブラウザで即プレビュー可能</li>
+            <li><strong>table-based</strong> — 全情報をマークダウンテーブルで整理</li>
+            <li><strong>ultra-concise</strong> — 最小限の言葉で最大の情報</li>
+            <li><strong>tts-summary</strong> — タスク完了を TTS でアナウンス</li>
+            <li>他: yaml-structured / bullet-points / html-structured / markdown-focused</li>
+          </ul>
+        </section>
+
+        <!-- まとめ -->
+        <section>
+          <h2>まとめ</h2>
+          <ul>
+            <li>Hook は「プロンプトでお願い」から「コードとして確定的に実行」への転換。これが Agentic Engineering の核心。</li>
+            <li>exit code 2 でシンプルにブロック、JSON 出力で承認・拒否・コンテキスト追加を細かく制御できる。</li>
+            <li>UV シングルファイルスクリプトで Hook を書くと、依存管理が自動化されポータビリティが高まる。</li>
+            <li>Sub-Agent の <code>description</code> フィールドは「いつ使うか」を左右する最重要フィールド。トリガーワードを入れる。</li>
+            <li>Builder + Validator パターンと PostToolUse の lint Hook を組み合わせると、コード品質チェックが自動化される。</li>
+            <li>Status Lines v1〜v9 はコスト・トークン・コンテキスト使用量を可視化し、長時間セッションの管理が楽になる。</li>
+          </ul>
+        </section>
+
+        <!-- References -->
+        <section data-section="references">
+          <h2>References</h2>
+          <ol>
+            <li><a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener">Claude Code Hooks — Anthropic 公式ドキュメント</a></li>
+            <li><a href="https://docs.anthropic.com/en/docs/claude-code/sub-agents" target="_blank" rel="noopener">Claude Code Sub-Agents — Anthropic 公式ドキュメント</a></li>
+            <li><a href="https://docs.astral.sh/uv/guides/scripts/" target="_blank" rel="noopener">UV Single-file scripts — Astral UV ドキュメント</a></li>
+            <li><a href="https://github.com/disler/claude-code-hooks-mastery" target="_blank" rel="noopener">claude-code-hooks-mastery — GitHub リポジトリ（IndyDevDan）</a></li>
+            <li><a href="https://www.youtube.com/@indydevdan" target="_blank" rel="noopener">IndyDevDan YouTube チャンネル</a></li>
+          </ol>
+        </section>
+
+      </article>
+
+      <footer class="article-footer">
+        <a href="../index.html">← 一覧へ戻る</a>
+      </footer>
+    </main>
+
+    <dialog class="lightbox" id="lightbox" aria-label="図解を拡大表示">
+      <button class="close" type="button" aria-label="閉じる">×</button>
+      <div class="lb-body"></div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+    <script src="../assets/js/article.js"></script>
+  </body>
+</html>
